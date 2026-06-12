@@ -11,7 +11,7 @@ public final class CinpoVersion {
 
     /** CINPO version, sourced from {@code project.version} in Gradle. */
     // BEGIN GENERATED — do not edit
-    public static final String VERSION = "0.1.1";
+    public static final String VERSION = "0.1.2";
     // END GENERATED
 
     private CinpoVersion() {

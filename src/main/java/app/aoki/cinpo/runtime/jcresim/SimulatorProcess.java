@@ -94,27 +94,7 @@ final class SimulatorProcess implements AutoCloseable {
     }
 
     private Process startSimulatorProcess() {
-        ProcessBuilder processBuilder = new ProcessBuilder(
-                executable.toAbsolutePath().toString(),
-                "-p=" + port);
-        Path executableParent = executable.toAbsolutePath().getParent();
-        if (executableParent != null) {
-            processBuilder.directory(executableParent.toFile());
-        }
-        if (executableParent != null) {
-            String libPath = executableParent.toAbsolutePath().toString();
-            Map<String, String> env = processBuilder.environment();
-            String existing = env.get("LD_LIBRARY_PATH");
-            if (existing != null && !existing.isBlank()) {
-                env.put("LD_LIBRARY_PATH", libPath + ":" + existing);
-            } else {
-                env.put("LD_LIBRARY_PATH", libPath);
-            }
-        }
-        processBuilder.redirectInput(ProcessBuilder.Redirect.PIPE);
-        // Merge stderr → stdout so we capture everything jcsl emits
-        processBuilder.redirectErrorStream(true);
-        processBuilder.redirectOutput(ProcessBuilder.Redirect.PIPE);
+        ProcessBuilder processBuilder = createSimulatorProcessBuilder(port);
 
         try {
             Process proc = processBuilder.start();
@@ -124,6 +104,32 @@ final class SimulatorProcess implements AutoCloseable {
         } catch (IOException e) {
             throw new IllegalStateException(
                     "Failed to start Oracle JCRE simulator using " + executable, e);
+        }
+    }
+
+    ProcessBuilder createSimulatorProcessBuilder(int simulatorPort) {
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                executable.toAbsolutePath().toString(),
+                "-p=" + simulatorPort);
+        Path executableParent = executable.toAbsolutePath().getParent();
+        if (executableParent != null) {
+            processBuilder.directory(executableParent.toFile());
+            prependLdLibraryPath(processBuilder.environment(), executableParent);
+        }
+        processBuilder.redirectInput(ProcessBuilder.Redirect.PIPE);
+        // Merge stderr → stdout so we capture everything jcsl emits
+        processBuilder.redirectErrorStream(true);
+        processBuilder.redirectOutput(ProcessBuilder.Redirect.PIPE);
+        return processBuilder;
+    }
+
+    private static void prependLdLibraryPath(Map<String, String> environment, Path libraryDirectory) {
+        String libPath = libraryDirectory.toAbsolutePath().toString();
+        String existing = environment.get("LD_LIBRARY_PATH");
+        if (existing != null && !existing.isBlank()) {
+            environment.put("LD_LIBRARY_PATH", libPath + ":" + existing);
+        } else {
+            environment.put("LD_LIBRARY_PATH", libPath);
         }
     }
 
