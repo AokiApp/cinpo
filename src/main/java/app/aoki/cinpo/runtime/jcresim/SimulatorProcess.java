@@ -9,6 +9,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -99,6 +100,16 @@ final class SimulatorProcess implements AutoCloseable {
         Path executableParent = executable.toAbsolutePath().getParent();
         if (executableParent != null) {
             processBuilder.directory(executableParent.toFile());
+        }
+        if (executableParent != null) {
+            String libPath = executableParent.toAbsolutePath().toString();
+            Map<String, String> env = processBuilder.environment();
+            String existing = env.get("LD_LIBRARY_PATH");
+            if (existing != null && !existing.isBlank()) {
+                env.put("LD_LIBRARY_PATH", libPath + ":" + existing);
+            } else {
+                env.put("LD_LIBRARY_PATH", libPath);
+            }
         }
         processBuilder.redirectInput(ProcessBuilder.Redirect.PIPE);
         // Merge stderr → stdout so we capture everything jcsl emits
