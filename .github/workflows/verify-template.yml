@@ -11,7 +11,7 @@ on:
     secrets:
       VENDOR_PASSWORD:
         required: true
-      GITHUB_TOKEN:
+      GH_PACKAGES_TOKEN:
         required: true
 
 permissions:
@@ -57,14 +57,14 @@ jobs:
         run: ../gradlew --no-daemon --refresh-dependencies cinpoRun --args='--test'
         env:
           GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: Build template cinpoJar
         working-directory: template
         run: ../gradlew --no-daemon --refresh-dependencies cinpoJar
         env:
           GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: Verify template cinpoJar appliance
         working-directory: template

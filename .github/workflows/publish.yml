@@ -65,4 +65,4 @@ jobs:
       ref: ${{ github.ref }}
     secrets:
       VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
