@@ -48,7 +48,9 @@ jobs:
           VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
 
       - name: Install libcrypto
-        run: sudo apt-get update && sudo apt-get install -y libssl3
+        run: |
+          sudo apt-get update && sudo apt-get install -y libssl3
+          find /usr -name "libcrypto.so.3*" 2>/dev/null || echo "libcrypto.so.3 not found"
 
       - name: Prepare template vendor files
         run: |
@@ -61,6 +63,7 @@ jobs:
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+          LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu
 
       - name: Build template cinpoJar
         working-directory: template
@@ -68,7 +71,9 @@ jobs:
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+          LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu
 
       - name: Verify template cinpoJar appliance
-        working-directory: template
-        run: java -jar build/libs/cinpo-appliance.jar write --test
+        run: java -jar template/build/libs/cinpo-appliance.jar write --test
+        env:
+          LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu
