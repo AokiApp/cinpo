@@ -2,12 +2,7 @@ name: Publish Maven packages
 
 on:
   workflow_dispatch:
-  release:
-    types:
-      - published
   push:
-    tags:
-      - 'v*'
 
 permissions:
   contents: read
