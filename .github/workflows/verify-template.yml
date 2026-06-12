@@ -54,7 +54,7 @@ jobs:
 
       - name: Verify template cinpoRun
         working-directory: template
-        run: ../gradlew --no-daemon --refresh-dependencies cinpoRun --args='--test'
+        run: ../gradlew --no-daemon --refresh-dependencies cinpoRun --args='--debug --test'
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}

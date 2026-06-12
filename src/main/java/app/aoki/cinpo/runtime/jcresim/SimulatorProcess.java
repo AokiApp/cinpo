@@ -101,13 +101,14 @@ final class SimulatorProcess implements AutoCloseable {
             processBuilder.directory(executableParent.toFile());
         }
         processBuilder.redirectInput(ProcessBuilder.Redirect.PIPE);
-        processBuilder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
-        processBuilder.redirectError(ProcessBuilder.Redirect.PIPE);
+        // Merge stderr → stdout so we capture everything jcsl emits
+        processBuilder.redirectErrorStream(true);
+        processBuilder.redirectOutput(ProcessBuilder.Redirect.PIPE);
 
         try {
             Process proc = processBuilder.start();
             stderrCapture.reset();
-            stderrDrainer = drainAsync(proc.getErrorStream(), stderrCapture);
+            stderrDrainer = drainAsync(proc.getInputStream(), stderrCapture);
             return proc;
         } catch (IOException e) {
             throw new IllegalStateException(
