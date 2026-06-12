@@ -1,0 +1,16 @@
+schema: cinpo.profile.v1
+name: jcdksim
+
+# Local Oracle JCDK simulator profile using SCP03 test keys.
+# Development only. Never use these keys on a real card.
+runtime: jcresim
+
+secureChannel:
+  protocol: scp03
+  isdAid: A000000151000000
+  keyVersionNumber: 16
+  keyIdentifier: 0
+  securityLevel: 1
+  encKey: "1111111111111111111111111111111111111111111111111111111111111111"
+  macKey: "2222222222222222222222222222222222222222222222222222222222222222"
+  dekKey: "3333333333333333333333333333333333333333333333333333333333333333"

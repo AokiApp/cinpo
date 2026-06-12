@@ -42,7 +42,7 @@ It is designed just like "Spring Boot for Java Card".
 
 ### 1. Fork the minimal template
 
-Copy `project-template/` as your new project directory. It is intentionally small: a single Hello applet plus one provision task that issues and writes a leaf certificate, and one test task that reads it back.
+Use `template/` as the minimal standalone starter project, or copy it as your new project directory. It is intentionally small: a single Hello applet plus one provision task that issues and writes a leaf certificate, and one test task that reads it back.
 
 ```
 my-project/
@@ -55,8 +55,6 @@ my-project/
 └── profile/
     └── jcdksim.yaml       # Optional simulator profile override
 ```
-
-The richer MynaCard/JPKI demonstration lives in `example-mynacard/`. Use `project-template/` when starting a new applet, and use `example-mynacard/` when you want a realistic multi-applet example.
 
 Non-Java files placed under `host/` are packaged as runtime resources. Template projects can use this to bundle default fixture data or a read-only database file alongside host-side task code.
 
@@ -111,16 +109,18 @@ Any task kind can be declared with `@CardTaskDef("<kind>")`. `provision` is simp
 
 ### 5. Build and run
 
-If you are developing CINPO itself, publish the local framework and plugin artifacts once before running the template/example projects:
+Configure GitHub Packages credentials as Gradle properties or environment variables so the standalone template/example projects can resolve CINPO artifacts:
 
-```bash
-./gradlew :framework-program:publishAllPublicationsToLocalRepository
+```properties
+gpr.user=<github-user>
+gpr.key=<github-token-with-packages-read>
 ```
 
-Then run an application project:
+Then run an application project from its own directory:
 
 ```bash
-./gradlew cinpoRun
+cd template
+../gradlew cinpoRun
 ```
 
 That's it. SDK download, CAP compilation, simulator setup, GP authentication, installation, and provisioning — all handled.
@@ -128,22 +128,22 @@ That's it. SDK download, CAP compilation, simulator setup, GP authentication, in
 To run the conventional test flow after provisioning:
 
 ```bash
-./gradlew cinpoRun --args='--test'
+../gradlew cinpoRun --args='--test'
 ```
 
 To select explicit task kinds or skip installation:
 
 ```bash
-./gradlew cinpoRun --args='--task=foobar'
-./gradlew cinpoRun --args='--task=provision --task=test'
-./gradlew cinpoRun --args='--skip-install --task=foobar'
+../gradlew cinpoRun --args='--task=foobar'
+../gradlew cinpoRun --args='--task=provision --task=test'
+../gradlew cinpoRun --args='--skip-install --task=foobar'
 ```
 
 To pass template-specific runtime arguments to host-side tasks, put them after `--`:
 
 ```bash
-./gradlew cinpoRun --args='write -- --record mynacard01'
-./gradlew cinpoRun --args='write --profile mycard -- --record mynacard01 --db ./cards.db'
+../gradlew cinpoRun --args='write -- --record sample01'
+../gradlew cinpoRun --args='write --profile mycard -- --record sample01 --db ./cards.db'
 ```
 
 CINPO still parses its own options strictly. Only the arguments after `--` are forwarded verbatim to tasks.
@@ -153,7 +153,7 @@ CINPO still parses its own options strictly. Only the arguments after `--` are f
 To build a self-contained fat JAR with embedded simulator:
 
 ```bash
-./gradlew cinpoJar
+../gradlew cinpoJar
 ```
 
 Run it anywhere:
@@ -214,7 +214,7 @@ public final class LoadSelectedRecord implements CardTask {
 
     @Override
     public void run() {
-        String recordId = taskArguments.firstValue("record").orElse("mynacard01");
+        String recordId = taskArguments.firstValue("record").orElse("sample01");
         String dbPath = taskArguments.firstValue("db").orElse("host/data/cards.db");
         // interpret recordId/dbPath however your template wants
     }
@@ -338,9 +338,8 @@ java -jar cinpo-appliance.jar write --profile mycard
 Framework changes should pass unit tests, artifact publication, and simulator-backed application flows without adding project-specific verification tasks:
 
 ```bash
-./gradlew :framework-program:test :framework-program:publishAllPublicationsToLocalRepository
-./gradlew :project-template:cinpoRun --args='--test'
-./gradlew :example-mynacard:cinpoRun --args='--test'
+./gradlew test publishAllPublicationsToStagingRepository
+(cd template && ../gradlew cinpoRun --args='--test')
 ```
 
 The application flows consume the published CINPO artifacts, generate CAP resources, start the managed Oracle JCDK simulator, install the applets, run provisioning, and execute `--test` tasks. This catches schema drift, missing generated resources, profile resolution mistakes, and simulator/runtime classpath regressions that unit tests cannot see.

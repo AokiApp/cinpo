@@ -1,0 +1,17 @@
+schema: cinpo.applet.v1
+
+basePackage: com.example.cinpo.hello
+toolSdkVersion: "26.0"
+targetApiVersion: "3.0.4"
+
+package:
+  name: com.example.cinpo.hello
+  aid: F00000000101
+  version: "1.0"
+
+applets:
+  - id: hello
+    className: com.example.cinpo.hello.HelloApplet
+    classAid: F0000000010101
+    instanceAid: F000000001010001
+    privilege: "00"
