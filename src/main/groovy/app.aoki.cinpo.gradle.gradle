@@ -1,0 +1,76 @@
+import app.aoki.cinpo.gradle.CinpoGradleSupport
+import app.aoki.cinpo.gradle.task.CinpoJarTask
+import app.aoki.cinpo.gradle.task.CinpoRunTask
+import app.aoki.cinpo.gradle.task.GenerateCapTask
+import org.gradle.api.tasks.SourceSet
+import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.api.tasks.compile.JavaCompile
+
+plugins {
+    id 'java'
+    id 'app.aoki.cinpo.prepare-java-card-tools'
+}
+
+SourceSetContainer sourceSets = extensions.getByType(SourceSetContainer)
+SourceSet mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME)
+mainSourceSet.resources.srcDir(layout.buildDirectory.dir('generated/cinpo/resources/main'))
+
+def prepareJavaCardTools = tasks.named('prepareJavaCardTools')
+
+dependencies {
+    annotationProcessor 'app.aoki.cinpo:cinpo:0.1.0'
+
+    // Runtime execution only needs Oracle's socket terminal provider for the
+    // jcresim adapter. Oracle tools.jar is build-time-only CAP generation input;
+    // putting it on runtimeClasspath makes cinpoJar package converter/export files.
+    runtimeOnly files(
+            layout.buildDirectory.file('cinpo-cache/jcdk/simulator/client/COMService/socketprovider.jar')
+    ).builtBy(prepareJavaCardTools)
+}
+
+tasks.register('compileAppletJava', JavaCompile) {
+    group = 'cinpo'
+    description = 'Compiles Java Card applet sources with converter-compatible bytecode.'
+    source = fileTree('applet') {
+        include '**/*.java'
+    }
+    destinationDirectory = layout.buildDirectory.dir('classes/java/applet')
+    classpath = files(
+            providers.provider { CinpoGradleSupport.targetApiJar(project) },
+            layout.buildDirectory.file('cinpo-cache/jcdk/tools/lib/tools.jar')
+    )
+    options.release = 8
+    options.encoding = 'UTF-8'
+    dependsOn prepareJavaCardTools
+}
+
+tasks.register('generateCap', GenerateCapTask) {
+    group = 'cinpo'
+    description = 'Builds the Java Card CAP file and stages it at cap/<packageName>.cap.'
+    manifestFile = layout.projectDirectory.file('manifest.yaml')
+    appletClassesDirectory = layout.buildDirectory.dir('classes/java/applet')
+    toolLibraryDirectory = layout.buildDirectory.dir('cinpo-cache/jcdk/tools/lib')
+    generatedResourcesDirectory = layout.buildDirectory.dir('generated/cinpo/resources/main')
+    dependsOn prepareJavaCardTools
+    dependsOn tasks.named('compileAppletJava')
+}
+
+tasks.named('processResources') {
+    dependsOn tasks.named('generateCap')
+    from(layout.projectDirectory.file('manifest.yaml'))
+    from(layout.buildDirectory.dir('generated/cinpo/resources/main'))
+}
+
+tasks.register('cinpoRun', CinpoRunTask) {
+    classpath.from(mainSourceSet.runtimeClasspath)
+    dependsOn tasks.named('classes')
+    dependsOn prepareJavaCardTools
+}
+// Build the production appliance from the same runtime classpath used by cinpoRun.
+// classes contributes host task classes, manifest.yaml, and generated CAP resources;
+// prepareJavaCardTools contributes the configured simulator runtime bundled by CinpoJarTask.
+tasks.register('cinpoJar', CinpoJarTask) {
+    classpath.from(mainSourceSet.runtimeClasspath)
+    dependsOn tasks.named('classes')
+    dependsOn prepareJavaCardTools
+}

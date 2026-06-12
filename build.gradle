@@ -1,0 +1,164 @@
+plugins {
+    id 'java-library'
+    id 'groovy-gradle-plugin'
+    id 'maven-publish'
+}
+
+group = 'app.aoki.cinpo'
+version = '0.1.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java', 'src/main/java-cli', 'src/main/java-gradle']
+        }
+        resources {
+            srcDirs = ['src/main/resources']
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+
+apply from: layout.projectDirectory.file('src/main/groovy/app.aoki.cinpo.prepare-java-card-tools.gradle')
+
+def prepareJavaCardTools = tasks.named('prepareJavaCardTools')
+
+dependencies {
+    implementation 'org.yaml:snakeyaml:2.2'
+    implementation 'info.picocli:picocli:4.7.6'
+
+    // Oracle Java Card tool classes are intentionally compiled against directly.
+    // The Gradle plugin executes CAP generation in-process, without routing through
+    // converter/capgen CLI entry points, so these jars must be visible at framework
+    // compile time. The implementation also places CINPO-owned integration classes
+    // in selected com.sun.javacard.* packages to access package-private tool APIs
+    // without reflection; that makes compile-time type visibility non-negotiable.
+    compileOnly files(extractedJavaCardToolsJar).builtBy(prepareJavaCardTools)
+
+    // Oracle's socket terminal provider is also compiled against directly. It is
+    // intentionally not embedded in the framework artifact; end-user projects must
+    // provide their own EULA-covered copy on the runtime classpath.
+    compileOnly files(extractedJavaCardSocketProviderJar).builtBy(prepareJavaCardTools)
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+}
+
+jar {
+    archiveBaseName = 'cinpo-framework'
+    archiveVersion = project.version
+    from sourceSets.main.output
+
+    // This is the Gradle plugin/build-time artifact. It intentionally contains the
+    // CAP generation bridge and Oracle converter classes so the plugin can run
+    // generateCap without asking template projects to expose Oracle tools on the
+    // plugin classloader. Do not publish this artifact as app.aoki.cinpo:cinpo;
+    // template runtime classpaths consume runtimeJar below instead.
+    dependsOn prepareJavaCardTools
+    from({ zipTree(extractedJavaCardToolsJar.get().asFile) }) {
+        exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+        exclude 'META-INF/services/**'
+    }
+}
+
+def runtimeJar = tasks.register('runtimeJar', Jar) {
+    group = 'build'
+    description = 'Builds the runtime-only CINPO artifact consumed by template applications.'
+    archiveBaseName = 'cinpo'
+    archiveVersion = project.version
+    from sourceSets.main.output
+
+    // Keep app.aoki.cinpo:cinpo focused on write/orchestrate runtime. Gradle task
+    // classes and Oracle converter glue belong only to the plugin/build-time
+    // artifact above; otherwise cinpoJar inherits them through runtimeClasspath.
+    exclude 'META-INF/gradle-plugins/**'
+    exclude 'AppAokiCinpo*Plugin.class'
+    exclude 'precompiled_AppAokiCinpo*.class'
+    exclude 'precompiled_AppAokiCinpo*$*.class'
+    exclude 'cp_precompiled_AppAokiCinpo*.class'
+    exclude 'cp_precompiled_AppAokiCinpo*$*.class'
+    exclude 'app/aoki/cinpo/gradle/**'
+    exclude 'com/sun/javacard/**'
+    exclude 'api_export_files_*/**'
+    exclude 'javacard/**'
+    exclude 'javacardx/**'
+    exclude 'com/oracle/javacard/**'
+}
+
+tasks.configureEach { task ->
+    if (task.name == 'generateMetadataFileForMavenJavaPublication') {
+        // mavenJava publishes a hand-built runtime artifact, not the Java component.
+        // Gradle module metadata for this custom publication otherwise keeps pointing
+        // at the component jar, which would make consumers resolve the build-time fat
+        // artifact instead of the runtime-only cinpo artifact.
+        task.enabled = false
+    }
+    if (task.name == 'publishMavenJavaPublicationToStagingRepository') {
+        task.doFirst {
+            delete fileTree(layout.buildDirectory.dir("staging-maven-repository/app/aoki/cinpo/cinpo/${project.version}")) {
+                include "cinpo-${project.version}.module"
+                include "cinpo-${project.version}.module.*"
+            }
+        }
+    }
+}
+
+
+test {
+    useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        pluginMaven(MavenPublication) {
+            artifactId = 'cinpo-gradle-plugin'
+        }
+        mavenJava(MavenPublication) {
+            artifact runtimeJar
+            artifactId = 'cinpo'
+            version = project.version
+            pom.withXml {
+                def dependenciesNode = asNode().appendNode('dependencies')
+                [
+                        ['org.yaml', 'snakeyaml', '2.2'],
+                        ['info.picocli', 'picocli', '4.7.6']
+                ].each { dependency ->
+                    def dependencyNode = dependenciesNode.appendNode('dependency')
+                    dependencyNode.appendNode('groupId', dependency[0])
+                    dependencyNode.appendNode('artifactId', dependency[1])
+                    dependencyNode.appendNode('version', dependency[2])
+                    dependencyNode.appendNode('scope', 'runtime')
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'githubPackages'
+            url = uri('https://maven.pkg.github.com/yuki-js/cinpo')
+            credentials {
+                username = providers.gradleProperty('gpr.user')
+                        .orElse(providers.environmentVariable('GITHUB_ACTOR'))
+                        .orNull
+                password = providers.gradleProperty('gpr.key')
+                        .orElse(providers.environmentVariable('GITHUB_TOKEN'))
+                        .orNull
+            }
+        }
+        maven {
+            name = 'staging'
+            url = layout.buildDirectory.dir('staging-maven-repository')
+        }
+    }
+}
