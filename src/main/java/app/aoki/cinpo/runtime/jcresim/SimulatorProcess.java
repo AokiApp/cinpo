@@ -108,14 +108,19 @@ final class SimulatorProcess implements AutoCloseable {
 
     private void waitForSimulatorReady() {
         long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(STARTUP_TIMEOUT_MILLIS);
+        boolean processExitedDuringStartup = false;
         while (System.nanoTime() < deadline) {
             if (isSimulatorReachable()) {
                 return;
             }
             if (process != null && !process.isAlive()) {
-                throw new IllegalStateException("Oracle JCRE simulator terminated before becoming ready");
+                processExitedDuringStartup = true;
             }
             sleepQuietly(100L);
+        }
+
+        if (processExitedDuringStartup) {
+            throw new IllegalStateException("Oracle JCRE simulator terminated before becoming ready");
         }
 
         throw new IllegalStateException(
