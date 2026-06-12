@@ -1,0 +1,71 @@
+name: Verify template builds
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Branch or tag to checkout'
+        type: string
+        required: true
+    secrets:
+      VENDOR_PASSWORD:
+        required: true
+      GITHUB_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  verify:
+    name: Verify template builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Make scripts executable
+        run: chmod +x ./gradlew ./extract_vendor.sh
+
+      - name: Extract vendor archives
+        run: ./extract_vendor.sh
+        env:
+          VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
+
+      - name: Prepare template vendor files
+        run: |
+          rm -rf template/vendor
+          cp -a vendor template/vendor
+
+      - name: Verify template cinpoRun
+        working-directory: template
+        run: ../gradlew --no-daemon --refresh-dependencies cinpoRun --args='--test'
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build template cinpoJar
+        working-directory: template
+        run: ../gradlew --no-daemon --refresh-dependencies cinpoJar
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify template cinpoJar appliance
+        working-directory: template
+        run: java -jar build/libs/cinpo-appliance.jar write --test

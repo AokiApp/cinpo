@@ -51,30 +51,18 @@ jobs:
         run: ./gradlew test
 
       - name: Publish to GitHub Packages
+        continue-on-error: true
         run: ./gradlew publishAllPublicationsToGithubPackagesRepository
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Prepare template vendor files
-        run: |
-          rm -rf template/vendor
-          cp -a vendor template/vendor
-
-      - name: Verify template cinpoRun
-        working-directory: template
-        run: ../gradlew --no-daemon --refresh-dependencies cinpoRun --args='--test'
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build template cinpoJar
-        working-directory: template
-        run: ../gradlew --no-daemon --refresh-dependencies cinpoJar
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Verify template cinpoJar appliance
-        working-directory: template
-        run: java -jar build/libs/cinpo-appliance.jar write --test
+  verify-template:
+    name: Verify template builds
+    needs: publish
+    uses: ./.github/workflows/verify-template.yml
+    with:
+      ref: ${{ github.ref }}
+    secrets:
+      VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
