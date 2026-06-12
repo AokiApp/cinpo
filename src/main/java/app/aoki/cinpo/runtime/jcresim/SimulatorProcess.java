@@ -1,9 +1,13 @@
 package app.aoki.cinpo.runtime.jcresim;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -29,6 +33,8 @@ final class SimulatorProcess implements AutoCloseable {
     private Process process;
     private boolean ownsProcess;
     private Integer port;
+    private final ByteArrayOutputStream stderrCapture = new ByteArrayOutputStream();
+    private Thread stderrDrainer;
 
     /**
      * Create a simulator process manager.
@@ -96,10 +102,13 @@ final class SimulatorProcess implements AutoCloseable {
         }
         processBuilder.redirectInput(ProcessBuilder.Redirect.PIPE);
         processBuilder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
-        processBuilder.redirectError(ProcessBuilder.Redirect.DISCARD);
+        processBuilder.redirectError(ProcessBuilder.Redirect.PIPE);
 
         try {
-            return processBuilder.start();
+            Process proc = processBuilder.start();
+            stderrCapture.reset();
+            stderrDrainer = drainAsync(proc.getErrorStream(), stderrCapture);
+            return proc;
         } catch (IOException e) {
             throw new IllegalStateException(
                     "Failed to start Oracle JCRE simulator using " + executable, e);
@@ -113,13 +122,25 @@ final class SimulatorProcess implements AutoCloseable {
                 return;
             }
             if (process != null && !process.isAlive()) {
-                throw new IllegalStateException("Oracle JCRE simulator terminated before becoming ready");
+                awaitStderrDrainer();
+                int exitCode = process.exitValue();
+                String stderr = stderrCapture.toString(StandardCharsets.UTF_8).strip();
+                String diagnostic = "Oracle JCRE simulator terminated with exit code " + exitCode
+                        + " before becoming ready.";
+                if (!stderr.isEmpty()) {
+                    diagnostic += "\nstderr:\n" + stderr;
+                }
+                throw new IllegalStateException(diagnostic);
             }
             sleepQuietly(100L);
         }
 
-        throw new IllegalStateException(
-                "Oracle JCRE simulator did not become ready within " + STARTUP_TIMEOUT_MILLIS + " ms");
+        String stderr = stderrCapture.toString(StandardCharsets.UTF_8).strip();
+        String msg = "Oracle JCRE simulator did not become ready within " + STARTUP_TIMEOUT_MILLIS + " ms.";
+        if (!stderr.isEmpty()) {
+            msg += "\nstderr (so far):\n" + stderr;
+        }
+        throw new IllegalStateException(msg);
     }
 
     private boolean isSimulatorReachable() {
@@ -140,6 +161,7 @@ final class SimulatorProcess implements AutoCloseable {
             process = null;
             port = null;
             ownsProcess = false;
+            stderrDrainer = null;
             return;
         }
 
@@ -156,6 +178,7 @@ final class SimulatorProcess implements AutoCloseable {
             process = null;
             port = null;
             ownsProcess = false;
+            stderrDrainer = null;
         }
     }
 
@@ -165,6 +188,30 @@ final class SimulatorProcess implements AutoCloseable {
         } catch (IOException e) {
             throw new IllegalStateException("Failed to allocate an ephemeral port for Oracle JCRE simulator", e);
         }
+    }
+
+    private void awaitStderrDrainer() {
+        if (stderrDrainer == null) {
+            return;
+        }
+        try {
+            stderrDrainer.join(500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static Thread drainAsync(InputStream source, OutputStream sink) {
+        Thread t = new Thread(() -> {
+            try {
+                source.transferTo(sink);
+            } catch (IOException ignored) {
+                // Stream closed when process terminates
+            }
+        }, "jcsl-stderr-drainer");
+        t.setDaemon(true);
+        t.start();
+        return t;
     }
 
     private static void sleepQuietly(long millis) {
