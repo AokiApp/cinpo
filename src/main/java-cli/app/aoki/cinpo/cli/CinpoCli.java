@@ -19,7 +19,7 @@ import picocli.CommandLine.Command;
     description = "CINPO - Card Installation and Provision Orchestrator (use --debug for verbose logging)",
     subcommands = {WriteCommand.class},
     mixinStandardHelpOptions = true,
-    version = "CINPO 0.1.0"
+    version = CinpoVersion.VERSION
 )
 public class CinpoCli {
  
