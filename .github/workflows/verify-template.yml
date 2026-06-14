@@ -39,6 +39,11 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      - name: Configure GitHub auth for standalone template fetches
+        run: git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+        env:
+          GH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+
       - name: Make scripts executable
         run: chmod +x ./gradlew ./extract_vendor.sh ./create_from_template.sh
 
