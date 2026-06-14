@@ -18,7 +18,7 @@ mainSourceSet.resources.srcDir(layout.buildDirectory.dir('generated/cinpo/resour
 def prepareJavaCardTools = tasks.named('prepareJavaCardTools')
 
 dependencies {
-    annotationProcessor 'app.aoki.cinpo:cinpo:0.1.1'
+    annotationProcessor "app.aoki.cinpo:cinpo:${project.version}"
 
     // Runtime execution only needs Oracle's socket terminal provider for the
     // jcresim adapter. Oracle tools.jar is build-time-only CAP generation input;
