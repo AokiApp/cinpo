@@ -42,7 +42,15 @@ It is designed just like "Spring Boot for Java Card".
 
 ### 1. Create a project from the minimal template
 
-Use [`create_from_template.sh`](create_from_template.sh) to copy [`template/`](template) into a fresh project directory:
+You can create a starter project without cloning this repository by piping [`create_from_template.sh`](create_from_template.sh) from GitHub with `curl`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/yuki-js/cinpo/main/create_from_template.sh | bash -s -- my-project
+```
+
+This downloads and runs [`create_from_template.sh`](create_from_template.sh), which fetches [`template/`](template) into a fresh project directory. It requires `git`, `awk`, and `mktemp` on your machine.
+
+If you already have a checkout of this repository, you can run the script locally instead:
 
 ```bash
 bash ./create_from_template.sh my-project
