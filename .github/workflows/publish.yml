@@ -84,6 +84,9 @@ jobs:
   verify-template:
     name: Verify template builds
     needs: publish
+    permissions:
+      contents: read
+      packages: read
     uses: ./.github/workflows/verify-template.yml
     with:
       ref: ${{ github.ref }}
