@@ -16,9 +16,13 @@ SourceSet mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME)
 mainSourceSet.resources.srcDir(layout.buildDirectory.dir('generated/cinpo/resources/main'))
 
 def prepareJavaCardTools = tasks.named('prepareJavaCardTools')
+def cinpoPluginJar = project.files(CinpoGradleSupport.class.protectionDomain.codeSource.location)
 
 dependencies {
-    annotationProcessor "app.aoki.cinpo:cinpo:${project.version}"
+    // Reuse the already-resolved CINPO Gradle plugin artifact as the processor
+    // path source. Binding this to the consumer project's version makes default
+    // Gradle projects resolve app.aoki.cinpo:cinpo:unspecified and fail.
+    annotationProcessor cinpoPluginJar
 
     // Runtime execution only needs Oracle's socket terminal provider for the
     // jcresim adapter. Oracle tools.jar is build-time-only CAP generation input;
