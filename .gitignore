@@ -38,3 +38,5 @@ vendor/
 # Test outputs
 test-results/
 test-reports/
+
+src/main/java/app/aoki/cinpo/cli/CinpoVersion.java
