@@ -493,7 +493,7 @@ Managed in `build.gradle`:
 
 | Dependency | Purpose |
 |-----------|---------|
-| `app.aoki.cinpo:cinpo:0.1.2` | Core CINPO framework (tasks, APDU, GP) |
+| `app.aoki.cinpo:cinpo:0.+` | Core CINPO framework (tasks, APDU, GP) |
 | `org.yaml:snakeyaml:2.2` | YAML parsing for manifest/profiles |
 | `org.bouncycastle:bcprov-jdk18on:1.78.1` | Cryptography provider |
 | `org.bouncycastle:bcpkix-jdk18on:1.78.1` | X.509/PKIX certificate support |
