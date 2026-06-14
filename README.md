@@ -42,18 +42,18 @@ It is designed just like "Spring Boot for Java Card".
 
 ### 1. Create a project from the minimal template
 
-You can create a starter project without cloning this repository by piping [`create_from_template.sh`](create_from_template.sh) from GitHub with `curl`:
+You can create a starter project without cloning this repository by piping [`create.sh`](create.sh) from GitHub with `curl`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yuki-js/cinpo/main/create_from_template.sh | bash -s -- my-project
+curl -fsSL https://raw.githubusercontent.com/yuki-js/cinpo/main/create.sh | bash -s -- my-project
 ```
 
-This downloads and runs [`create_from_template.sh`](create_from_template.sh), which fetches [`template/`](template) into a fresh project directory. It requires `git`, `awk`, and `mktemp` on your machine.
+This downloads and runs [`create.sh`](create.sh), which fetches [`template/`](template) into a fresh project directory. It requires `git`, `awk`, and `mktemp` on your machine.
 
 If you already have a checkout of this repository, you can run the script locally instead:
 
 ```bash
-bash ./create_from_template.sh my-project
+bash ./create.sh my-project
 ```
 
 This creates a standalone starter project that you can customize manually. If you prefer, you can still copy [`template/`](template) yourself. The starter is intentionally small: a single Hello applet plus one provision task that issues and writes a leaf certificate, and one test task that reads it back.

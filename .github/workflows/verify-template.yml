@@ -5,7 +5,7 @@ on:
   workflow_call:
     inputs:
       ref:
-        description: 'Branch or tag to checkout'
+        description: "Branch or tag to checkout"
         type: string
         required: true
     secrets:
@@ -34,7 +34,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -45,7 +45,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: Make scripts executable
-        run: chmod +x ./gradlew ./extract_vendor.sh ./create_from_template.sh
+        run: chmod +x ./gradlew ./extract_vendor.sh ./create.sh
 
       - name: Extract vendor archives
         run: ./extract_vendor.sh
@@ -53,7 +53,7 @@ jobs:
           VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
 
       - name: Create project from template
-        run: ./create_from_template.sh /tmp/cinpo-verify-project
+        run: ./create.sh /tmp/cinpo-verify-project
 
       - name: Prepare vendor files
         run: cp -a vendor /tmp/cinpo-verify-project/vendor

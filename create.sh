@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: ./create_from_template.sh <destination-directory>
+Usage: ./create.sh <destination-directory>
 
 Fetches the CINPO template with git into a temporary sparse checkout, copies
 ./template into a new project directory, and prepares it as a standalone starter
