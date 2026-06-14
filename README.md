@@ -42,10 +42,10 @@ It is designed just like "Spring Boot for Java Card".
 
 ### 1. Create a project from the minimal template
 
-You can create a starter project without cloning this repository by piping [`create.sh`](create.sh) from GitHub with `curl`:
+You can create a starter project without cloning this repository by piping [`create.sh`](create.sh) from GitHub Pages with `curl`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yuki-js/cinpo/main/create.sh | bash -s -- my-project
+curl -fsSL https://yuki-js.github.io/cinpo/create.sh | bash -s -- my-project
 ```
 
 This downloads and runs [`create.sh`](create.sh), which fetches [`template/`](template) into a fresh project directory. It requires `git`, `awk`, and `mktemp` on your machine.
