@@ -40,32 +40,33 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Make scripts executable
-        run: chmod +x ./gradlew ./extract_vendor.sh
+        run: chmod +x ./gradlew ./extract_vendor.sh ./create_from_template.sh
 
       - name: Extract vendor archives
         run: ./extract_vendor.sh
         env:
           VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
 
-      - name: Prepare template vendor files
-        run: |
-          rm -rf template/vendor
-          cp -a vendor template/vendor
+      - name: Create project from template
+        run: ./create_from_template.sh /tmp/cinpo-verify-project
 
-      - name: Verify template cinpoRun
-        working-directory: template
-        run: ../gradlew --no-daemon --refresh-dependencies cinpoRun --args='--debug --test'
+      - name: Prepare vendor files
+        run: cp -a vendor /tmp/cinpo-verify-project/vendor
+
+      - name: Verify cinpoRun
+        working-directory: /tmp/cinpo-verify-project
+        run: ./gradlew --no-daemon --refresh-dependencies cinpoRun --args='--debug --test'
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
-      - name: Build template cinpoJar
-        working-directory: template
-        run: ../gradlew --no-daemon --refresh-dependencies cinpoJar
+      - name: Build cinpoJar
+        working-directory: /tmp/cinpo-verify-project
+        run: ./gradlew --no-daemon cinpoJar
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
-      - name: Verify template cinpoJar appliance
-        working-directory: template
+      - name: Verify cinpoJar appliance
+        working-directory: /tmp/cinpo-verify-project
         run: java -jar build/libs/cinpo-appliance.jar write --test

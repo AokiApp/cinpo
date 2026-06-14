@@ -31,7 +31,7 @@ It is designed just like "Spring Boot for Java Card".
 - We want Spring Boot or Quarkus-like opinionated experience for Java Card Applet development.
 - We want out-of-box experience for Java Card Applet development, with batteries included.
 - We aim the world where we can achieve applet development with the following simple steps:
-  - Clone the template
+  - Create a project from the template
   - Write Card Applet
   - Add annotations to provision code
   - Run in one simple gradle command
@@ -40,9 +40,15 @@ It is designed just like "Spring Boot for Java Card".
 
 ## Getting Started
 
-### 1. Fork the minimal template
+### 1. Create a project from the minimal template
 
-Use `template/` as the minimal standalone starter project, or copy it as your new project directory. It is intentionally small: a single Hello applet plus one provision task that issues and writes a leaf certificate, and one test task that reads it back.
+Use [`create_from_template.sh`](create_from_template.sh) to copy [`template/`](template) into a fresh project directory:
+
+```bash
+bash ./create_from_template.sh my-project
+```
+
+This creates a standalone starter project that you can customize manually. If you prefer, you can still copy [`template/`](template) yourself. The starter is intentionally small: a single Hello applet plus one provision task that issues and writes a leaf certificate, and one test task that reads it back.
 
 ```
 my-project/
@@ -55,6 +61,8 @@ my-project/
 └── profile/
     └── jcdksim.yaml       # Optional simulator profile override
 ```
+
+The copy script automatically sets [`rootProject.name`](template/settings.gradle:27) in the generated project's [`settings.gradle`](template/settings.gradle) to the destination directory name. Other sample identifiers remain unchanged for manual customization.
 
 Non-Java files placed under `host/` are packaged as runtime resources. Template projects can use this to bundle default fixture data or a read-only database file alongside host-side task code.
 
