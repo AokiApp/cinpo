@@ -1,12 +1,11 @@
-def githubPackagesUser = providers.gradleProperty('gpr.user')
-        .orElse(providers.environmentVariable('GITHUB_ACTOR'))
-def githubPackagesKey = providers.gradleProperty('gpr.key')
-        .orElse(providers.environmentVariable('GITHUB_TOKEN'))
-def hasGithubPackagesCredentials = githubPackagesUser.isPresent() && githubPackagesKey.isPresent()
-
 pluginManagement {
     repositories {
-        if (hasGithubPackagesCredentials) {
+        def githubPackagesUser = providers.gradleProperty('gpr.user')
+                .orElse(providers.environmentVariable('GITHUB_ACTOR'))
+        def githubPackagesKey = providers.gradleProperty('gpr.key')
+                .orElse(providers.environmentVariable('GITHUB_TOKEN'))
+
+        if (githubPackagesUser.isPresent() && githubPackagesKey.isPresent()) {
             maven {
                 name = 'githubPackages'
                 url = uri('https://maven.pkg.github.com/yuki-js/cinpo')
