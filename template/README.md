@@ -11,7 +11,7 @@ It contains:
 - `manifest.yaml`: the applet package and AID declaration.
 - `profile/jcdksim.yaml`: a local Oracle JCDK simulator profile using development-only test keys.
 
-Run from this project directory after GitHub Packages credentials and Oracle Java Card vendor files are prepared:
+Run from this project directory after Oracle Java Card vendor files are prepared. If [`GITHUB_ACTOR`](template/README.md:14) and [`GITHUB_TOKEN`](template/README.md:14) or [`gpr.user`](template/README.md:14) and [`gpr.key`](template/README.md:14) are available, Gradle resolves CINPO from GitHub Packages first; otherwise it falls back to GitHub Pages:
 
 ```bash
 ../gradlew cinpoRun
