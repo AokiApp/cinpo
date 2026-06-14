@@ -1,4 +1,4 @@
-name: Publish Maven packages
+name: Publish Maven packages and Pages
 
 on:
   workflow_dispatch:
@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: publish-maven-${{ github.ref }}
@@ -14,9 +13,12 @@ concurrency:
 
 jobs:
   publish:
-    name: Publish to GitHub Packages
+    name: Publish to GitHub Packages and stage GitHub Pages
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout
@@ -35,7 +37,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Make scripts executable
-        run: chmod +x ./gradlew ./extract_vendor.sh
+        run: chmod +x ./gradlew ./extract_vendor.sh ./.github/scripts/publish-github-packages.sh
 
       - name: Extract vendor archives
         run: ./extract_vendor.sh
@@ -46,10 +48,38 @@ jobs:
         run: ./gradlew test
 
       - name: Publish to GitHub Packages
-        run: ./gradlew publishAllPublicationsToGithubPackagesRepository
+        run: ./.github/scripts/publish-github-packages.sh
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Stage Maven repository for GitHub Pages
+        if: github.ref_name == github.event.repository.default_branch
+        run: ./gradlew publishAllPublicationsToStagingRepository
+
+      - name: Upload GitHub Pages artifact
+        if: github.ref_name == github.event.repository.default_branch
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/staging-maven-repository
+
+  deploy-pages:
+    name: Deploy Maven repository to GitHub Pages
+    if: github.ref_name == github.event.repository.default_branch
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
   verify-template:
     name: Verify template builds
