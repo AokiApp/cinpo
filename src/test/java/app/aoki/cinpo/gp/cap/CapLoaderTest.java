@@ -30,6 +30,7 @@ class CapLoaderTest {
             "StaticField.cap",
             "ConstantPool.cap",
             "RefLocation.cap",
+            "Export.cap",
             "Descriptor.cap"
     );
 
@@ -49,7 +50,8 @@ class CapLoaderTest {
                 "Class.cap",
                 "StaticField.cap",
                 "ConstantPool.cap",
-                "RefLocation.cap"
+                "RefLocation.cap",
+                "Export.cap"
         ));
 
         CapPackage capPackage = CapLoader.readCapFile(capFile, 7);
@@ -159,6 +161,7 @@ class CapLoaderTest {
         components.put("StaticField.cap", hex("07 00 01 57"));
         components.put("ConstantPool.cap", hex("08 00 01 C8"));
         components.put("RefLocation.cap", hex("09 00 01 99"));
+        components.put("Export.cap", hex("0A 00 01 EA"));
         components.put("Descriptor.cap", hex("0B 00 01 DB"));
         return components;
     }
