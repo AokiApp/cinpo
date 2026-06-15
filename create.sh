@@ -217,13 +217,19 @@ zipStoreBase=GRADLE_USER_HOME
 zipStorePath=wrapper/dists
 PROPS
 
+git -C "${destination_dir}" init -q
+git -C "${destination_dir}" add -A
+git -C "${destination_dir}" \
+  -c user.name="CINPO Template" \
+  -c user.email="cinpo-template@example.invalid" \
+  commit -q -m "Initial commit"
+
 cat <<EOF
 Created project from template:
   ${destination_dir}
 
 Template source:
   ${template_repo} @ ${template_ref}
-
 Before running, you may need to prepare vendor directory:
   - Download the Java Card SDK Tools and Simulator from Oracle's website.
   - Place these archives without extracting them into
