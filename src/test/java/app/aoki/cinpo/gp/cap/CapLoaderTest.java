@@ -101,13 +101,41 @@ class CapLoaderTest {
     }
 
     @Test
-    void readCapFile_RejectsMissingRequiredComponent() throws IOException {
+    void readCapFile_ToleratesMissingComponentsAndConcatenatesPresentOnes() throws IOException {
         Map<String, byte[]> components = new LinkedHashMap<>(minimalComponents());
+        components.remove("Export.cap");
         components.remove("Descriptor.cap");
-        Path capFile = writeCapFile("missing.cap", components, List.copyOf(components.keySet()));
+        Path capFile = writeCapFile("missing-components.cap", components, COMPONENT_ORDER);
+
+        CapPackage capPackage = CapLoader.readCapFile(capFile, 255);
+
+        byte[] expectedLoadFileData = withC4Wrapper(concatenateInCanonicalOrder(components));
+        assertArrayEquals(expectedLoadFileData, capPackage.loadFileData());
+        assertFalse(capPackage.loadBlocks().isEmpty());
+        assertTrue(capPackage.hasPackageAid());
+        assertEquals(1, capPackage.appletAids().size());
+    }
+
+    @Test
+    void readCapFile_MissingAppletComponent_StillLoadsAndReturnsNoAppletAids() throws IOException {
+        Map<String, byte[]> components = new LinkedHashMap<>(minimalComponents());
+        components.remove("Applet.cap");
+        Path capFile = writeCapFile("missing-applet.cap", components, COMPONENT_ORDER);
+
+        CapPackage capPackage = CapLoader.readCapFile(capFile, 255);
+
+        byte[] expectedLoadFileData = withC4Wrapper(concatenateInCanonicalOrder(components));
+        assertArrayEquals(expectedLoadFileData, capPackage.loadFileData());
+        assertTrue(capPackage.hasPackageAid());
+        assertEquals(List.of(), capPackage.appletAids());
+    }
+
+    @Test
+    void readCapFile_RejectsArchiveWithoutKnownComponents() throws IOException {
+        Path capFile = writeCapFile("empty.cap", Map.of(), List.of());
 
         IOException exception = assertThrows(IOException.class, () -> CapLoader.readCapFile(capFile, 255));
-        assertTrue(exception.getMessage().contains("Missing required CAP component: Descriptor.cap"));
+        assertTrue(exception.getMessage().contains("No known CAP components found"));
     }
 
     @Test
@@ -169,7 +197,10 @@ class CapLoaderTest {
     private static byte[] concatenateInCanonicalOrder(Map<String, byte[]> components) throws IOException {
         java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
         for (String componentName : COMPONENT_ORDER) {
-            output.write(components.get(componentName));
+            byte[] data = components.get(componentName);
+            if (data != null) {
+                output.write(data);
+            }
         }
         return output.toByteArray();
     }

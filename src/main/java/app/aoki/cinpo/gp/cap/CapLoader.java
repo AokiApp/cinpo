@@ -108,7 +108,8 @@ public final class CapLoader {
      *
      * @param capPath path to the {@code .cap} ZIP archive
      * @return a {@link CapPackage} containing all parsed metadata and split load blocks
-     * @throws IOException if the file cannot be read or a required CAP component is missing
+     * @throws IOException if the file cannot be read or the archive contains no recognizable
+     *                     CAP component data
      * @see #readCapFile(Path, int)
      */
     public static CapPackage readCapFile(Path capPath) throws IOException {
@@ -120,8 +121,10 @@ public final class CapLoader {
      *
      * <p>Processing steps:
      * <ol>
-     *   <li>Opens the ZIP archive and extracts each required {@code *.cap} component.</li>
-     *   <li>Concatenates the components in the canonical JCVM order ({@link #COMPONENT_ORDER}).</li>
+     *   <li>Opens the ZIP archive and extracts each known {@code *.cap} component present in the
+     *       archive.</li>
+     *   <li>Concatenates the present components in the canonical JCVM order
+     *       ({@link #COMPONENT_ORDER}).</li>
      *   <li>Wraps the concatenated bytes in a {@code 'C4'} BER-TLV structure (GPCS §11.6.2.3,
      *       Table 11-58: "Load File Data Block").</li>
      *   <li>Splits the wrapped data into blocks of at most {@code maxBlockSize} bytes;
@@ -130,12 +133,14 @@ public final class CapLoader {
      *
      * <p>Additionally, the {@code Header.cap} component is parsed to extract the package AID
      * and version, and {@code Applet.cap} is parsed to extract applet AIDs. Parse failures
-     * are silently tolerated — the resulting fields will be {@code null} or empty.
+     * or missing metadata components are silently tolerated — the resulting fields will be
+     * {@code null} or empty.
      *
      * @param capPath      path to the {@code .cap} ZIP archive
      * @param maxBlockSize maximum number of bytes per LOAD block (1–255 inclusive)
      * @return a {@link CapPackage} containing all parsed metadata and split load blocks
-     * @throws IOException              if the file cannot be read or a required component is missing
+     * @throws IOException              if the file cannot be read or the archive contains no
+     *                                  recognizable CAP component data
      * @throws IllegalArgumentException if {@code maxBlockSize} is outside [1, 255]
      */
     public static CapPackage readCapFile(Path capPath, int maxBlockSize) throws IOException {
@@ -159,7 +164,8 @@ public final class CapLoader {
      *
      * @param resourcePath classpath-relative path to the {@code .cap} ZIP archive
      * @return a {@link CapPackage} containing all parsed metadata and split load blocks
-     * @throws IOException if the resource cannot be found or read, or a required component is missing
+     * @throws IOException if the resource cannot be found or read, or the archive contains no
+     *                     recognizable CAP component data
      */
     public static CapPackage readFromClasspath(String resourcePath) throws IOException {
         Objects.requireNonNull(resourcePath);
@@ -173,8 +179,16 @@ public final class CapLoader {
     }
 
     private static CapPackage readCapStream(InputStream in, String sourceName, int maxBlockSize) throws IOException {
-        Map<String, byte[]> components = readRequiredComponents(in, sourceName);
+        Map<String, byte[]> components = readKnownComponents(in);
+        if (components.isEmpty()) {
+            throw new IOException("No known CAP components found in " + sourceName);
+        }
+
         byte[] concatenatedComponents = concatenateComponents(components);
+        if (concatenatedComponents.length == 0) {
+            throw new IOException("CAP archive contains no component data in " + sourceName);
+        }
+
         byte[] loadFileData = wrapInC4Tag(concatenatedComponents);
         List<byte[]> loadBlocks = splitIntoBlocks(loadFileData, maxBlockSize);
 
@@ -188,7 +202,7 @@ public final class CapLoader {
         return new CapPackage(packageAid, majorVersion, minorVersion, appletAids, loadFileData, loadBlocks);
     }
 
-    private static Map<String, byte[]> readRequiredComponents(InputStream in, String sourceName) throws IOException {
+    private static Map<String, byte[]> readKnownComponents(InputStream in) throws IOException {
         Map<String, byte[]> components = new HashMap<>();
         try (ZipInputStream zis = new ZipInputStream(in)) {
             ZipEntry entry;
@@ -203,13 +217,6 @@ public final class CapLoader {
                 zis.closeEntry();
             }
         }
-
-        // Validate that all required components are present
-        for (String componentName : COMPONENT_ORDER) {
-            if (!components.containsKey(componentName)) {
-                throw new IOException("Missing required CAP component: " + componentName + " in " + sourceName);
-            }
-        }
         return components;
     }
 
@@ -217,7 +224,9 @@ public final class CapLoader {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         for (String componentName : COMPONENT_ORDER) {
             byte[] data = components.get(componentName);
-            out.write(data);
+            if (data != null) {
+                out.write(data);
+            }
         }
         return out.toByteArray();
     }
