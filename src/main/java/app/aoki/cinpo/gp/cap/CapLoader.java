@@ -68,13 +68,14 @@ public final class CapLoader {
     private static final String[] COMPONENT_ORDER = {
         "Header.cap",      // component tag 0x01
         "Directory.cap",   // component tag 0x02
-        "Import.cap",      // component tag 0x04
+        "Import.cap",      // component tag 0x04, this intentionally comes before Applet.cap (tag 0x03), JCVM06Cap Table19, Table21
         "Applet.cap",      // component tag 0x03
         "Class.cap",       // component tag 0x05
         "Method.cap",      // component tag 0x06
         "StaticField.cap", // component tag 0x07
         "ConstantPool.cap",// component tag 0x08
         "RefLocation.cap", // component tag 0x09
+        "Export.cap",      // component tag 0x0A
         "Descriptor.cap"   // component tag 0x0B
     };
 
