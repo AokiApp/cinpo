@@ -42,6 +42,8 @@ public final class CinpoConverterLogic {
         Objects.requireNonNull(manifest, "manifest");
 
         ConversionProfile profile = new ConversionProfile();
+        profile.APIExpDir = "api_export_files_" + manifest.targetApiVersion();
+        profile.target22 = "3.0.4".equals(manifest.targetApiVersion()) || "3.0.5".equals(manifest.targetApiVersion());
 
         // Support Java Card's int-capable converter mode. CINPO does not currently
         // expose a manifest switch for this, and enabling it is the safer default
@@ -166,4 +168,5 @@ public final class CinpoConverterLogic {
         }
         return new byte[] { (byte) Integer.parseInt(parts[0]), (byte) Integer.parseInt(parts[1]) };
     }
+
 }
