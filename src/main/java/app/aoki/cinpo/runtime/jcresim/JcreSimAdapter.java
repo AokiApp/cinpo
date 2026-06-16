@@ -168,6 +168,21 @@ public final class JcreSimAdapter {
         }
 
         @Override
+        public void reset() {
+            synchronized (monitor) {
+                try {
+                    if (card != null) {
+                        card.disconnect(true);
+                    }
+                } catch (CardException e) {
+                    throw new IllegalStateException("Failed to reset the Oracle JCRE simulator session", e);
+                } finally {
+                    invalidateConnection();
+                }
+            }
+        }
+
+        @Override
         public void close() {
             synchronized (monitor) {
                 try {

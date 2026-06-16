@@ -351,8 +351,13 @@ class PhaseExecutionTest {
         }
 
         @Override
+        public void reset() {
+            // No-op for testing
+        }
+
+        @Override
         public void close() {
-            // No-op for testing (default implementation in interface)
+            // No-op for testing
         }
     }
 }

@@ -76,6 +76,21 @@ public final class PcscAdapter {
         }
 
         @Override
+        public void reset() {
+            synchronized (monitor) {
+                try {
+                    if (card != null) {
+                        card.disconnect(true);
+                    }
+                } catch (CardException e) {
+                    throw new IllegalStateException("Failed to reset the PC/SC session", e);
+                } finally {
+                    invalidateConnection();
+                }
+            }
+        }
+
+        @Override
         public void close() {
             synchronized (monitor) {
                 try {

@@ -14,9 +14,17 @@ public interface ApduChannel extends AutoCloseable {
     ResponseApdu transmit(CommandApdu capdu);
 
     /**
+     * Reset the underlying card/runtime session while keeping the Java-side channel object usable.
+     *
+     * <p>Implementations should drop transport/session state so the next
+     * {@nlink transmit} re-establishes a fresh card context. Persistent card data
+     * must not be erased by this operation.</p>
+     */
+    void reset();
+
+    /**
      * Close any runtime-side resources associated with this channel.
      */
     @Override
-    default void close() {
-    }
+    void close();
 }

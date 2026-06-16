@@ -85,6 +85,9 @@ public final class InstallPhase implements Phase {
             LOG.fine("Closing secure channel session");
             session.close();
         }
+
+        LOG.fine("Resetting APDU channel after installation");
+        channel.reset();
     }
 
     /**
