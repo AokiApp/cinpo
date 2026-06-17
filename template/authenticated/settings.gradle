@@ -24,4 +24,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'authn-hello'
+rootProject.name = 'cinpo-template'
