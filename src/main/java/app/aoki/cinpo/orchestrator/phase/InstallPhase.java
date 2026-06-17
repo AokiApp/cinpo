@@ -1,6 +1,7 @@
 package app.aoki.cinpo.orchestrator.phase;
 
 import app.aoki.cinpo.apdu.ApduChannel;
+import app.aoki.cinpo.apdu.Iso7816Commands;
 import app.aoki.cinpo.config.AppletManifest;
 import app.aoki.cinpo.config.Profile;
 import app.aoki.cinpo.gp.GpInstaller;
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import static app.aoki.cinpo.apdu.ApduUtil.assertSwOk;
 
 /**
  * Phase that installs a CAP file onto the card via GlobalPlatform.
@@ -68,6 +70,7 @@ public final class InstallPhase implements Phase {
         SecureChannelProfile scpProfile = profile.secureChannel().toSecureChannelProfile();
         LOG.fine("Opening secure channel session");
         SecureChannelSession session = SecureChannelSession.create(channel, scpProfile);
+        assertSwOk(channel.transmit(Iso7816Commands.selectDf(scpProfile.securityDomainAid())));
         session.authenticate();
         LOG.fine("Secure channel authenticated");
  
