@@ -34,7 +34,7 @@ This is a **CINPO** (Card INstallation and Provision Orchestrator) application p
 The Oracle JavaCard Development Kit is **required** to compile applets and run the simulator. These are proprietary and not distributed with this project.
 
 - The parent repository contains an encrypted `vendor.zip`
-- Extract with: `VENDOR_PASSWORD=<password> ../extract_vendor.sh` (from parent), then `cp -a ../vendor ./vendor`
+- Extract with: `VENDOR_PASSWORD=<password> ../scripts/extract_vendor.sh` (from parent), then `cp -a ../vendor ./vendor`
 - Or place extracted vendor files directly in `./vendor/`
 - **Without vendor files, `cinpoRun` and `cinpoJar` will fail**
 

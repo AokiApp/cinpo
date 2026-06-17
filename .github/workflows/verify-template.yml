@@ -45,10 +45,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: Make scripts executable
-        run: chmod +x ./gradlew ./extract_vendor.sh ./bootstrap.sh
+        run: chmod +x ./gradlew ./scripts/extract_vendor.sh ./bootstrap.sh
 
       - name: Extract vendor archives
-        run: ./extract_vendor.sh
+        run: ./scripts/extract_vendor.sh
         env:
           VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
 

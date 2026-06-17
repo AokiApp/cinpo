@@ -37,10 +37,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Make scripts executable
-        run: chmod +x ./gradlew ./extract_vendor.sh ./.github/scripts/publish-github-packages.sh
+        run: chmod +x ./gradlew ./scripts/extract_vendor.sh ./.github/scripts/publish-github-packages.sh
 
       - name: Extract vendor archives
-        run: ./extract_vendor.sh
+        run: ./scripts/extract_vendor.sh
         env:
           VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
 
