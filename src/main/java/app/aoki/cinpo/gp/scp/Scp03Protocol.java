@@ -159,8 +159,6 @@ final class Scp03Protocol implements InternalSecureChannelProtocol {
     @Override
     public void authenticate(ApduChannel channel) {
         try {
-            assertSwOk(channel.transmit(Iso7816Commands.selectDf(profile.securityDomainAid())));
-
             ResponseApdu initializeResponse = assertSwOk(channel.transmit(GpCommands.initializeUpdate(
                     profile.keyVersionNumber(),
                     0x00, // [Amd D] §7.1.1.4: Key Identifier (P2) shall always be '00' for SCP03
