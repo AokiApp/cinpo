@@ -10,6 +10,7 @@ Updates the CINPO version in:
   - every template/*/build.gradle file
 
 If new-version is omitted, increments the current root project patch version.
+After updating files, runs git add, git commit, and git push.
 
 Examples:
   scripts/bump-version.sh
@@ -96,3 +97,25 @@ for path, replacements in updates.items():
 for path in changed_files:
     print(f"updated {path}")
 PY
+
+committed_version="$(python3 - <<'PY'
+from pathlib import Path
+import re
+
+text = Path("build.gradle").read_text()
+match = re.search(r"(?m)^version = '([^']+)'$", text)
+if not match:
+    raise SystemExit("error: failed to read updated root project version from build.gradle")
+print(match.group(1))
+PY
+)"
+
+git add -- build.gradle template/*/build.gradle
+
+if git diff --cached --quiet; then
+    echo "no version changes to commit"
+    exit 0
+fi
+
+git commit -m "Bump version to ${committed_version}"
+git push
