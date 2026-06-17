@@ -9,6 +9,7 @@ import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
@@ -59,10 +60,9 @@ public abstract class GenerateCapTask extends DefaultTask {
     public abstract RegularFileProperty getManifestFile();
 
     /**
-     * Project directory used to resolve relative companion bundle paths from the manifest.
+     * Project directory used only as a base path for resolving relative companion bundle paths from the manifest.
      */
-    @InputDirectory
-    @PathSensitive(PathSensitivity.RELATIVE)
+    @Internal
     public abstract DirectoryProperty getProjectDirectory();
 
     /**
