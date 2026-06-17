@@ -2,7 +2,7 @@
 
 This is the minimal CINPO starter project.
 
-To create a new project from the repository root, run [`bash ./bootstrap.sh <destination-directory>`](bootstrap.sh:1). The copied project automatically sets [`rootProject.name`](template/settings.gradle:27) from the destination directory name, while leaving the other sample identifiers unchanged so you can rename packages, classes, AIDs, and Gradle coordinates yourself.
+To create a new project from the repository root, run [`bash ./scripts/bootstrap.sh <destination-directory>`](../../scripts/bootstrap.sh:1). The copied project automatically sets [`rootProject.name`](settings.gradle:27) from the destination directory name, while leaving the other sample identifiers unchanged so you can rename packages, classes, AIDs, and Gradle coordinates yourself.
 
 It contains:
 

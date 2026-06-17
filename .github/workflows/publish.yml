@@ -59,7 +59,7 @@ jobs:
 
       - name: Add bootstrap.sh to GitHub Pages artifact
         if: github.ref_name == github.event.repository.default_branch
-        run: cp ./bootstrap.sh ./build/staging-maven-repository/bootstrap.sh
+        run: cp ./scripts/bootstrap.sh ./build/staging-maven-repository/bootstrap.sh
 
       - name: Upload GitHub Pages artifact
         if: github.ref_name == github.event.repository.default_branch

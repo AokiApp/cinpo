@@ -45,7 +45,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: Make scripts executable
-        run: chmod +x ./gradlew ./scripts/extract_vendor.sh ./bootstrap.sh
+        run: chmod +x ./gradlew ./scripts/extract_vendor.sh ./scripts/bootstrap.sh
 
       - name: Extract vendor archives
         run: ./scripts/extract_vendor.sh
@@ -53,7 +53,7 @@ jobs:
           VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
 
       - name: Create project from template
-        run: ./bootstrap.sh /tmp/cinpo-verify-project
+        run: ./scripts/bootstrap.sh /tmp/cinpo-verify-project
 
       - name: Prepare vendor files
         run: cp -a vendor /tmp/cinpo-verify-project/vendor

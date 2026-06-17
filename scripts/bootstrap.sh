@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: ./bootstrap.sh [--template <template-name>] [--name <project-name>] <destination-directory>
+Usage: ./scripts/bootstrap.sh [--template <template-name>] [--name <project-name>] <destination-directory>
 
 Fetches the CINPO template with git into a temporary sparse checkout, copies
 ./template/<template-name> into a new project directory, and prepares it as a standalone starter
