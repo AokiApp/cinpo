@@ -84,8 +84,6 @@ final class Scp02Protocol implements InternalSecureChannelProtocol {
     @Override
     public void authenticate(ApduChannel channel) {
         try {
-            assertSwOk(channel.transmit(Iso7816Commands.selectDf(profile.securityDomainAid())));
-
             implementationOptions = discoverImplementationOptions(channel);
             validateImplementationOptions();
 
