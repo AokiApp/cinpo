@@ -3,11 +3,13 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: ./create.sh <destination-directory>
+Usage: ./bootstrap.sh [--template <template-name>] <destination-directory>
 
 Fetches the CINPO template with git into a temporary sparse checkout, copies
-./template into a new project directory, and prepares it as a standalone starter
+./template/<template-name> into a new project directory, and prepares it as a standalone starter
 project.
+
+Defaults to the "basic" template if --template is not specified.
 
 When run from a CINPO Git checkout, the script fetches the template from the
 current origin/HEAD commit so the generated project matches that checked-out
@@ -80,13 +82,71 @@ checkout_sparse_paths() {
   git -C "${checkout_dir}" checkout --detach -q FETCH_HEAD
 }
 
-if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-  usage
-  exit 0
+selected_template="basic"
+destination_input=""
+
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --template)
+      if [[ "$#" -lt 2 || -z "${2:-}" ]]; then
+        echo "Missing value for --template" >&2
+        usage >&2
+        exit 1
+      fi
+      selected_template="$2"
+      shift 2
+      ;;
+    --template=*)
+      selected_template="${1#--template=}"
+      if [[ -z "${selected_template}" ]]; then
+        echo "Missing value for --template" >&2
+        usage >&2
+        exit 1
+      fi
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+    *)
+      if [[ -n "${destination_input}" ]]; then
+        echo "Unexpected extra argument: $1" >&2
+        usage >&2
+        exit 1
+      fi
+      destination_input="$1"
+      shift
+      ;;
+  esac
+done
+
+while [[ "$#" -gt 0 ]]; do
+  if [[ -n "${destination_input}" ]]; then
+    echo "Unexpected extra argument: $1" >&2
+    usage >&2
+    exit 1
+  fi
+  destination_input="$1"
+  shift
+done
+
+if [[ -z "${destination_input}" ]]; then
+  usage >&2
+  exit 1
 fi
 
-if [[ "$#" -ne 1 ]]; then
-  usage >&2
+if [[ "${selected_template}" = /* || "${selected_template}" == *"/"* || "${selected_template}" == "." || "${selected_template}" == ".." ]]; then
+  echo "Invalid template name: ${selected_template}" >&2
   exit 1
 fi
 
@@ -102,7 +162,6 @@ fi
 
 default_repo="https://github.com/yuki-js/cinpo"
 default_ref="main"
-destination_input="$1"
 
 if [[ -z "${CINPO_TEMPLATE_REPO:-}" || -z "${CINPO_TEMPLATE_REF:-}" ]]; then
   detect_checkout_source "${script_dir}" || true
@@ -129,16 +188,17 @@ cleanup() {
 trap cleanup EXIT
 
 template_checkout_dir="${work_dir}/cinpo-source"
-checkout_sparse_paths "${template_repo}" "${template_ref}" "${template_checkout_dir}" "template/"
+checkout_sparse_paths "${template_repo}" "${template_ref}" "${template_checkout_dir}" "template/${selected_template}/"
 
-template_dir="${template_checkout_dir}/template"
+template_dir="${template_checkout_dir}/template/${selected_template}"
 if [[ ! -d "${template_dir}" ]]; then
-  echo "template directory not found in fetched source: ${template_repo} @ ${template_ref}" >&2
+  echo "template not found: ${selected_template}" >&2
+  echo "Template source: ${template_repo} @ ${template_ref}" >&2
   exit 1
 fi
 
 mkdir -p -- "$(dirname -- "${destination_dir}")"
-cp -a -- "${template_dir}" "${destination_dir}"
+cp -a -- "${template_dir}/." "${destination_dir}"
 
 rm -rf -- \
   "${destination_dir}/.gradle" \
@@ -227,6 +287,9 @@ git -C "${destination_dir}" \
 cat <<EOF
 Created project from template:
   ${destination_dir}
+
+Template:
+  ${selected_template}
 
 Template source:
   ${template_repo} @ ${template_ref}
