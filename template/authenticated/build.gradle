@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'app.aoki.cinpo.gradle' version '0.2.1'
+    id 'app.aoki.cinpo.gradle' version '0.2.2'
 }
 
 java {
@@ -34,7 +34,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'app.aoki.cinpo:cinpo:0.2.1'
+    implementation 'app.aoki.cinpo:cinpo:0.2.2'
     implementation 'org.yaml:snakeyaml:2.2'
 }
 
