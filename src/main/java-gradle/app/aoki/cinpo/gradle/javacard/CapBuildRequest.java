@@ -14,6 +14,7 @@ import java.util.Objects;
  */
 public record CapBuildRequest(
         AppletManifest manifest,
+        Path projectDirectory,
         Path compiledClassesRoot,
         Path toolLibraryDirectory,
         Path generatedResourcesRoot,
@@ -21,6 +22,7 @@ public record CapBuildRequest(
 ) {
     public CapBuildRequest {
         Objects.requireNonNull(manifest, "manifest");
+        Objects.requireNonNull(projectDirectory, "projectDirectory");
         Objects.requireNonNull(compiledClassesRoot, "compiledClassesRoot");
         Objects.requireNonNull(toolLibraryDirectory, "toolLibraryDirectory");
         Objects.requireNonNull(generatedResourcesRoot, "generatedResourcesRoot");

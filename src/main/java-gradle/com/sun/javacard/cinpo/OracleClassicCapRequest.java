@@ -15,6 +15,7 @@ import java.util.Objects;
  */
 public record OracleClassicCapRequest(
         AppletManifest manifest,
+        Path projectDirectory,
         Path compiledClassesRoot,
         Path toolLibraryDirectory,
         Path workDirectory,
@@ -22,6 +23,7 @@ public record OracleClassicCapRequest(
 ) {
     public OracleClassicCapRequest {
         Objects.requireNonNull(manifest, "manifest");
+        Objects.requireNonNull(projectDirectory, "projectDirectory");
         Objects.requireNonNull(compiledClassesRoot, "compiledClassesRoot");
         Objects.requireNonNull(toolLibraryDirectory, "toolLibraryDirectory");
         Objects.requireNonNull(workDirectory, "workDirectory");

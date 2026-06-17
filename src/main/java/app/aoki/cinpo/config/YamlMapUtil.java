@@ -2,6 +2,7 @@ package app.aoki.cinpo.config;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 final class YamlMapUtil {
 
@@ -28,6 +29,19 @@ final class YamlMapUtil {
         return numberValue.intValue();
     }
 
+    static Optional<String> getOptionalString(Map<String, Object> data, String key, Object source) {
+        Object value = data.get(key);
+        if (value == null) {
+            return Optional.empty();
+        }
+        if (!(value instanceof String stringValue)) {
+            throw new IllegalArgumentException(
+                    "Field '" + key + "' must be a string in " + source
+                            + " (found: " + value.getClass().getSimpleName() + ")");
+        }
+        return Optional.of(stringValue);
+    }
+
     @SuppressWarnings("unchecked")
     static Map<String, Object> getMap(Map<String, Object> data, String key, Object source) {
         Object value = requireValue(data, key, source);
@@ -48,6 +62,20 @@ final class YamlMapUtil {
                             + " (found: " + value.getClass().getSimpleName() + ")");
         }
         return (List<Map<String, Object>>) value;
+    }
+
+    @SuppressWarnings("unchecked")
+    static Optional<List<Map<String, Object>>> getOptionalMapList(Map<String, Object> data, String key, Object source) {
+        Object value = data.get(key);
+        if (value == null) {
+            return Optional.empty();
+        }
+        if (!(value instanceof List<?>)) {
+            throw new IllegalArgumentException(
+                    "Field '" + key + "' must be a list in " + source
+                            + " (found: " + value.getClass().getSimpleName() + ")");
+        }
+        return Optional.of((List<Map<String, Object>>) value);
     }
 
     private static Object requireValue(Map<String, Object> data, String key, Object source) {

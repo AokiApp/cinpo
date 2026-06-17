@@ -90,6 +90,11 @@ package:
   aid: D276000085010100
   version: "1.0"
 
+companionBundles:
+  - id: globalplatform-1.7
+    jar: vendor/globalplatform/org.globalplatform-1.7/gpapi-globalplatform.jar
+    exports: vendor/globalplatform/org.globalplatform-1.7/exports
+
 applets:
   - id: main
     className: com.example.myapplet.MainApplet
@@ -101,6 +106,13 @@ applets:
 ### 3. Write your applet
 
 Place JavaCard applet source files in `applet/`. Standard JavaCard API — nothing CINPO-specific here.
+
+If your applet depends on vendor-supplied on-card APIs, declare them in `companionBundles`. Each bundle contributes:
+
+- a stub `jar` on the [`compileAppletJava`](src/main/groovy/app.aoki.cinpo.gradle.gradle:35) classpath
+- an `exports` directory in the converter export search path used by [`CinpoConverterLogic.profileFor()`](src/main/java-gradle/com/sun/javacard/converter/CinpoConverterLogic.java:38)
+
+This lets CINPO compile and convert applets that import companion packages such as GlobalPlatform, provided the vendor supplies both artifacts.
 
 ### 4. Write a default provision task
 

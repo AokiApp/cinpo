@@ -52,6 +52,7 @@ public final class OracleClassicCapBuilder {
 
         ConversionProfile profile = CinpoConverterLogic.profileFor(
                 manifest,
+                request.projectDirectory(),
                 request.compiledClassesRoot(),
                 packageOutputRoot,
                 request.toolLibraryDirectory()

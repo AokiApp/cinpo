@@ -41,7 +41,8 @@ tasks.register('compileAppletJava', JavaCompile) {
     destinationDirectory = layout.buildDirectory.dir('classes/java/applet')
     classpath = files(
             providers.provider { CinpoGradleSupport.targetApiJar(project) },
-            layout.buildDirectory.file('cinpo-cache/jcdk/tools/lib/tools.jar')
+            layout.buildDirectory.file('cinpo-cache/jcdk/tools/lib/tools.jar'),
+            providers.provider { CinpoGradleSupport.companionBundleJars(project) }
     )
     options.release = 8
     options.encoding = 'UTF-8'
@@ -52,6 +53,7 @@ tasks.register('generateCap', GenerateCapTask) {
     group = 'cinpo'
     description = 'Builds the Java Card CAP file and stages it at cap/<packageName>.cap.'
     manifestFile = layout.projectDirectory.file('manifest.yaml')
+    projectDirectory = layout.projectDirectory
     appletClassesDirectory = layout.buildDirectory.dir('classes/java/applet')
     toolLibraryDirectory = layout.buildDirectory.dir('cinpo-cache/jcdk/tools/lib')
     generatedResourcesDirectory = layout.buildDirectory.dir('generated/cinpo/resources/main')

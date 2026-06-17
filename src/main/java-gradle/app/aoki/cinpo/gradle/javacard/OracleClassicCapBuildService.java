@@ -39,6 +39,7 @@ public final class OracleClassicCapBuildService {
 
         OracleClassicCapRequest oracleRequest = new OracleClassicCapRequest(
                 request.manifest(),
+                request.projectDirectory(),
                 request.compiledClassesRoot(),
                 request.toolLibraryDirectory(),
                 workDirectory,

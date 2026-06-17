@@ -1,6 +1,7 @@
 package app.aoki.cinpo.config;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -15,6 +16,7 @@ import java.util.Set;
  * <li>Package metadata (name, load file AID, version)</li>
  * <li>Build configuration (SDK version, API version, base package)</li>
  * <li>List of applets within the package</li>
+ * <li>Optional companion bundles that contribute vendor stub jars and export files</li>
  * </ul>
  *
  * <p>
@@ -49,7 +51,10 @@ import java.util.Set;
  * @param loadFileAid Package AID (load file AID)
  * @param version Package version string
  * @param applets List of applet entries in this package
+ * @param companionBundles Optional companion bundles that provide applet compile-time jars and
+ *                         converter export directories
  * @see AppletEntry
+ * @see CompanionBundle
  * @see ManifestLoader
  */
 public record AppletManifest(
@@ -59,7 +64,8 @@ public record AppletManifest(
         String packageName,
         byte[] loadFileAid,
         String version,
-        List<AppletEntry> applets
+        List<AppletEntry> applets,
+        List<CompanionBundle> companionBundles
         ) {
 
     private static final Set<String> SUPPORTED_TOOL_SDK_VERSIONS = Set.of("26.0");
@@ -73,6 +79,7 @@ public record AppletManifest(
         Objects.requireNonNull(loadFileAid);
         Objects.requireNonNull(version);
         Objects.requireNonNull(applets);
+        Objects.requireNonNull(companionBundles);
 
         if (basePackage.isBlank()) {
             throw new IllegalArgumentException("basePackage must not be blank");
@@ -97,10 +104,12 @@ public record AppletManifest(
         }
 
         validateSdkCompatibility(toolSdkVersion, targetApiVersion);
+        validateCompanionBundles(companionBundles);
 
         // Defensive copies
         loadFileAid = Arrays.copyOf(loadFileAid, loadFileAid.length);
         applets = List.copyOf(applets);
+        companionBundles = List.copyOf(companionBundles);
     }
 
     /**
@@ -117,6 +126,14 @@ public record AppletManifest(
     @Override
     public List<AppletEntry> applets() {
         return applets;
+    }
+
+    /**
+     * Returns an immutable copy of the companion bundles list.
+     */
+    @Override
+    public List<CompanionBundle> companionBundles() {
+        return companionBundles;
     }
 
     private static void validateSdkCompatibility(String toolSdkVersion, String targetApiVersion) {
@@ -153,6 +170,17 @@ public record AppletManifest(
                     "targetApiVersion " + targetApiVersion
                     + " requires toolSdkVersion 24.0 or newer"
             );
+        }
+    }
+
+    private static void validateCompanionBundles(List<CompanionBundle> companionBundles) {
+        Set<String> bundleIds = new HashSet<>();
+        for (CompanionBundle companionBundle : companionBundles) {
+            Objects.requireNonNull(companionBundle, "companionBundles must not contain null entries");
+            if (!bundleIds.add(companionBundle.id())) {
+                throw new IllegalArgumentException(
+                        "Duplicate companion bundle id: " + companionBundle.id());
+            }
         }
     }
 }

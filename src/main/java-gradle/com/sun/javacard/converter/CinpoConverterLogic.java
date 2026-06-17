@@ -2,12 +2,14 @@ package com.sun.javacard.converter;
 
 import app.aoki.cinpo.config.AppletEntry;
 import app.aoki.cinpo.config.AppletManifest;
+import app.aoki.cinpo.gradle.CompanionBundleSupport;
 import app.aoki.cinpo.gradle.javacard.tools.JavaCardToolException;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Objects;
@@ -35,11 +37,13 @@ public final class CinpoConverterLogic {
      */
     public static ConversionProfile profileFor(
             AppletManifest manifest,
+            Path projectDirectory,
             Path compiledClassesRoot,
             Path outputRoot,
             Path toolLibraryDirectory
     ) throws IOException {
         Objects.requireNonNull(manifest, "manifest");
+        Objects.requireNonNull(projectDirectory, "projectDirectory");
 
         ConversionProfile profile = new ConversionProfile();
         profile.APIExpDir = "api_export_files_" + manifest.targetApiVersion();
@@ -72,7 +76,7 @@ public final class CinpoConverterLogic {
         profile.output = ConversionProfile.OUTPUT_CAP_FILE
                 | ConversionProfile.OUTPUT_EXP_FILE
                 | ConversionProfile.OUTPUT_JCA_FILE;
-        profile.export_path = exportPaths(manifest, toolLibraryDirectory);
+        profile.export_path = exportPaths(manifest, projectDirectory, toolLibraryDirectory);
         profile.class_root = compiledClassesRoot;
         profile.classes = classFiles(compiledClassesRoot, manifest.packageName()).stream()
                 .map(Path::toFile)
@@ -99,16 +103,20 @@ public final class CinpoConverterLogic {
         return converter;
     }
 
-    private static Path[] exportPaths(AppletManifest manifest, Path toolLibraryDirectory) {
+    private static Path[] exportPaths(AppletManifest manifest, Path projectDirectory, Path toolLibraryDirectory) {
+        List<Path> exportPaths = new ArrayList<>();
+
         Path apiExports = toolLibraryDirectory.resolve("api_export_files_" + manifest.targetApiVersion());
         if (Files.isDirectory(apiExports)) {
-            return new Path[] { apiExports };
+            exportPaths.add(apiExports);
         }
+
+        exportPaths.addAll(CompanionBundleSupport.companionBundleExportDirectories(manifest, projectDirectory));
 
         // tools.jar embeds API exports and ExportFileManager can resolve standard API
         // packages internally. Keep export_path empty rather than inventing a wrong
         // filesystem path when the unpacked export tree is absent.
-        return new Path[0];
+        return exportPaths.toArray(Path[]::new);
     }
 
     private static PackageProfile packageProfile(AppletManifest manifest) {

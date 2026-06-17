@@ -490,20 +490,16 @@ final class Scp03Protocol implements InternalSecureChannelProtocol {
      * Validates the SCP03 "i" parameter returned in the INITIALIZE UPDATE response against the
      * security level that was requested in the session profile.
      *
-     * <p>[Amd D] Table 5-1: bits b2-b3 of the "i" parameter advertise the card's R-MAC and
-     * R-ENCRYPTION support:
-     * <ul>
-     *   <li>{@code 00} – no R-MAC/R-ENCRYPTION support</li>
-     *   <li>{@code 01} – R-MAC supported, R-ENCRYPTION not supported</li>
-     *   <li>{@code 11} – R-MAC and R-ENCRYPTION both supported</li>
-     * </ul>
+     * <p>Oracle {@code jcsl} advertises the observed SCP03 capabilities in the upper nibble of
+     * the "i" parameter: {@code 0x20} for R-MAC support and {@code 0x40} for R-ENCRYPTION
+     * support. The lower high bit {@code 0x10} is used independently for the pseudo-random
+     * challenge mode indicator seen in 32-byte INITIALIZE UPDATE responses such as {@code 0x70}.
      */
     private static void validateIParameter(int iParameter, int securityLevel) {
         boolean rmacRequested = GpUtil.usesRMac(securityLevel);
         boolean rEncRequested = GpUtil.usesREncryption(securityLevel);
-        // b2 of "i" = R-MAC support bit (0x02); b3 = R-ENCRYPTION support bit (0x04)
-        boolean rmacAdvertised = (iParameter & 0x02) != 0;
-        boolean rEncAdvertised = (iParameter & 0x04) != 0;
+        boolean rmacAdvertised = (iParameter & 0x20) != 0;
+        boolean rEncAdvertised = (iParameter & 0x40) != 0;
 
         if (rmacRequested && !rmacAdvertised) {
             throw new IllegalStateException(String.format(

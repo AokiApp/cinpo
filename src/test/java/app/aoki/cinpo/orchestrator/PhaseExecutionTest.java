@@ -66,7 +66,8 @@ class PhaseExecutionTest {
                 "test.package",
                 new byte[]{0x01, 0x02, 0x03, 0x04, 0x05},
                 "1.0",
-                List.of(appletEntry)
+                List.of(appletEntry),
+                List.of()
         );
     }
 

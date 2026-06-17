@@ -147,6 +147,14 @@ public final class ManifestLoader {
             applets.add(parseAppletEntry(appletData, source, i));
         }
 
+        List<Map<String, Object>> companionBundleData = YamlMapUtil
+                .getOptionalMapList(data, "companionBundles", source)
+                .orElse(List.of());
+        List<CompanionBundle> companionBundles = new ArrayList<>();
+        for (int i = 0; i < companionBundleData.size(); i++) {
+            companionBundles.add(parseCompanionBundle(companionBundleData.get(i), source, i));
+        }
+
         return new AppletManifest(
                 basePackage,
                 toolSdkVersion,
@@ -154,7 +162,8 @@ public final class ManifestLoader {
                 packageName,
                 loadFileAid,
                 version,
-                applets
+                applets,
+                companionBundles
         );
     }
 
@@ -187,6 +196,14 @@ public final class ManifestLoader {
                     e
             );
         }
+    }
+
+    private static CompanionBundle parseCompanionBundle(Map<String, Object> data, String source, int index) {
+        String context = source + ".companionBundles[" + index + "]";
+        String id = YamlMapUtil.getString(data, "id", context);
+        String jar = YamlMapUtil.getString(data, "jar", context);
+        String exports = YamlMapUtil.getString(data, "exports", context);
+        return new CompanionBundle(id, jar, exports);
     }
 
 }
