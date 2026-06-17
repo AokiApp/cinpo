@@ -3,6 +3,7 @@ package com.sun.javacard.cinpo;
 import app.aoki.cinpo.config.AppletManifest;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -15,7 +16,7 @@ import java.util.Objects;
  */
 public record OracleClassicCapRequest(
         AppletManifest manifest,
-        Path projectDirectory,
+        List<Path> companionExportDirectories,
         Path compiledClassesRoot,
         Path toolLibraryDirectory,
         Path workDirectory,
@@ -23,10 +24,11 @@ public record OracleClassicCapRequest(
 ) {
     public OracleClassicCapRequest {
         Objects.requireNonNull(manifest, "manifest");
-        Objects.requireNonNull(projectDirectory, "projectDirectory");
+        Objects.requireNonNull(companionExportDirectories, "companionExportDirectories");
         Objects.requireNonNull(compiledClassesRoot, "compiledClassesRoot");
         Objects.requireNonNull(toolLibraryDirectory, "toolLibraryDirectory");
         Objects.requireNonNull(workDirectory, "workDirectory");
         Objects.requireNonNull(stagedCapFile, "stagedCapFile");
+        companionExportDirectories = List.copyOf(companionExportDirectories);
     }
 }

@@ -5,7 +5,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.List;
 
-import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 
 import app.aoki.cinpo.config.AppletManifest;
@@ -35,6 +34,14 @@ public final class CinpoGradleSupport {
     public static List<Path> companionBundleJars(Project project) {
         AppletManifest manifest = loadManifest(project, "companion bundle resolution");
         return CompanionBundleSupport.companionBundleJars(project, manifest);
+    }
+
+    /**
+     * Resolves companion bundle export directories declared in the manifest.
+     */
+    public static List<Path> companionBundleExportDirectories(Project project) {
+        AppletManifest manifest = loadManifest(project, "companion export resolution");
+        return CompanionBundleSupport.companionBundleExportDirectories(manifest, project.getProjectDir().toPath());
     }
 
     private static AppletManifest loadManifest(Project project, String purpose) {

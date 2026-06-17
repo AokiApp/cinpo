@@ -2,14 +2,16 @@ package app.aoki.cinpo.gradle.task;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.InputFile;
-import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
@@ -60,10 +62,16 @@ public abstract class GenerateCapTask extends DefaultTask {
     public abstract RegularFileProperty getManifestFile();
 
     /**
-     * Project directory used only as a base path for resolving relative companion bundle paths from the manifest.
+     * Resolved companion bundle export directories passed to the Java Card converter.
+     *
+     * <p>
+     * These are concrete filesystem locations resolved during Gradle configuration
+     * from {@code manifest.yaml}. The task intentionally receives only the export
+     * directories it needs, not the whole project root.</p>
      */
-    @Internal
-    public abstract DirectoryProperty getProjectDirectory();
+    @InputFiles
+    @PathSensitive(PathSensitivity.RELATIVE)
+    public abstract ConfigurableFileCollection getCompanionExportDirectories();
 
     /**
      * Directory containing Java Card-compatible applet class files.
@@ -119,7 +127,9 @@ public abstract class GenerateCapTask extends DefaultTask {
     @TaskAction
     public void generateCap() {
         Path manifestPath = getManifestFile().get().getAsFile().toPath();
-        Path projectDirectory = getProjectDirectory().get().getAsFile().toPath();
+        List<Path> companionExportDirectories = getCompanionExportDirectories().getFiles().stream()
+                .map(file -> file.toPath())
+                .toList();
         Path classRoot = getAppletClassesDirectory().get().getAsFile().toPath();
         Path toolLibrary = getToolLibraryDirectory().get().getAsFile().toPath();
         Path generatedResources = getGeneratedResourcesDirectory().get().getAsFile().toPath();
@@ -132,7 +142,7 @@ public abstract class GenerateCapTask extends DefaultTask {
             // This layout is the contract with InstallPhase: the generated resource
             // must be loadable later as cap/<manifest.packageName>.cap.
             CapResourceLayout layout = CapResourceLayout.forManifest(manifest, generatedResources);
-            CapBuildRequest request = new CapBuildRequest(manifest, projectDirectory, classRoot, toolLibrary, generatedResources, layout);
+            CapBuildRequest request = new CapBuildRequest(manifest, companionExportDirectories, classRoot, toolLibrary, generatedResources, layout);
             OracleClassicCapResult result = OracleClassicCapBuildService.build(request);
 
             getLogger().lifecycle("Generated Java Card CAP resource {} from {}", layout.resourcePath(), result.capFile());

@@ -3,6 +3,7 @@ package app.aoki.cinpo.gradle.javacard;
 import app.aoki.cinpo.config.AppletManifest;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -14,7 +15,7 @@ import java.util.Objects;
  */
 public record CapBuildRequest(
         AppletManifest manifest,
-        Path projectDirectory,
+        List<Path> companionExportDirectories,
         Path compiledClassesRoot,
         Path toolLibraryDirectory,
         Path generatedResourcesRoot,
@@ -22,10 +23,11 @@ public record CapBuildRequest(
 ) {
     public CapBuildRequest {
         Objects.requireNonNull(manifest, "manifest");
-        Objects.requireNonNull(projectDirectory, "projectDirectory");
+        Objects.requireNonNull(companionExportDirectories, "companionExportDirectories");
         Objects.requireNonNull(compiledClassesRoot, "compiledClassesRoot");
         Objects.requireNonNull(toolLibraryDirectory, "toolLibraryDirectory");
         Objects.requireNonNull(generatedResourcesRoot, "generatedResourcesRoot");
         Objects.requireNonNull(layout, "layout");
+        companionExportDirectories = List.copyOf(companionExportDirectories);
     }
 }

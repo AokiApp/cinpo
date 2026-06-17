@@ -2,7 +2,6 @@ package com.sun.javacard.converter;
 
 import app.aoki.cinpo.config.AppletEntry;
 import app.aoki.cinpo.config.AppletManifest;
-import app.aoki.cinpo.gradle.CompanionBundleSupport;
 import app.aoki.cinpo.gradle.javacard.tools.JavaCardToolException;
 
 import java.io.File;
@@ -37,13 +36,13 @@ public final class CinpoConverterLogic {
      */
     public static ConversionProfile profileFor(
             AppletManifest manifest,
-            Path projectDirectory,
+            List<Path> companionExportDirectories,
             Path compiledClassesRoot,
             Path outputRoot,
             Path toolLibraryDirectory
     ) throws IOException {
         Objects.requireNonNull(manifest, "manifest");
-        Objects.requireNonNull(projectDirectory, "projectDirectory");
+        Objects.requireNonNull(companionExportDirectories, "companionExportDirectories");
 
         ConversionProfile profile = new ConversionProfile();
         profile.APIExpDir = "api_export_files_" + manifest.targetApiVersion();
@@ -76,7 +75,7 @@ public final class CinpoConverterLogic {
         profile.output = ConversionProfile.OUTPUT_CAP_FILE
                 | ConversionProfile.OUTPUT_EXP_FILE
                 | ConversionProfile.OUTPUT_JCA_FILE;
-        profile.export_path = exportPaths(manifest, projectDirectory, toolLibraryDirectory);
+        profile.export_path = exportPaths(manifest, companionExportDirectories, toolLibraryDirectory);
         profile.class_root = compiledClassesRoot;
         profile.classes = classFiles(compiledClassesRoot, manifest.packageName()).stream()
                 .map(Path::toFile)
@@ -103,7 +102,7 @@ public final class CinpoConverterLogic {
         return converter;
     }
 
-    private static Path[] exportPaths(AppletManifest manifest, Path projectDirectory, Path toolLibraryDirectory) {
+    private static Path[] exportPaths(AppletManifest manifest, List<Path> companionExportDirectories, Path toolLibraryDirectory) {
         List<Path> exportPaths = new ArrayList<>();
 
         Path apiExports = toolLibraryDirectory.resolve("api_export_files_" + manifest.targetApiVersion());
@@ -111,7 +110,7 @@ public final class CinpoConverterLogic {
             exportPaths.add(apiExports);
         }
 
-        exportPaths.addAll(CompanionBundleSupport.companionBundleExportDirectories(manifest, projectDirectory));
+        exportPaths.addAll(companionExportDirectories);
 
         // tools.jar embeds API exports and ExportFileManager can resolve standard API
         // packages internally. Keep export_path empty rather than inventing a wrong
