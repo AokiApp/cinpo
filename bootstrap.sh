@@ -3,13 +3,14 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: ./bootstrap.sh [--template <template-name>] <destination-directory>
+Usage: ./bootstrap.sh [--template <template-name>] [--name <project-name>] <destination-directory>
 
 Fetches the CINPO template with git into a temporary sparse checkout, copies
 ./template/<template-name> into a new project directory, and prepares it as a standalone starter
 project.
 
 Defaults to the "basic" template if --template is not specified.
+Defaults to the destination directory basename if --name is not specified.
 
 When run from a CINPO Git checkout, the script fetches the template from the
 current origin/HEAD commit so the generated project matches that checked-out
@@ -83,6 +84,7 @@ checkout_sparse_paths() {
 }
 
 selected_template="basic"
+project_name=""
 destination_input=""
 
 while [[ "$#" -gt 0 ]]; do
@@ -104,6 +106,24 @@ while [[ "$#" -gt 0 ]]; do
       selected_template="${1#--template=}"
       if [[ -z "${selected_template}" ]]; then
         echo "Missing value for --template" >&2
+        usage >&2
+        exit 1
+      fi
+      shift
+      ;;
+    --name)
+      if [[ "$#" -lt 2 || -z "${2:-}" ]]; then
+        echo "Missing value for --name" >&2
+        usage >&2
+        exit 1
+      fi
+      project_name="$2"
+      shift 2
+      ;;
+    --name=*)
+      project_name="${1#--name=}"
+      if [[ -z "${project_name}" ]]; then
+        echo "Missing value for --name" >&2
         usage >&2
         exit 1
       fi
@@ -205,7 +225,10 @@ rm -rf -- \
   "${destination_dir}/build" \
   "${destination_dir}/vendor"
 
-project_name="$(basename -- "${destination_dir}")"
+if [[ -z "${project_name}" ]]; then
+  project_name="$(basename -- "${destination_dir}")"
+fi
+
 escaped_project_name="${project_name//\\/\\\\}"
 escaped_project_name="${escaped_project_name//\'/\\\'}"
 settings_file="${destination_dir}/settings.gradle"
@@ -290,6 +313,9 @@ Created project from template:
 
 Template:
   ${selected_template}
+
+Project name:
+  ${project_name}
 
 Template source:
   ${template_repo} @ ${template_ref}
