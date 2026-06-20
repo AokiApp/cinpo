@@ -1,11 +1,11 @@
 schema: cinpo.applet.v1
 
-basePackage: com.example.cinpo.hello
+basePackage: com.example.cinpo.probe
 toolSdkVersion: "26.0"
 targetApiVersion: "3.0.4"
 
 package:
-  name: com.example.cinpo.hello
+  name: com.example.cinpo.probe
   aid: F00000000101
   version: "1.0"
 
@@ -15,8 +15,8 @@ companionBundles: []
 #    exports: vendor/globalplatform/org.globalplatform-1.7/exports
 
 applets:
-  - id: hello
-    className: com.example.cinpo.hello.HelloApplet
+  - id: maguro
+    className: com.example.cinpo.probe.MaguroApplet
     classAid: F0000000010101
     instanceAid: F000000001010001
     privilege: "00"
