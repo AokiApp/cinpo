@@ -1,0 +1,27 @@
+pluginManagement {
+    repositories {
+        def githubPackagesUser = providers.gradleProperty('gpr.user')
+                .orElse(providers.environmentVariable('GITHUB_ACTOR'))
+        def githubPackagesKey = providers.gradleProperty('gpr.key')
+                .orElse(providers.environmentVariable('GITHUB_TOKEN'))
+
+        if (githubPackagesUser.isPresent() && githubPackagesKey.isPresent()) {
+            maven {
+                name = 'githubPackages'
+                url = uri('https://maven.pkg.github.com/yuki-js/cinpo')
+                credentials {
+                    username = githubPackagesUser.get()
+                    password = githubPackagesKey.get()
+                }
+            }
+        }
+        maven {
+            name = 'githubPages'
+            url = uri('https://yuki-js.github.io/cinpo')
+        }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'cinpo-template'

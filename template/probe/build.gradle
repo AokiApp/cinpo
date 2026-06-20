@@ -1,0 +1,51 @@
+plugins {
+    id 'java'
+    id 'app.aoki.cinpo.gradle' version '0.3.0'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+def githubPackagesUser = providers.gradleProperty('gpr.user')
+        .orElse(providers.environmentVariable('GITHUB_ACTOR'))
+def githubPackagesKey = providers.gradleProperty('gpr.key')
+        .orElse(providers.environmentVariable('GITHUB_TOKEN'))
+def hasGithubPackagesCredentials = githubPackagesUser.isPresent() && githubPackagesKey.isPresent()
+
+repositories {
+    if (hasGithubPackagesCredentials) {
+        maven {
+            name = 'githubPackages'
+            url = uri('https://maven.pkg.github.com/yuki-js/cinpo')
+            credentials {
+                username = githubPackagesUser.get()
+                password = githubPackagesKey.get()
+            }
+        }
+    }
+    maven {
+        name = 'githubPages'
+        url = uri('https://yuki-js.github.io/cinpo')
+    }
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'app.aoki.cinpo:cinpo:0.3.0'
+    implementation 'org.yaml:snakeyaml:2.2'
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+    implementation 'org.bouncycastle:bcpkix-jdk18on:1.78.1'
+}
+
+sourceSets {
+    main {
+        java.srcDirs = ['host']
+        resources {
+            srcDirs = ['host']
+            exclude '**/*.java'
+        }
+    }
+}
