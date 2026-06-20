@@ -15,6 +15,17 @@ SourceSetContainer sourceSets = extensions.getByType(SourceSetContainer)
 SourceSet mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME)
 mainSourceSet.resources.srcDir(layout.buildDirectory.dir('generated/cinpo/resources/main'))
 
+repositories {
+    maven {
+        name = 'javacardPro'
+        url = uri('https://mvn.javacard.pro/maven/')
+    }
+    maven {
+        name = 'javacardProSnapshots'
+        url = uri('https://mvn.javacard.pro/maven/SNAPSHOTS/')
+    }
+}
+
 def prepareJavaCardTools = tasks.named('prepareJavaCardTools')
 def cinpoPluginJar = project.files(CinpoGradleSupport.class.protectionDomain.codeSource.location)
 def companionBundleExportDirectories = providers.provider { CinpoGradleSupport.companionBundleExportDirectories(project) }
@@ -25,12 +36,21 @@ dependencies {
     // Gradle projects resolve app.aoki.cinpo:cinpo:unspecified and fail.
     annotationProcessor cinpoPluginJar
 
-    // Runtime execution only needs Oracle's socket terminal provider for the
-    // jcresim adapter. Oracle tools.jar is build-time-only CAP generation input;
-    // putting it on runtimeClasspath makes cinpoJar package converter/export files.
+    // Runtime execution needs Oracle's socket terminal provider for the jcresim
+    // adapter. Oracle tools.jar is build-time-only CAP generation input; putting
+    // it on runtimeClasspath makes cinpoJar package converter/export files.
     runtimeOnly files(
             layout.buildDirectory.file('cinpo-cache/jcdk/simulator/client/COMService/socketprovider.jar')
     ).builtBy(prepareJavaCardTools)
+
+    // JCardEngine installs applets from compiled classes instead of CAP files.
+    // Do not put Oracle's api_classic jar on runtimeClasspath: JCardEngine ships
+    // its own javacard.* runtime classes, and Oracle's native stubs would shadow
+    // them. Companion API jars are still needed when applet classes reference
+    // vendor packages that are not bundled by JCardEngine itself.
+    runtimeOnly files(
+            providers.provider { CinpoGradleSupport.companionBundleJars(project) }
+    )
 }
 
 tasks.register('compileAppletJava', JavaCompile) {
@@ -70,14 +90,17 @@ tasks.named('processResources') {
 
 tasks.register('cinpoRun', CinpoRunTask) {
     classpath.from(mainSourceSet.runtimeClasspath)
+    classpath.from(layout.buildDirectory.dir('classes/java/applet'))
     dependsOn tasks.named('classes')
     dependsOn prepareJavaCardTools
 }
 // Build the production appliance from the same runtime classpath used by cinpoRun.
-// classes contributes host task classes, manifest.yaml, and generated CAP resources;
+// classes contributes host task classes, manifest.yaml, generated CAP resources,
+// and the separately compiled applet classes used by JCardEngine runtime installs;
 // prepareJavaCardTools contributes the configured simulator runtime bundled by CinpoJarTask.
 tasks.register('cinpoJar', CinpoJarTask) {
     classpath.from(mainSourceSet.runtimeClasspath)
+    classpath.from(layout.buildDirectory.dir('classes/java/applet'))
     dependsOn tasks.named('classes')
     dependsOn prepareJavaCardTools
 }

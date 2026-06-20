@@ -2,6 +2,7 @@ package app.aoki.cinpo.runtime;
 
 import app.aoki.cinpo.apdu.ApduChannel;
 import app.aoki.cinpo.config.Profile;
+import app.aoki.cinpo.runtime.jcardengine.JCardEngineAdapter;
 import app.aoki.cinpo.runtime.jcresim.JcreSimAdapter;
 import app.aoki.cinpo.runtime.pcsc.PcscAdapter;
 import java.util.Objects;
@@ -18,6 +19,7 @@ public final class ApduChannelFactory {
         Objects.requireNonNull(profile);
         return switch (profile.runtime().toLowerCase()) {
             case "jcresim" -> new JcreSimAdapter().createChannel();
+            case "jcardengine" -> new JCardEngineAdapter().createChannel();
             case "pcsc" -> new PcscAdapter(profile.pcsc()).createChannel();
             default -> throw new IllegalArgumentException("Unsupported runtime: " + profile.runtime());
         };
@@ -26,7 +28,7 @@ public final class ApduChannelFactory {
     /**
      * Create an APDU channel for the specified runtime.
      *
-     * @param runtime runtime identifier ("jcresim" or "pcsc")
+     * @param runtime runtime identifier ("jcresim", "jcardengine", or "pcsc")
      * @return an APDU channel implementation
      * @throws IllegalArgumentException if the runtime is not supported
      */
@@ -35,6 +37,7 @@ public final class ApduChannelFactory {
 
         return switch (runtime.toLowerCase()) {
             case "jcresim" -> new JcreSimAdapter().createChannel();
+            case "jcardengine" -> new JCardEngineAdapter().createChannel();
             case "pcsc" -> new PcscAdapter().createChannel();
             default -> throw new IllegalArgumentException("Unsupported runtime: " + runtime);
         };

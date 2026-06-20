@@ -13,7 +13,7 @@ import java.util.logging.Logger;
  *
  * <p>This phase:
  * <ol>
- *   <li>Reads the runtime identifier from the profile (e.g., "jcresim", "pcsc")</li>
+ *   <li>Reads the runtime identifier from the profile (e.g., "jcresim", "jcardengine", "pcsc")</li>
  *   <li>Creates an appropriate {@link ApduChannel} via {@link ApduChannelFactory}</li>
  *   <li>Stores the channel in the orchestrator for use by subsequent phases</li>
  * </ol>
@@ -21,7 +21,8 @@ import java.util.logging.Logger;
  * <h2>Runtime Support</h2>
  * Supported runtime identifiers:
  * <ul>
- *   <li>{@code "jcresim"} - jCardSim emulator runtime</li>
+ *   <li>{@code "jcresim"} - Oracle JCDK simulator runtime</li>
+ *   <li>{@code "jcardengine"} - class-installed in-process Java Card runtime</li>
  *   <li>{@code "pcsc"} - PC/SC physical card reader</li>
  * </ul>
  *

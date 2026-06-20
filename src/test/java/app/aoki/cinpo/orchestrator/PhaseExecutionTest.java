@@ -9,6 +9,7 @@ import app.aoki.cinpo.config.Profile;
 import app.aoki.cinpo.config.ScpConfig;
 import app.aoki.cinpo.orchestrator.phase.InitPhase;
 import app.aoki.cinpo.orchestrator.phase.InstallPhase;
+import app.aoki.cinpo.orchestrator.phase.JCardEngineInstallPhase;
 import app.aoki.cinpo.orchestrator.phase.TaskKindPhase;
 import app.aoki.cinpo.task.TaskArguments;
 import org.junit.jupiter.api.BeforeEach;
@@ -254,7 +255,7 @@ class PhaseExecutionTest {
     @Test
     void cliPhaseConstruction_DefaultBehavior() {
         // Given: CLI default behavior
-        List<Phase> phases = buildPhasesLikeCli(false, List.of(), false);
+        List<Phase> phases = buildPhasesLikeCli("jcresim", false, List.of(), false);
 
         // Then: verify correct phase types and order
         assertEquals(3, phases.size());
@@ -266,7 +267,7 @@ class PhaseExecutionTest {
     @Test
     void cliPhaseConstruction_WithTestFlag() {
         // Given: CLI with --test flag
-        List<Phase> phases = buildPhasesLikeCli(true, List.of(), false);
+        List<Phase> phases = buildPhasesLikeCli("jcresim", true, List.of(), false);
 
         // Then: verify provision and test phases
         assertEquals(4, phases.size());
@@ -279,7 +280,7 @@ class PhaseExecutionTest {
     @Test
     void cliPhaseConstruction_WithCustomTaskKinds() {
         // Given: CLI with --task=foo --task=bar
-        List<Phase> phases = buildPhasesLikeCli(false, List.of("foo", "bar"), false);
+        List<Phase> phases = buildPhasesLikeCli("jcresim", false, List.of("foo", "bar"), false);
 
         // Then: verify custom task phases
         assertEquals(4, phases.size());
@@ -292,13 +293,24 @@ class PhaseExecutionTest {
     @Test
     void cliPhaseConstruction_WithSkipInstall() {
         // Given: CLI with --skip-install
-        List<Phase> phases = buildPhasesLikeCli(false, List.of("provision"), true);
+        List<Phase> phases = buildPhasesLikeCli("jcresim", false, List.of("provision"), true);
 
         // Then: verify install phase is skipped
         assertEquals(2, phases.size());
         assertTrue(phases.get(0) instanceof InitPhase);
         assertTrue(phases.get(1) instanceof TaskKindPhase);
         assertFalse(phases.stream().anyMatch(p -> p instanceof InstallPhase));
+    }
+
+    @Test
+    void cliPhaseConstruction_WithJCardEngineRuntime_UsesDedicatedInstallPhase() {
+        List<Phase> phases = buildPhasesLikeCli("jcardengine", false, List.of(), false);
+
+        assertEquals(3, phases.size());
+        assertTrue(phases.get(0) instanceof InitPhase);
+        assertTrue(phases.get(1) instanceof JCardEngineInstallPhase);
+        assertTrue(phases.get(2) instanceof TaskKindPhase);
+        assertFalse(phases.get(1) instanceof InstallPhase);
     }
 
     /**
@@ -317,14 +329,18 @@ class PhaseExecutionTest {
     /**
      * Simulates WriteCommand.buildPhaseList() logic for testing.
      */
-    private List<Phase> buildPhasesLikeCli(boolean test, List<String> taskKinds, boolean skipInstall) {
+    private List<Phase> buildPhasesLikeCli(String runtime, boolean test, List<String> taskKinds, boolean skipInstall) {
         List<String> resolvedTaskKinds = resolveTaskKinds(test, taskKinds);
         boolean requireTasks = test || !taskKinds.isEmpty();
 
         List<Phase> phases = new ArrayList<>();
         phases.add(new InitPhase());
         if (!skipInstall) {
-            phases.add(new InstallPhase());
+            if ("jcardengine".equalsIgnoreCase(runtime)) {
+                phases.add(new JCardEngineInstallPhase());
+            } else {
+                phases.add(new InstallPhase());
+            }
         }
         for (String taskKind : resolvedTaskKinds) {
             phases.add(new TaskKindPhase(taskKind, requireTasks));

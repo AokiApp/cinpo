@@ -8,7 +8,7 @@ import java.util.Objects;
  * <p>A {@code Profile} encapsulates:
  * <ul>
  *   <li>Profile name (e.g., "jcdksim", "card1")</li>
- *   <li>Runtime adapter identifier ("jcresim" or "pcsc")</li>
+ *   <li>Runtime adapter identifier ("jcresim", "jcardengine", or "pcsc")</li>
  *   <li>Secure channel configuration for GlobalPlatform operations</li>
  * </ul>
  *
@@ -20,7 +20,7 @@ import java.util.Objects;
  * </ul>
  *
  * @param name           Profile name (e.g., "jcdksim", "card1")
- * @param runtime        Runtime adapter identifier ("jcresim" or "pcsc")
+ * @param runtime        Runtime adapter identifier ("jcresim", "jcardengine", or "pcsc")
  * @param secureChannel  GlobalPlatform Secure Channel Protocol configuration
  * @param pcsc           PC/SC reader selection configuration
  * @see ProfileLoader

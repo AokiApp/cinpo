@@ -8,6 +8,7 @@ import app.aoki.cinpo.orchestrator.Orchestrator;
 import app.aoki.cinpo.orchestrator.Phase;
 import app.aoki.cinpo.orchestrator.phase.InitPhase;
 import app.aoki.cinpo.orchestrator.phase.InstallPhase;
+import app.aoki.cinpo.orchestrator.phase.JCardEngineInstallPhase;
 import app.aoki.cinpo.orchestrator.phase.TaskKindPhase;
 import app.aoki.cinpo.task.TaskArguments;
 import picocli.CommandLine.Command;
@@ -81,7 +82,7 @@ public class WriteCommand implements Runnable {
             LOG.fine("Loading manifest from classpath");
             AppletManifest manifest = ManifestLoader.loadFromClasspath();
  
-            List<Phase> phases = buildPhaseList();
+            List<Phase> phases = buildPhaseList(profile);
             LOG.fine(() -> "Starting orchestration with " + phases.size() + " phases");
  
             Orchestrator orchestrator = new Orchestrator(profile, manifest, phases, true, taskArguments());
@@ -105,14 +106,18 @@ public class WriteCommand implements Runnable {
         }
     }
 
-    private List<Phase> buildPhaseList() {
+    private List<Phase> buildPhaseList(Profile profile) {
         List<String> resolvedTaskKinds = resolveTaskKinds();
         boolean requireTasks = hasExplicitTaskSelection();
 
         List<Phase> phases = new ArrayList<>();
         phases.add(new InitPhase());
         if (!skipInstall) {
-            phases.add(new InstallPhase());
+            if ("jcardengine".equalsIgnoreCase(profile.runtime())) {
+                phases.add(new JCardEngineInstallPhase());
+            } else {
+                phases.add(new InstallPhase());
+            }
         }
         for (String taskKind : resolvedTaskKinds) {
             phases.add(new TaskKindPhase(taskKind, requireTasks));

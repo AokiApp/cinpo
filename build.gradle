@@ -25,6 +25,14 @@ sourceSets {
 }
 
 repositories {
+    maven {
+        name = 'javacardPro'
+        url = uri('https://mvn.javacard.pro/maven/')
+    }
+    maven {
+        name = 'javacardProSnapshots'
+        url = uri('https://mvn.javacard.pro/maven/SNAPSHOTS/')
+    }
     mavenCentral()
 }
 
@@ -36,6 +44,7 @@ def prepareJavaCardTools = tasks.named('prepareJavaCardTools')
 dependencies {
     implementation 'org.yaml:snakeyaml:2.2'
     implementation 'info.picocli:picocli:4.7.6'
+    implementation 'com.github.martinpaljak:jcardengine:26.06.05-SNAPSHOT'
 
     // Oracle Java Card tool classes are intentionally compiled against directly.
     // The Gradle plugin executes CAP generation in-process, without routing through
@@ -51,6 +60,7 @@ dependencies {
     compileOnly files(extractedJavaCardSocketProviderJar).builtBy(prepareJavaCardTools)
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
+    testRuntimeOnly files(extractedJavaCardToolsJar).builtBy(prepareJavaCardTools)
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
 }
@@ -170,7 +180,8 @@ publishing {
                 def dependenciesNode = asNode().appendNode('dependencies')
                 [
                         ['org.yaml', 'snakeyaml', '2.2'],
-                        ['info.picocli', 'picocli', '4.7.6']
+                        ['info.picocli', 'picocli', '4.7.6'],
+                        ['com.github.martinpaljak', 'jcardengine', '26.06.05-SNAPSHOT']
                 ].each { dependency ->
                     def dependencyNode = dependenciesNode.appendNode('dependency')
                     dependencyNode.appendNode('groupId', dependency[0])
