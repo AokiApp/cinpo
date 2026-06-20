@@ -456,6 +456,14 @@ import app.aoki.cinpo.task.Inject;
 import app.aoki.cinpo.task.TaskArguments;
 ```
 
+## Implementation Discipline
+
+- Before adding a helper for parsing, encoding, hex formatting, APDU construction, TLV traversal, or other low-level protocol work, search the available CINPO APIs and reuse existing utilities when possible. Start from packages such as `app.aoki.cinpo.apdu` and `app.aoki.cinpo.util`; then broaden the search if the needed abstraction is not there.
+- Do not substitute manifest/configuration values for card runtime state. `app.aoki.cinpo.config.AppletManifest` tells you what the project intends to install/select; it does not prove what is currently selected or present on the card. If a task claims card runtime state, query the card through `app.aoki.cinpo.apdu.ApduChannel` and parse the actual `ResponseApdu`.
+- Do not infer APDU semantics from a tag name, class name, method name, or memory of a similar command. Confirm the exact command bytes, P1/P2 meaning, Le/Lc shape, and response format from existing APIs, a specification, or an executed trace.
+- If execution or verification fails because dependencies, credentials, hardware, or simulator state are unavailable, say that verification failed and do not claim the behavior is proven.
+- Avoid writing incident-specific rules tied to one class name, task name, AID, APDU, or template name. Capture the reusable rule, but mention useful package/API names as starting points so future agents know where to look without treating the list as exhaustive.
+
 ## Common Pitfalls & Troubleshooting
 
 | Problem | Cause | Fix |
