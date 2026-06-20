@@ -19,6 +19,14 @@ pluginManagement {
             name = 'githubPages'
             url = uri('https://yuki-js.github.io/cinpo')
         }
+        maven {
+            name = 'javacardPro'
+            url = uri('https://mvn.javacard.pro/maven/')
+        }
+        maven {
+            name = 'javacardProSnapshots'
+            url = uri('https://mvn.javacard.pro/maven/SNAPSHOTS/')
+        }
         gradlePluginPortal()
         mavenCentral()
     }
