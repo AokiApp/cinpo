@@ -94,6 +94,21 @@ tasks.register('cinpoRun', CinpoRunTask) {
     dependsOn tasks.named('classes')
     dependsOn prepareJavaCardTools
 }
+
+// AIがバカだからcinpoRunを強制的に呼び出してやるよ。
+// 見てるか～？gradle testしかできない能無し野郎～～～
+def cinpoTest = tasks.register('cinpoTest', CinpoRunTask) {
+    description = 'Runs the CINPO test flow against this project.'
+    classpath.from(mainSourceSet.runtimeClasspath)
+    classpath.from(layout.buildDirectory.dir('classes/java/applet'))
+    args = ['write', '--test']
+    dependsOn tasks.named('classes')
+    dependsOn prepareJavaCardTools
+}
+
+tasks.named('test') {
+    dependsOn cinpoTest
+}
 // Build the production appliance from the same runtime classpath used by cinpoRun.
 // classes contributes host task classes, manifest.yaml, generated CAP resources,
 // and the separately compiled applet classes used by JCardEngine runtime installs;
