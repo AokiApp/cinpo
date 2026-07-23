@@ -9,9 +9,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import javax.smartcardio.Card;
@@ -69,60 +72,107 @@ public final class JcreSimAdapter {
             return buildCachePath;
         }
 
+        String executableName = Util.simulatorExecutableName();
         Path managedSimulator = Path.of("build").resolve("cinpo-cache").resolve("jcdk")
-                .resolve("simulator").resolve("runtime").resolve("bin").resolve("jcsl");
+                .resolve("simulator").resolve("runtime").resolve("bin").resolve(executableName);
         if (Files.isExecutable(managedSimulator)) {
             return managedSimulator;
         }
 
         throw new IllegalStateException(
-                "Oracle JCRE simulator executable (jcsl) not found. Searched locations:\n" +
+                "Oracle JCRE simulator executable (" + executableName + ") not found. Searched locations:\n" +
                 "  - cinpo.simulator.path=" + (configuredPath == null ? "<unset>" : configuredPath) + "\n" +
-                "  - build/cinpo-cache/jcsl/" + Util.detectOS() + "-" + Util.detectArch() + "/jcsl\n" +
-                "  - build/cinpo-cache/jcdk/simulator/runtime/bin/jcsl\n" +
+                "  - build/cinpo-cache/jcsl/" + Util.detectOS() + "-" + Util.detectArch() + "/" + executableName + "\n" +
+                "  - build/cinpo-cache/jcdk/simulator/runtime/bin/" + executableName + "\n" +
                 "Configure cinpo.simulator.path or prepare the managed JCDK build cache first.");
     }
 
     private static Path extractBundledSimulatorIfPresent() {
         String os = Util.detectOS();
         String arch = Util.detectArch();
+        String executableName = Util.simulatorExecutableName();
         String resourcePrefix = "cinpo-simulator/" + os + "-" + arch + "/";
-        String markerResource = resourcePrefix + "jcsl";
+        String markerResource = resourcePrefix + executableName;
         ClassLoader loader = JcreSimAdapter.class.getClassLoader();
         if (loader.getResource(markerResource) == null) {
             return null;
         }
 
-        Path targetDir = Path.of(System.getProperty("java.io.tmpdir"), "cinpo-simulator", os + "-" + arch);
+        List<String> stagedFiles = new ArrayList<>();
+        stagedFiles.add(executableName);
+        stagedFiles.addAll(Util.simulatorRuntimeLibraryNames());
+
+        Path sharedDir = Path.of(System.getProperty("java.io.tmpdir"), "cinpo-simulator", os + "-" + arch);
         try {
-            Files.createDirectories(targetDir);
-            for (String name : List.of("jcsl", "legacy.so", "libcrypto.so", "libcrypto.so.3", "libssl.so", "libssl.so.3")) {
-                String resource = resourcePrefix + name;
-                try (InputStream in = loader.getResourceAsStream(resource)) {
-                    if (in == null) {
-                        continue;
-                    }
-                    Path target = targetDir.resolve(name);
-                    Files.copy(in, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                    target.toFile().setExecutable(true);
-                }
+            return stageBundledSimulator(loader, resourcePrefix, stagedFiles, sharedDir, executableName);
+        } catch (IOException sharedStagingFailed) {
+            // Windows refuses to replace an executable or DLL that another process still
+            // holds open, so a concurrent or recently finished run can make the shared
+            // location unwritable. Stage into a directory private to this JVM instead.
+            try {
+                Path privateDir = Files.createTempDirectory("cinpo-simulator-");
+                return stageBundledSimulator(loader, resourcePrefix, stagedFiles, privateDir, executableName);
+            } catch (IOException privateStagingFailed) {
+                privateStagingFailed.addSuppressed(sharedStagingFailed);
+                throw new IllegalStateException(
+                        "Failed to extract bundled CINPO simulator runtime", privateStagingFailed);
             }
-            return targetDir.resolve("jcsl");
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to extract bundled CINPO simulator runtime", e);
         }
     }
 
     /**
-     * Find jcsl in the build cache using OS and architecture detection.
+     * Copy the bundled simulator runtime into {@code targetDir}, reusing files that are
+     * already staged there so a locked-but-identical binary does not have to be replaced.
      *
-     * @return path to jcsl in build cache, or null if not found
+     * @return path to the staged simulator executable
+     */
+    private static Path stageBundledSimulator(
+            ClassLoader loader,
+            String resourcePrefix,
+            List<String> stagedFiles,
+            Path targetDir,
+            String executableName) throws IOException {
+        Files.createDirectories(targetDir);
+        for (String name : stagedFiles) {
+            URL resource = loader.getResource(resourcePrefix + name);
+            if (resource == null) {
+                continue;
+            }
+            Path target = targetDir.resolve(name);
+            if (isAlreadyStaged(resource, target)) {
+                continue;
+            }
+            try (InputStream in = resource.openStream()) {
+                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+            target.toFile().setExecutable(true);
+        }
+        return targetDir.resolve(executableName);
+    }
+
+    /**
+     * Decide whether a previously staged file can be reused. The bundled runtime is a
+     * fixed set of Oracle binaries for one kit version, so a size match identifies the
+     * same file and rules out a truncated copy from an interrupted run.
+     */
+    private static boolean isAlreadyStaged(URL resource, Path target) throws IOException {
+        if (!Files.isRegularFile(target)) {
+            return false;
+        }
+        long resourceSize = resource.openConnection().getContentLengthLong();
+        return resourceSize >= 0 && resourceSize == Files.size(target);
+    }
+
+    /**
+     * Find the simulator executable in the build cache using OS and architecture detection.
+     *
+     * @return path to the simulator executable in build cache, or null if not found
      */
     private static Path findJcslInBuildCache() {
         String os = Util.detectOS();
         String arch = Util.detectArch();
         Path buildCache = Path.of("build").resolve("cinpo-cache").resolve("jcsl");
-        return buildCache.resolve(os + "-" + arch).resolve("jcsl");
+        return buildCache.resolve(os + "-" + arch).resolve(Util.simulatorExecutableName());
     }
 
     /**

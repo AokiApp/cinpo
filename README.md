@@ -56,6 +56,23 @@ If you already have a checkout of this repository, you can run the script locall
 bash ./scripts/bootstrap.sh my-project
 ```
 
+On Windows, use [`scripts/bootstrap.ps1`](scripts/bootstrap.ps1). It is a port of the same
+four phases and only requires `git`:
+
+```powershell
+# From a checkout
+powershell -ExecutionPolicy Bypass -File .\scripts\bootstrap.ps1 my-project
+
+# Without cloning
+irm https://AokiApp.github.io/cinpo/bootstrap.ps1 -OutFile bootstrap.ps1
+powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1 my-project
+```
+
+Both scripts accept `--template`/`-Template` and `--name`/`-Name`. The generated project is
+identical either way: the PowerShell version checks the template out with `core.autocrlf=false`
+and marks `gradlew` executable in the Git index, so a project created on Windows still builds
+on Linux.
+
 This creates a standalone starter project that you can customize manually. If you prefer, you can still copy [`template/`](template) yourself. The starter is intentionally small: a single Hello applet plus one provision task that issues and writes a leaf certificate, and one test task that reads it back.
 
 ```

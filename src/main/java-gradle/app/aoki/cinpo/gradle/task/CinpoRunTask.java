@@ -89,6 +89,15 @@ public abstract class CinpoRunTask extends DefaultTask {
         return List.copyOf(normalized);
     }
 
+    /**
+     * Splits a {@code --args} string into CLI tokens using shell-like quoting.
+     *
+     * <p>A backslash escapes only the characters that quoting actually needs: another
+     * backslash, either quote character, and whitespace. Anywhere else it is an ordinary
+     * character, so Windows paths such as {@code C:\Users\me\profile.yaml} survive
+     * verbatim instead of collapsing to {@code C:Usersmeprofile.yaml}. Already-escaped
+     * input ({@code C:\\Users}) still resolves to a single backslash.
+     */
     private static List<String> tokenizeArgs(String argsString) {
         if (argsString == null || argsString.isBlank()) {
             return List.of();
@@ -107,7 +116,7 @@ public abstract class CinpoRunTask extends DefaultTask {
                 escaping = false;
                 continue;
             }
-            if (ch == '\\' && !singleQuoted) {
+            if (ch == '\\' && !singleQuoted && isEscapable(argsString, index + 1)) {
                 escaping = true;
                 continue;
             }
@@ -129,9 +138,6 @@ public abstract class CinpoRunTask extends DefaultTask {
             current.append(ch);
         }
 
-        if (escaping) {
-            current.append('\\');
-        }
         if (singleQuoted || doubleQuoted) {
             throw new IllegalArgumentException("Unclosed quote in --args: " + argsString);
         }
@@ -139,5 +145,17 @@ public abstract class CinpoRunTask extends DefaultTask {
             tokens.add(current.toString());
         }
         return List.copyOf(tokens);
+    }
+
+    /**
+     * Reports whether the character at {@code index} is one a backslash may escape.
+     * A trailing backslash escapes nothing and is therefore literal.
+     */
+    private static boolean isEscapable(String argsString, int index) {
+        if (index >= argsString.length()) {
+            return false;
+        }
+        char next = argsString.charAt(index);
+        return next == '\\' || next == '\'' || next == '"' || Character.isWhitespace(next);
     }
 }

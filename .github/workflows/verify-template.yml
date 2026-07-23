@@ -19,8 +19,8 @@ permissions:
   packages: read
 
 jobs:
-  verify:
-    name: Verify template builds
+  verify-linux:
+    name: Verify template builds (Linux)
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -53,25 +53,85 @@ jobs:
           VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
 
       - name: Create project from template
-        run: ./scripts/bootstrap.sh /tmp/cinpo-verify-project
+        run: ./scripts/bootstrap.sh "${{ runner.temp }}/cinpo-verify-project"
 
       - name: Prepare vendor files
-        run: cp -a vendor /tmp/cinpo-verify-project/vendor
+        run: cp -a vendor "${{ runner.temp }}/cinpo-verify-project/vendor"
 
       - name: Verify cinpoRun
-        working-directory: /tmp/cinpo-verify-project
+        working-directory: ${{ runner.temp }}/cinpo-verify-project
         run: ./gradlew --no-daemon --refresh-dependencies cinpoRun --args='--debug --test'
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: Build cinpoJar
-        working-directory: /tmp/cinpo-verify-project
+        working-directory: ${{ runner.temp }}/cinpo-verify-project
         run: ./gradlew --no-daemon cinpoJar
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: Verify cinpoJar appliance
-        working-directory: /tmp/cinpo-verify-project
+        working-directory: ${{ runner.temp }}/cinpo-verify-project
         run: java -jar build/libs/cinpo-appliance.jar write --test
+
+  verify-windows:
+    name: Verify template builds (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Configure GitHub auth for standalone template fetches
+        run: git config --global url."https://x-access-token:$env:GH_TOKEN@github.com/".insteadOf "https://github.com/"
+        env:
+          GH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+      # No chmod: Windows has no POSIX execute bit, and gradlew.bat needs none.
+      - name: Extract vendor archives
+        run: .\scripts\extract_vendor.ps1
+        env:
+          VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
+
+      - name: Create project from template
+        run: .\scripts\bootstrap.ps1 "${{ runner.temp }}\cinpo-verify-project"
+
+      - name: Prepare vendor files
+        run: Copy-Item -Recurse -Force vendor "${{ runner.temp }}\cinpo-verify-project\vendor"
+
+      # The backslash Windows path in --profile also exercises the CinpoRunTask
+      # argument tokenizer, which used to collapse "C:\Users\..." to "C:Users...".
+      - name: Verify cinpoRun
+        working-directory: ${{ runner.temp }}\cinpo-verify-project
+        run: .\gradlew.bat --no-daemon --refresh-dependencies cinpoRun --args="--debug --profile=${{ runner.temp }}\cinpo-verify-project\profile\jcdksim.yaml --test"
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+      - name: Build cinpoJar
+        working-directory: ${{ runner.temp }}\cinpo-verify-project
+        run: .\gradlew.bat --no-daemon cinpoJar
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+      - name: Verify cinpoJar appliance
+        working-directory: ${{ runner.temp }}\cinpo-verify-project
+        run: java -jar build\libs\cinpo-appliance.jar write --test
