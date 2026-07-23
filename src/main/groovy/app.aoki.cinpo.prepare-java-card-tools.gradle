@@ -255,6 +255,22 @@ tasks.register('prepareJavaCardTools') {
         }
 
         filterToolsJarToTargetApi()
+
+        // Keep Oracle-owned API export files in the consumer project's vendor
+        // cache. They used to be found only because tools.jar was flattened into
+        // the published CINPO plugin jar. Once tools.jar is loaded externally,
+        // provide the converter with the same exports as ordinary filesystem
+        // inputs without copying them into any Maven publication.
+        String targetApiVersion = targetApiVersionFromManifest()
+        if (targetApiVersion != null) {
+            copy {
+                from(zipTree(extractedJavaCardToolsJar.get().asFile)) {
+                    include "api_export_files_${targetApiVersion}/**"
+                }
+                into extractedJavaCardToolsDir.get().dir('tools/lib')
+            }
+        }
+
         verifyExtractedJavaCardFiles()
         configureJcslForJcdkSim()
         verifyConfiguredJcsl()

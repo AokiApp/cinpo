@@ -98,6 +98,27 @@ public final class CinpoConverterLogic {
     /** Runs the compact converter phase without Main, ConverterHarness or OptionParser. */
     public static Converter convertCompact(ConversionProfile profile) throws ConverterException, IOException {
         Converter converter = new Converter(profile, new Hashtable<String, File>());
+
+        // Oracle's embedded API-export resource lookup is tied to the jar that
+        // defines its converter classes. CINPO deliberately keeps that jar in the
+        // consumer's vendor cache instead of flattening it into the Maven plugin,
+        // so preload the extracted EXP files explicitly. This also makes AID-based
+        // imports available before package-name resolution occurs.
+        for (Path exportRoot : profile.export_path) {
+            if (!Files.isDirectory(exportRoot)) {
+                continue;
+            }
+            try (Stream<Path> stream = Files.walk(exportRoot)) {
+                for (Path exportFile : stream
+                        .filter(Files::isRegularFile)
+                        .filter(path -> path.getFileName().toString().endsWith(".exp"))
+                        .sorted()
+                        .toList()) {
+                    converter.getExportFileManager().buildExportFile(exportFile.toFile(), exportFile.toString());
+                }
+            }
+        }
+
         converter.convert(0, null, 0);
         return converter;
     }

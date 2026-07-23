@@ -83,16 +83,10 @@ jar {
     archiveVersion = project.version
     from sourceSets.main.output
 
-    // This is the Gradle plugin/build-time artifact. It intentionally contains the
-    // CAP generation bridge and Oracle converter classes so the plugin can run
-    // generateCap without asking template projects to expose Oracle tools on the
-    // plugin classloader. Do not publish this artifact as app.aoki.cinpo:cinpo;
-    // template runtime classpaths consume runtimeJar below instead.
-    dependsOn prepareJavaCardTools
-    from({ zipTree(extractedJavaCardToolsJar.get().asFile) }) {
-        exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
-        exclude 'META-INF/services/**'
-    }
+    // Oracle Java Card tools are deliberately not embedded in this published
+    // plugin artifact. Consumer projects supply their licensed tools.jar through
+    // vendor/, and the CAP build service adds that file to the live Gradle plugin
+    // classloader immediately before invoking the com.sun.javacard.cinpo bridge.
 }
 
 def runtimeJar = tasks.register('runtimeJar', Jar) {
