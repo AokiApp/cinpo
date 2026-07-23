@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly GITHUB_PACKAGES_REPOSITORY_URL="${GITHUB_PACKAGES_REPOSITORY_URL:-https://maven.pkg.github.com/yuki-js/cinpo}"
+readonly GITHUB_PACKAGES_REPOSITORY_URL="${GITHUB_PACKAGES_REPOSITORY_URL:-https://maven.pkg.github.com/AokiApp/cinpo}"
 readonly PROJECT_VERSION="${PROJECT_VERSION:-$(./gradlew -q properties | sed -n 's/^version: //p' | tail -n 1)}"
 
 if [[ -z "${GITHUB_ACTOR:-}" ]]; then

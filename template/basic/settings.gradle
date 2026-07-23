@@ -8,7 +8,7 @@ pluginManagement {
         if (githubPackagesUser.isPresent() && githubPackagesKey.isPresent()) {
             maven {
                 name = 'githubPackages'
-                url = uri('https://maven.pkg.github.com/yuki-js/cinpo')
+                url = uri('https://maven.pkg.github.com/AokiApp/cinpo')
                 credentials {
                     username = githubPackagesUser.get()
                     password = githubPackagesKey.get()
@@ -17,7 +17,7 @@ pluginManagement {
         }
         maven {
             name = 'githubPages'
-            url = uri('https://yuki-js.github.io/cinpo')
+            url = uri('https://AokiApp.github.io/cinpo')
         }
         maven {
             name = 'javacardPro'

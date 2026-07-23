@@ -19,7 +19,7 @@ repositories {
     if (hasGithubPackagesCredentials) {
         maven {
             name = 'githubPackages'
-            url = uri('https://maven.pkg.github.com/yuki-js/cinpo')
+            url = uri('https://maven.pkg.github.com/AokiApp/cinpo')
             credentials {
                 username = githubPackagesUser.get()
                 password = githubPackagesKey.get()
@@ -28,7 +28,7 @@ repositories {
     }
     maven {
         name = 'githubPages'
-        url = uri('https://yuki-js.github.io/cinpo')
+        url = uri('https://AokiApp.github.io/cinpo')
     }
     mavenCentral()
 }

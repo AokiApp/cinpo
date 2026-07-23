@@ -195,7 +195,7 @@ publishing {
     repositories {
         maven {
             name = 'githubPackages'
-            url = uri('https://maven.pkg.github.com/yuki-js/cinpo')
+            url = uri('https://maven.pkg.github.com/AokiApp/cinpo')
             credentials {
                 username = providers.gradleProperty('gpr.user')
                         .orElse(providers.environmentVariable('GITHUB_ACTOR'))

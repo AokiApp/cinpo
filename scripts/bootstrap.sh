@@ -147,7 +147,7 @@ usage() {
   printf >&2 '  When run from a CINPO Git checkout, the script fetches the template from the\n'
   printf >&2 '  current origin/HEAD commit so the generated project matches that checked-out\n'
   printf >&2 '  revision. Otherwise it defaults to:\n'
-  printf >&2 '    repo: https://github.com/yuki-js/cinpo\n'
+  printf >&2 '    repo: https://github.com/AokiApp/cinpo\n'
   printf >&2 '    ref:  main\n\n'
   printf >&2 '%sEnvironment overrides:%s\n' "${_BOLD}" "${_RESET}"
   printf >&2 '  %sCINPO_TEMPLATE_REPO%s  Git repository URL used when auto-detection is unavailable.\n' \
@@ -318,7 +318,7 @@ if [[ -n "${script_path}" ]]; then
   script_dir="$(cd -- "$(dirname -- "${script_path}")" >/dev/null 2>&1 && pwd || true)"
 fi
 
-default_repo="https://github.com/yuki-js/cinpo"
+default_repo="https://github.com/AokiApp/cinpo"
 default_ref="main"
 
 if [[ -z "${CINPO_TEMPLATE_REPO:-}" || -z "${CINPO_TEMPLATE_REF:-}" ]]; then
