@@ -65,6 +65,19 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
 }
 
+tasks.named('processResources') {
+    from('LICENSE.md') {
+        into 'META-INF/cinpo'
+        rename { 'CINPO-LICENSE.md' }
+    }
+    from('THIRD_PARTY_NOTICES.md') {
+        into 'META-INF/cinpo'
+    }
+    from('third-party/licenses') {
+        into 'META-INF/cinpo/third-party/globalplatformpro'
+    }
+}
+
 jar {
     archiveBaseName = 'cinpo-framework'
     archiveVersion = project.version
