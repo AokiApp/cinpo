@@ -1,5 +1,6 @@
 package app.aoki.cinpo.runtime.jcresim;
 
+import app.aoki.cinpo.util.Util;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -67,6 +68,14 @@ final class SimulatorProcess implements AutoCloseable {
      * </ol>
      */
     void ensureReady() {
+        if (process != null && process.isAlive()) {
+            // Reconnecting to the simulator this instance started, for example after
+            // reset() dropped the card session. Ownership must survive that, or close()
+            // would leave the simulator running.
+            waitForSimulatorReady();
+            return;
+        }
+
         if (isSimulatorReachable()) {
             ownsProcess = false;
             return;
@@ -128,7 +137,7 @@ final class SimulatorProcess implements AutoCloseable {
         Path executableParent = executable.toAbsolutePath().getParent();
         if (executableParent != null) {
             processBuilder.directory(executableParent.toFile());
-            prependLdLibraryPath(processBuilder.environment(), executableParent);
+            prependNativeLibraryPath(processBuilder.environment(), executableParent);
         }
         processBuilder.redirectInput(ProcessBuilder.Redirect.PIPE);
         // Merge stderr → stdout so we capture everything jcsl emits
@@ -137,13 +146,21 @@ final class SimulatorProcess implements AutoCloseable {
         return processBuilder;
     }
 
-    private static void prependLdLibraryPath(Map<String, String> environment, Path libraryDirectory) {
+    /**
+     * Point the simulator process at the shared libraries shipped next to its executable.
+     * Windows resolves DLLs through {@code PATH} (semicolon separated); ELF platforms use
+     * {@code LD_LIBRARY_PATH} (colon separated).
+     */
+    static void prependNativeLibraryPath(Map<String, String> environment, Path libraryDirectory) {
+        boolean windows = Util.isWindows();
+        String variable = windows ? "PATH" : "LD_LIBRARY_PATH";
+        String separator = windows ? ";" : ":";
         String libPath = libraryDirectory.toAbsolutePath().toString();
-        String existing = environment.get("LD_LIBRARY_PATH");
+        String existing = environment.get(variable);
         if (existing != null && !existing.isBlank()) {
-            environment.put("LD_LIBRARY_PATH", libPath + ":" + existing);
+            environment.put(variable, libPath + separator + existing);
         } else {
-            environment.put("LD_LIBRARY_PATH", libPath);
+            environment.put(variable, libPath);
         }
     }
 

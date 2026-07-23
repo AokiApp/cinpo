@@ -5,13 +5,19 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import app.aoki.cinpo.util.Util;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 
 final class SimulatorProcessTest {
 
+    // The fixture is a /bin/sh script that stays alive; there is no equally simple
+    // long-running batch equivalent, so the teardown path is covered on POSIX only.
+    @DisabledOnOs(OS.WINDOWS)
     @Test
     void startupTimeoutStopsOwnedProcess() throws Exception {
         Path runtimeDir = Files.createTempDirectory("cinpo-jcsl-timeout");
@@ -35,18 +41,22 @@ final class SimulatorProcessTest {
     }
 
     @Test
-    void processBuilderPrependsSimulatorDirectoryToLdLibraryPath() throws Exception {
+    void processBuilderPrependsSimulatorDirectoryToNativeLibraryPath() throws Exception {
         Path runtimeDir = Files.createTempDirectory("cinpo-jcsl-runtime");
-        Path executable = runtimeDir.resolve("jcsl");
+        Path executable = runtimeDir.resolve(Util.simulatorExecutableName());
         Files.writeString(executable, "#!/bin/sh\nexit 0\n");
+
+        boolean windows = Util.isWindows();
+        String variable = windows ? "PATH" : "LD_LIBRARY_PATH";
+        String separator = windows ? ";" : ":";
 
         SimulatorProcess simulatorProcess = new SimulatorProcess(executable);
         ProcessBuilder builder = simulatorProcess.createSimulatorProcessBuilder(12345);
         Map<String, String> environment = builder.environment();
-        String ldLibraryPath = environment.get("LD_LIBRARY_PATH");
+        String libraryPath = environment.get(variable);
 
-        assertTrue(ldLibraryPath != null && !ldLibraryPath.isBlank(), "LD_LIBRARY_PATH should be configured");
-        assertEquals(runtimeDir.toAbsolutePath().toString(), ldLibraryPath.split(":", 2)[0]);
+        assertTrue(libraryPath != null && !libraryPath.isBlank(), variable + " should be configured");
+        assertEquals(runtimeDir.toAbsolutePath().toString(), libraryPath.split(separator, 2)[0]);
         assertEquals(runtimeDir.toFile(), builder.directory());
     }
 }

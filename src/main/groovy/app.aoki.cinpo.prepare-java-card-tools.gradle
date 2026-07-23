@@ -34,14 +34,37 @@ def detectCinpoArch = {
     return archName.replaceAll('[^a-z0-9]+', '-')
 }
 
+// Oracle ships one simulator archive per host OS. They unpack to the same internal
+// layout, but the archive format and the runtime binary name differ, so both the
+// vendor file to read and the executable to configure are selected per OS.
+def SIMULATOR_ARCHIVES = [
+        'linux'  : 'java_card_devkit_simulator-linux-bin-v26.0-b_788-05-MAY-2026.tar.gz',
+        'windows': 'java_card_devkit_simulator-win-bin-v26.0-b_788-05-MAY-2026.zip'
+]
+
+def SIMULATOR_EXECUTABLES = [
+        'linux'  : 'jcsl',
+        'windows': 'jcsw.exe'
+]
+
+def cinpoOs = detectCinpoOs()
+
+def simulatorArchiveName = SIMULATOR_ARCHIVES[cinpoOs]
+if (simulatorArchiveName == null) {
+    throw new GradleException(
+            "No Oracle Java Card simulator archive is known for OS '${cinpoOs}'. " +
+                    "Supported: ${SIMULATOR_ARCHIVES.keySet().join(', ')}.")
+}
+
 ext.javaCardToolsArchive = layout.projectDirectory.file('vendor/java_card_devkit_tools-bin-v26.0-b_705-04-MAY-2026.zip')
-ext.javaCardSimulatorArchive = layout.projectDirectory.file('vendor/java_card_devkit_simulator-linux-bin-v26.0-b_788-05-MAY-2026.tar.gz')
+ext.javaCardSimulatorArchive = layout.projectDirectory.file("vendor/${simulatorArchiveName}")
+ext.javaCardSimulatorExecutableName = SIMULATOR_EXECUTABLES[cinpoOs]
 ext.extractedJavaCardToolsDir = layout.buildDirectory.dir('cinpo-cache/jcdk')
-ext.configuredJcslDir = layout.buildDirectory.dir("cinpo-cache/jcsl/${detectCinpoOs()}-${detectCinpoArch()}")
+ext.configuredJcslDir = layout.buildDirectory.dir("cinpo-cache/jcsl/${cinpoOs}-${detectCinpoArch()}")
 ext.extractedJavaCardToolsJar = extractedJavaCardToolsDir.map { it.file('tools/lib/tools.jar') }
 ext.extractedJavaCardSocketProviderJar = extractedJavaCardToolsDir.map { it.file('simulator/client/COMService/socketprovider.jar') }
 ext.extractedJavaCardConfiguratorJar = extractedJavaCardToolsDir.map { it.file('simulator/tools/Configurator.jar') }
-ext.configuredJcsl = configuredJcslDir.map { it.file('jcsl') }
+ext.configuredJcsl = configuredJcslDir.map { it.file(javaCardSimulatorExecutableName) }
 
 def targetApiVersionFromManifest = {
     File manifestFile = layout.projectDirectory.file('manifest.yaml').asFile
@@ -132,10 +155,17 @@ def filterToolsJarToTargetApi = {
 
 def verifyDownloadedVendorFiles = {
     def vendorDir = file('vendor')
-    def requiredVendorFiles = [
+    // Only the simulator archive for the current OS is required; the others may be
+    // absent from vendor/ on a host that never runs them.
+    def vendorChecksums = [
         'java_card_devkit_simulator-linux-bin-v26.0-b_788-05-MAY-2026.tar.gz': 'b8b999c3e1cfac5d56f7ef16654ce28c99cf472d96761d419a03ddf11f5811c0',
+        'java_card_devkit_simulator-win-bin-v26.0-b_788-05-MAY-2026.zip': '5ab2efc69486989bcd73d0ed235f4f8348e82df262448fbc781dabd1bcb9b9c5',
         'java_card_devkit_tools-bin-v26.0-b_705-04-MAY-2026.zip': '86443cb1b64c006456e524d91082ba25d5ebb0ee5506c6e4d7088350ce251d9d'
     ]
+    def requiredVendorFiles = [
+        javaCardSimulatorArchive.asFile.name,
+        javaCardToolsArchive.asFile.name
+    ].collectEntries { [(it): vendorChecksums[it]] }
 
     def computeSHA256 = { File file ->
         def digest = java.security.MessageDigest.getInstance('SHA-256')
@@ -159,6 +189,12 @@ def verifyDownloadedVendorFiles = {
             throw new GradleException("Checksum verification failed for '${fileName}'. Expected: ${expectedChecksum}, Actual: ${actualChecksum}. Please re-download the file and ensure it is not corrupted.")
         }
     }
+}
+
+def simulatorArchiveTree = {
+    File archive = javaCardSimulatorArchive.asFile
+    // The Linux kit is a gzipped tarball, the Windows kit a plain zip.
+    return archive.name.endsWith('.zip') ? zipTree(archive) : tarTree(resources.gzip(archive))
 }
 
 def verifyExtractedJavaCardFiles = {
@@ -197,8 +233,9 @@ def configureJcslForJcdkSim = {
 
     configuredJcslFile.setExecutable(true)
 
+    String javaLauncher = cinpoOs == 'windows' ? 'bin/java.exe' : 'bin/java'
     List<String> command = [
-            new File(System.getProperty('java.home'), 'bin/java').absolutePath,
+            new File(System.getProperty('java.home'), javaLauncher).absolutePath,
             '-jar', configuratorJar.absolutePath,
             '-binary', configuredJcslFile.absolutePath,
             '-force',
@@ -224,8 +261,11 @@ def configureJcslForJcdkSim = {
 }
 
 def verifyConfiguredJcsl = {
-    if (!configuredJcsl.get().asFile.canExecute()) {
-        throw new GradleException("Expected configured Java Card simulator executable was not found or is not executable: ${configuredJcsl.get().asFile}")
+    File configuredJcslFile = configuredJcsl.get().asFile
+    // Windows has no POSIX execute bit; a .exe on disk is all that can be asserted there.
+    boolean usable = cinpoOs == 'windows' ? configuredJcslFile.isFile() : configuredJcslFile.canExecute()
+    if (!usable) {
+        throw new GradleException("Expected configured Java Card simulator executable was not found or is not executable: ${configuredJcslFile}")
     }
 }
 
@@ -245,7 +285,7 @@ tasks.register('prepareJavaCardTools') {
                 include "lib/${apiClassicJarName}"
                 into 'tools'
             }
-            from(tarTree(resources.gzip(javaCardSimulatorArchive.asFile))) {
+            from(simulatorArchiveTree()) {
                 include 'client/COMService/socketprovider.jar'
                 include 'runtime/bin/**'
                 include 'tools/Configurator.jar'
