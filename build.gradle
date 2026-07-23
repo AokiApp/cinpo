@@ -199,6 +199,26 @@ publishing {
             }
         }
     }
+    publications.withType(MavenPublication).configureEach {
+        pom {
+            name = "CINPO ${artifactId}"
+            description = 'Source-available Java Card applet installation and provisioning framework.'
+            url = 'https://github.com/AokiApp/cinpo'
+            licenses {
+                license {
+                    name = 'AokiApp Normative Application License - Tight 1.0.1'
+                    url = 'https://github.com/AokiApp/cinpo/blob/main/LICENSE.md'
+                    distribution = 'manual'
+                    comments = 'Source-available license; this is not an OSI-approved open-source license.'
+                }
+            }
+            scm {
+                connection = 'scm:git:https://github.com/AokiApp/cinpo.git'
+                developerConnection = 'scm:git:ssh://git@github.com/AokiApp/cinpo.git'
+                url = 'https://github.com/AokiApp/cinpo'
+            }
+        }
+    }
     repositories {
         maven {
             name = 'githubPackages'

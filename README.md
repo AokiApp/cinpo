@@ -385,3 +385,11 @@ The application flows consume the published CINPO artifacts, generate CAP resour
 |-----------|----------|-------|
 | `scp03` | 16 or 32 bytes | Recommended. AES-based. |
 | `scp02` | 16 bytes | Legacy 3DES-based. C-MAC only. |
+
+
+## License
+
+CINPO is source-available, not open source. It is provided under the
+[AokiApp Normative Application License - Tight](LICENSE.md). Review that license before using,
+modifying, or distributing the software. Third-party components remain subject to their own terms;
+see [Third-Party Notices](THIRD_PARTY_NOTICES.md).

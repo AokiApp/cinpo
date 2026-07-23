@@ -4,6 +4,12 @@ CINPO distributions and CINPO appliance fat JARs may contain third-party softwar
 components are licensed by their respective copyright holders under their own terms and are not
 covered by the AokiApp Normative Application License - Tight.
 
+## Gradle Wrapper
+
+The Gradle Wrapper scripts and wrapper JAR are provided by the Gradle project under the
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). Copyright © the original Gradle
+authors and contributors.
+
 ## GlobalPlatformPro
 
 - Component: GlobalPlatformPro library
