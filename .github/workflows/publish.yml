@@ -57,9 +57,11 @@ jobs:
         if: github.ref_name == github.event.repository.default_branch
         run: ./gradlew publishAllPublicationsToStagingRepository
 
-      - name: Add bootstrap.sh to GitHub Pages artifact
+      - name: Add bootstrap scripts to GitHub Pages artifact
         if: github.ref_name == github.event.repository.default_branch
-        run: cp ./scripts/bootstrap.sh ./build/staging-maven-repository/bootstrap.sh
+        run: |
+          cp ./scripts/bootstrap.sh ./build/staging-maven-repository/bootstrap.sh
+          cp ./scripts/bootstrap.ps1 ./build/staging-maven-repository/bootstrap.ps1
 
       - name: Upload GitHub Pages artifact
         if: github.ref_name == github.event.repository.default_branch
