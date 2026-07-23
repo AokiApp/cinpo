@@ -31,6 +31,7 @@ final class SimulatorProcess implements AutoCloseable {
     private static final long SHUTDOWN_TIMEOUT_MILLIS = 2_000L;
 
     private final Path executable;
+    private final long startupTimeoutMillis;
     private Process process;
     private boolean ownsProcess;
     private Integer port;
@@ -43,7 +44,15 @@ final class SimulatorProcess implements AutoCloseable {
      * @param executable path to the jcsl executable
      */
     SimulatorProcess(Path executable) {
+        this(executable, STARTUP_TIMEOUT_MILLIS);
+    }
+
+    SimulatorProcess(Path executable, long startupTimeoutMillis) {
         this.executable = Objects.requireNonNull(executable);
+        if (startupTimeoutMillis <= 0) {
+            throw new IllegalArgumentException("startupTimeoutMillis must be positive");
+        }
+        this.startupTimeoutMillis = startupTimeoutMillis;
     }
 
     /**
@@ -72,7 +81,12 @@ final class SimulatorProcess implements AutoCloseable {
             ownsProcess = true;
         }
 
-        waitForSimulatorReady();
+        try {
+            waitForSimulatorReady();
+        } catch (RuntimeException | Error startupFailure) {
+            stopOwnedSimulator();
+            throw startupFailure;
+        }
     }
 
     /**
@@ -134,7 +148,7 @@ final class SimulatorProcess implements AutoCloseable {
     }
 
     private void waitForSimulatorReady() {
-        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(STARTUP_TIMEOUT_MILLIS);
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(startupTimeoutMillis);
         while (System.nanoTime() < deadline) {
             if (isSimulatorReachable()) {
                 return;
@@ -154,7 +168,7 @@ final class SimulatorProcess implements AutoCloseable {
         }
 
         String stderr = stderrCapture.toString(StandardCharsets.UTF_8).strip();
-        String msg = "Oracle JCRE simulator did not become ready within " + STARTUP_TIMEOUT_MILLIS + " ms.";
+        String msg = "Oracle JCRE simulator did not become ready within " + startupTimeoutMillis + " ms.";
         if (!stderr.isEmpty()) {
             msg += "\nstderr (so far):\n" + stderr;
         }

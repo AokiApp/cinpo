@@ -1,6 +1,8 @@
 package app.aoki.cinpo.runtime.jcresim;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -9,6 +11,28 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 final class SimulatorProcessTest {
+
+    @Test
+    void startupTimeoutStopsOwnedProcess() throws Exception {
+        Path runtimeDir = Files.createTempDirectory("cinpo-jcsl-timeout");
+        Path pidFile = runtimeDir.resolve("jcsl.pid");
+        Path executable = runtimeDir.resolve("jcsl");
+        Files.writeString(executable, "#!/bin/sh\necho $$ > '" + pidFile + "'\nexec sleep 30\n");
+        assertTrue(executable.toFile().setExecutable(true));
+
+        SimulatorProcess simulatorProcess = new SimulatorProcess(executable, 250L);
+
+        IllegalStateException failure = assertThrows(
+                IllegalStateException.class,
+                simulatorProcess::ensureReady);
+        assertTrue(failure.getMessage().contains("did not become ready"));
+
+        long pid = Long.parseLong(Files.readString(pidFile).trim());
+        assertFalse(ProcessHandle.of(pid).map(ProcessHandle::isAlive).orElse(false),
+                "timed-out simulator process should be stopped");
+        assertThrows(IllegalStateException.class, simulatorProcess::getPort,
+                "failed startup should reset allocated process state");
+    }
 
     @Test
     void processBuilderPrependsSimulatorDirectoryToLdLibraryPath() throws Exception {
