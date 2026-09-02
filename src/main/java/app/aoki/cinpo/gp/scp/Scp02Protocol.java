@@ -81,6 +81,20 @@ final class Scp02Protocol implements InternalSecureChannelProtocol {
         validateStaticConfiguration();
     }
 
+    /**
+     * Performs SCP02 authentication and initializes secure-messaging state.
+     *
+     * <p><strong>Precondition:</strong> the card's Security Domain identified by
+     * {@link SecureChannelProfile#securityDomainAid()} must already be selected before calling
+     * this method. Callers are responsible for issuing the plain SELECT command.
+     *
+     * <p>The flow starts by discovering implementation options, then performs explicit
+     * (INITIALIZE UPDATE + EXTERNAL AUTHENTICATE) or implicit initiation depending on the card
+     * configuration.
+     *
+     * @param channel the raw APDU transport channel
+     * @throws IllegalStateException if SCP02 setup or cryptographic checks fail
+     */
     @Override
     public void authenticate(ApduChannel channel) {
         try {

@@ -82,10 +82,12 @@ public final class SecureChannelSession implements AutoCloseable {
     /**
      * Performs explicit Secure Channel initiation ([GPCS] §10.2.1).
      *
+     * <p><strong>Precondition:</strong> the card's Security Domain identified by
+     * {@link SecureChannelProfile#securityDomainAid()} must already be selected before calling
+     * this method. Callers are responsible for issuing the plain SELECT command.
+     *
      * <p>The following sequence is executed:
      * <ol>
-     *   <li><b>SELECT</b> – selects the Security Domain identified by
-     *       {@link SecureChannelProfile#securityDomainAid()}.</li>
      *   <li><b>INITIALIZE UPDATE</b> ([Amd D] §7.1.1) – transmits the 8-byte host challenge
      *       to the card and receives key diversification data, the card challenge, and the
      *       card cryptogram.  Session keys are derived from the static key set.</li>

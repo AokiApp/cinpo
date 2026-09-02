@@ -124,10 +124,12 @@ final class Scp03Protocol implements InternalSecureChannelProtocol {
     /**
      * Performs SCP03 mutual authentication with the card (Figure 5-1, [Amd D] §5.2).
      *
+     * <p><strong>Precondition:</strong> the card's Security Domain identified by
+     * {@link SecureChannelProfile#securityDomainAid()} must already be selected before calling
+     * this method. Callers are responsible for issuing the plain SELECT command.
+     *
      * <p>The authentication flow consists of the following steps:
      * <ol>
-     *   <li><b>SELECT</b> – selects the Security Domain identified by
-     *       {@link SecureChannelProfile#securityDomainAid()}.</li>
      *   <li><b>INITIALIZE UPDATE</b> ([Amd D] §7.1.1) – sends the 8-byte host challenge to
      *       the card. The card generates its own card challenge, derives session keys, and
      *       returns its card cryptogram along with the SCP identifier and the "i" parameter.</li>
