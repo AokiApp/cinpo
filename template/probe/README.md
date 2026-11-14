@@ -2,7 +2,7 @@
 
 This is a CINPO starter project for probing card/runtime behavior.
 
-To create a new project from the repository root, run [`bash ./scripts/bootstrap.sh --template probe <destination-directory>`](../../scripts/bootstrap.sh:1). The copied project automatically sets [`rootProject.name`](settings.gradle:27) from the destination directory name, while leaving the other sample identifiers unchanged so you can rename packages, classes, AIDs, and Gradle coordinates yourself.
+To create a new project from the repository root, run [`bash ./scripts/bootstrap.sh --template probe <destination-directory>`](../../scripts/bootstrap.sh:1). The copied project automatically sets [`rootProject.name`](settings.gradle) from the destination directory name, while leaving the other sample identifiers unchanged so you can rename packages, classes, AIDs, and Gradle coordinates yourself.
 
 It contains:
 
