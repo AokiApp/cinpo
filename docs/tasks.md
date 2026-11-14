@@ -418,6 +418,5 @@ Run it with:
 ## Where to look next
 
 - Compilable examples in the templates: `template/basic/host/provision/HelloProvision.java`, `template/basic/host/test/HelloTest.java`, `template/probe/host/probe/ProbeTask.java`.
-- Status words and troubleshooting: `template/basic/AGENTS.md` ("Common Pitfalls & Troubleshooting") and the applet-side rules in the same file.
 - [Profiles](profiles.md) — `jcresim` (simulator) and `pcsc` (real card reader), `scp02` vs `scp03`.
 - Framework changes are verified end-to-end by `.github/workflows/verify-template.yml` (bootstrap a template project into a temp directory, install the applet, run `--test`).

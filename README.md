@@ -193,8 +193,6 @@ java -jar build/libs/cinpo-appliance.jar write --profile mycard -- --record cust
 | `authenticated` | An example applet using the GlobalPlatform on-card API through a companion bundle. |
 | `probe` | A card-probing template (Maguro applet and a `probe` task kind) that selects an application and reads its card data. |
 
-See `template/<name>/README.md` for the details of each starter.
-
 ## Writing Tasks
 
 A task is a small Java program that runs on the host side of the APDU link, against the simulator or a physical card. Tasks turn "the applet is installed" into actual card state.
