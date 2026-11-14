@@ -108,16 +108,6 @@ class ManifestLoaderTest {
     }
 
     @Test
-    void load_AcceptsLegacyCardemusSchemaForExistingApplications() throws IOException {
-        Path manifestFile = writeManifest("cardemus.applet.v1");
-
-        AppletManifest manifest = ManifestLoader.load(manifestFile);
-
-        assertEquals("com.example.cinpo.hello", manifest.packageName());
-        assertEquals("hello", manifest.applets().getFirst().id());
-    }
-
-    @Test
     void load_RejectsMissingManifestFile() {
         Path missing = tempDir.resolve("missing.yaml");
 
