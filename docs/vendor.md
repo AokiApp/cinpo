@@ -54,6 +54,18 @@ unzip -o vendor/globalplatform/org.globalplatform-1.5/gpapi-globalplatform.jar \
   -d vendor/globalplatform/org.globalplatform-1.5/exports
 ```
 
+On Windows, `tar` (bsdtar) can read the jar directly:
+
+```powershell
+New-Item -ItemType Directory -Force vendor\globalplatform\org.globalplatform-1.5\exports | Out-Null
+Invoke-WebRequest `
+  https://mvn.javacard.pro/maven/org/globalplatform/javacard/1.5/javacard-1.5.jar `
+  -OutFile vendor\globalplatform\org.globalplatform-1.5\gpapi-globalplatform.jar
+tar -xf vendor\globalplatform\org.globalplatform-1.5\gpapi-globalplatform.jar `
+  -C vendor\globalplatform\org.globalplatform-1.5\exports `
+  org/globalplatform/javacard/globalplatform.exp
+```
+
 The result is:
 
 ```
@@ -65,7 +77,7 @@ vendor/globalplatform/org.globalplatform-1.5/
 
 Notes:
 
-- This template uses GlobalPlatform API 1.5, which was the newest release on `mvn.javacard.pro` when the template was written. The Oracle JCDK does not contain it, and it is not in `vendor.zip`.
+- The GlobalPlatform Card API is not part of the Oracle JCDK and is not in `vendor.zip`. Version 1.5 was the newest release on `mvn.javacard.pro` when this guide was written; check the repository before changing the version.
 - The `id`, `jar`, and `exports` values must all name the same staged version. If you upgrade, change the manifest and the staging path together, and check that the version exists before writing the path.
 - The converter may warn that the GlobalPlatform 1.5 `.exp` uses an older export file format. That warning is expected; a missing `.exp` is not.
 - A missing bundle fails the build with `Companion bundle '<id>' jar file does not exist` or `... exports directory does not exist`. Treat that as a staging error, not an applet error.
