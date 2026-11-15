@@ -25,9 +25,9 @@ package:
   version: "1.0"
 
 companionBundles:
-  - id: globalplatform-1.6
-    jar: vendor/globalplatform/org.globalplatform-1.6/gpapi-globalplatform.jar
-    exports: vendor/globalplatform/org.globalplatform-1.6/exports
+  - id: globalplatform-1.5
+    jar: vendor/globalplatform/org.globalplatform-1.5/gpapi-globalplatform.jar
+    exports: vendor/globalplatform/org.globalplatform-1.5/exports
 
 applets:
   - id: hello
@@ -115,7 +115,7 @@ package AID (Executable Load File AID)
 ## Where to look next
 
 - Guide walkthrough: [`../README.md#3-define-your-manifest`](../README.md#3-define-your-manifest)
-- Compilable manifests: `template/basic/manifest.yaml` (no bundle) and `template/authenticated/manifest.yaml` (`id: globalplatform-1.6` companion bundle)
+- Compilable manifests: `template/basic/manifest.yaml` (no bundle) and `template/authenticated/manifest.yaml` (`id: globalplatform-1.5` companion bundle; staging is described in [vendor.md](vendor.md#companion-bundles))
 - [tasks.md](tasks.md) — host-side tasks that consume the manifest
 - [vendor.md](vendor.md) — JCDK and companion bundle artifact sources
 - [profiles.md](profiles.md) — simulator and physical card profiles
