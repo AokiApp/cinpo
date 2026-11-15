@@ -76,6 +76,17 @@ java -jar cinpo-appliance.jar write --profile mycard
 
 The templates ship `profile/jcdksim.yaml` with public test keys, which is safe to commit. Real SCP keys are not. The templates do not gitignore `profile/`, so if you add a profile with real keys (for example `mycard.yaml`), gitignore that file yourself or keep it outside the repository and pass its path: `--profile /path/to/mycard.yaml` (absolute paths are used as-is).
 
+## Using a physical card
+
+`runtime: pcsc` uses the host's PC/SC stack (`javax.smartcardio`). On Linux this is usually `pcscd` with a supported reader driver; on Windows the built-in Smart Card service provides PC/SC. A reader, a card, and a driver must all be available before `cinpoRun` starts.
+
+- **Reader selection.** Set `pcsc.reader` to pin an exact reader name. Without it, CINPO selects a reader automatically and skips names listed in `pcsc.excludedReaders` (for example a contactless reader you do not want to use). When the wrong reader is picked, pin it.
+- **Profile paths on Windows.** `--profile` accepts a path-like value, including a Windows path passed through Gradle: `.\gradlew.bat cinpoRun --args="--debug --profile=C:\path\to\card.yaml --test"`.
+- **Keys and access control.** The `secureChannel` block must match the card's Issuer Security Domain: `isdAid`, `keyVersionNumber`, `keyIdentifier`, `protocol`, and the three static keys. A mismatch typically fails during secure-channel authentication (`6982`, `6985`, or an authentication error), not during installation.
+- **Read-only diagnostics.** The `probe` template's task does not write to the card, but a normal run still installs the placeholder applet unless you pass `--skip-install`. On a card you do not want to modify, run `--skip-install --task=probe`.
+
+Real SCP keys are not test keys. Keep them out of git and do not reuse `profile/jcdksim.yaml` values on hardware. If a command or a reader setup cannot be verified here, say so instead of assuming it passed.
+
 ## Runtime adapters
 
 | `runtime` value | Transport |

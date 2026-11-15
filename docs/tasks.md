@@ -38,7 +38,7 @@ public final class SetupPin implements CardTask {
 }
 ```
 
-The package name must match the directory under `host/` (e.g. a task in `host/provision/` is `package provision;`).
+The package name conventionally matches the directory under `host/` (e.g. a task in `host/provision/` is `package provision;`). This is not enforced: the annotation processor indexes the class by `@CardTaskDef`, not by its source path, so a class in `host/probe/` can declare `package test;` if you have a reason.
 
 ### Discovery and indexing
 

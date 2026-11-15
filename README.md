@@ -190,8 +190,10 @@ java -jar build/libs/cinpo-appliance.jar write --profile mycard -- --record cust
 | Template | What it provides |
 |----------|------------------|
 | `basic` | The default starter: a Hello applet, one `provision` task that issues and writes a leaf certificate, and one `test` task that reads it back. |
-| `authenticated` | An example applet using the GlobalPlatform on-card API through a companion bundle. |
-| `probe` | A card-probing template (Maguro applet and a `probe` task kind) that selects an application and reads its card data. |
+| `authenticated` | An SCP03 secure-messaging example: the applet handles GlobalPlatform security commands through a companion bundle, and the test proves that an unauthenticated command is refused and the authenticated one succeeds. |
+| `probe` | A read-only card probe: the `probe` task kind selects an application or the default application and reads `GET DATA` without writing to the card. |
+
+If you are adding or changing a template, see [docs/template-authoring.md](docs/template-authoring.md) for the documentation skeleton, sample-identifier rules, and verification checklist.
 
 ## Writing Tasks
 
