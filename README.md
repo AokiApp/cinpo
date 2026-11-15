@@ -193,8 +193,6 @@ java -jar build/libs/cinpo-appliance.jar write --profile mycard -- --record cust
 | `authenticated` | An SCP03 secure-messaging example: the applet handles GlobalPlatform security commands through a companion bundle, and the test proves that an unauthenticated command is refused and the authenticated one succeeds. |
 | `probe` | A read-only card probe: the `probe` task kind selects an application or the default application and reads `GET DATA` without writing to the card. |
 
-If you are adding or changing a template, see [docs/template-authoring.md](docs/template-authoring.md) for the documentation skeleton, sample-identifier rules, and verification checklist.
-
 ## Writing Tasks
 
 A task is a small Java program that runs on the host side of the APDU link, against the simulator or a physical card. Tasks turn "the applet is installed" into actual card state.
