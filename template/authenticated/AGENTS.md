@@ -54,16 +54,90 @@ CLA `0x80`. The applet must return `SW_CLA_NOT_SUPPORTED` / `SW_INS_NOT_SUPPORTE
 | INITIALIZE UPDATE | `0x50` | GP | Handled by `secureChannel.processSecurity()` |
 | EXTERNAL AUTHENTICATE | `0x82` | GP | Handled by `secureChannel.processSecurity()` |
 
-`process()` must not throw uncaught exceptions. Allocate persistent objects only at install/constructor time.
+Instance fields and `new byte[]`/objects in `install()` or the constructor live in persistent EEPROM and survive power loss. The APDU buffer is transient and is valid only for the current command. Do not allocate arrays or objects in `process()`: EEPROM is small and cannot be freed, so repeated allocation in command handling can exhaust it in ways that are easy to miss. For scratch space, use a transient array such as `JCSystem.makeTransientByteArray(..., JCSystem.CLEAR_ON_DESELECT)`. `process()` must not throw uncaught exceptions.
 
 ## How to change things
 
 ### Add an APDU command
 
-1. Define `private static final byte INS_FOO = (byte) 0xNN;` in the applet and add a `case` to the `switch` in `process()`.
-2. Read with `apdu.setIncomingAndReceive()`, write the response into the APDU buffer, and send with `apdu.setOutgoingAndSend(offset, length)`.
-3. Mirror the constant in the host task: `channel.transmit(new CommandApdu(CLA, INS_FOO, p1, p2, data, le))`.
+1. Define `INS_FOO`, add a `case` in `process()`, and keep CLA/INS/SW handling consistent on both sides. Forward GlobalPlatform SCP commands to `secureChannel.processSecurity()` as in the existing code.
+2. Read incoming data, write the response into the APDU buffer, and send it. For commands that may arrive in chunks, keep receiving until all data has been read.
+3. Mirror the constant in the host task. Use `session.transmit()` for authenticated commands and the raw channel only before authentication or for negative tests.
 4. Exercise it from the verification task for this template.
+
+```java
+import javacard.framework.APDU;
+import javacard.framework.Applet;
+import javacard.framework.ISO7816;
+import javacard.framework.ISOException;
+import javacard.framework.JCSystem;
+import javacard.framework.Util;
+import org.globalplatform.GPSystem;
+import org.globalplatform.SecureChannel;
+
+public final class HelloApplet extends Applet {
+    // Constants: use `static final`; Java Card does not support a general static initializer block.
+    private static final byte CLA_CINPO = (byte) 0x80;
+    private static final byte INS_FOO = (byte) 0x20;
+
+    private SecureChannel secureChannel;
+    private final byte[] scratch;
+
+    private HelloApplet() {
+        secureChannel = GPSystem.getSecureChannel();
+        // Scratch RAM: use JCSystem.makeTransientByteArray, not `new byte[]` in process().
+        scratch = JCSystem.makeTransientByteArray((short) 64, JCSystem.CLEAR_ON_DESELECT);
+    }
+
+    public static void install(byte[] bArray, short bOffset, byte bLength) {
+        new HelloApplet().register(bArray, (short) (bOffset + 1), bArray[bOffset]);
+    }
+
+    public void process(APDU apdu) {
+        if (selectingApplet()) {
+            return;
+        }
+
+        byte[] buffer = apdu.getBuffer();
+        if (buffer[ISO7816.OFFSET_CLA] != CLA_CINPO) {
+            ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
+        }
+
+        byte ins = buffer[ISO7816.OFFSET_INS];
+        if (ins == SecureChannel.INS_INITIALIZE_UPDATE || ins == SecureChannel.INS_EXTERNAL_AUTHENTICATE) {
+            secureChannel.processSecurity(apdu);
+            return;
+        }
+
+        switch (ins) {
+            case INS_FOO:
+                handleFoo(apdu);
+                return;
+            default:
+                ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
+        }
+    }
+
+    private void handleFoo(APDU apdu) {
+        byte[] buffer = apdu.getBuffer();
+        short bytesRead = apdu.setIncomingAndReceive();
+        short offsetCData = apdu.getOffsetCdata();
+        short total = 0;
+
+        // For extended/segmented input, loop until all incoming data has been read.
+        while (bytesRead > 0) {
+            Util.arrayCopyNonAtomic(buffer, offsetCData, scratch, total, bytesRead);
+            // Alternative APIs: Util.arrayCopyNonAtomic / arrayFillNonAtomic / arrayCompare.
+            total += bytesRead;
+            bytesRead = apdu.receiveBytes(offsetCData);
+        }
+
+        Util.arrayCopyNonAtomic(scratch, (short) 0, buffer, (short) 0, total);
+        apdu.setOutgoingAndSend((short) 0, total);
+        // Errors: use ISOException.throwIt(sw). Do not throw `new Exception()` or use try-with-resources.
+    }
+}
+```
 
 ### Add a task kind
 

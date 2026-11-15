@@ -112,6 +112,53 @@ package AID (Executable Load File AID)
 - The instance AID is what host-side tasks SELECT. The package AID / load file AID is consumed at install time.
 - AIDs are hex strings: `0A-1F…` style with separators allowed, or plain `F0000000010101`.
 
+## Multiple applets in one package
+
+One package can contain more than one applet. Add an applet class in `applet/`, register its `install()` method, and declare it in `manifest.yaml`.
+
+```java
+package com.example.cinpo.hello;
+
+import javacard.framework.APDU;
+import javacard.framework.Applet;
+import javacard.framework.ISO7816;
+import javacard.framework.ISOException;
+
+public final class SecondApplet extends Applet {
+
+    private SecondApplet() {
+    }
+
+    public static void install(byte[] buffer, short offset, byte length) {
+        byte aidLength = buffer[offset];
+        new SecondApplet().register(buffer, (short) (offset + 1), aidLength);
+    }
+
+    public void process(APDU apdu) {
+        if (selectingApplet()) {
+            return;
+        }
+        ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
+    }
+}
+```
+
+```yaml
+applets:
+  - id: hello
+    className: com.example.cinpo.hello.HelloApplet
+    classAid: F0000000010101
+    instanceAid: F000000001010001
+    privilege: "00"
+  - id: second
+    className: com.example.cinpo.hello.SecondApplet
+    classAid: F0000000010102
+    instanceAid: F000000001010002
+    privilege: "00"
+```
+
+Host tasks can select the instance they need from `manifest.applets()` (for example by `id()` or by iterating the list) and send `SELECT` with that instance AID. Keep the package, class, and instance AIDs consistent with the package AID layout above.
+
 ## Where to look next
 
 - Guide walkthrough: [`../README.md#3-define-your-manifest`](../README.md#3-define-your-manifest)

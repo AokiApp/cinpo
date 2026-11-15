@@ -55,6 +55,8 @@ if (response.sw() != 0x9000) {
 
 A placeholder: `install()` registers the AID, `process()` accepts SELECT and throws `SW_INS_NOT_SUPPORTED` for everything else. Do not remove the last applet from `manifest.yaml`.
 
+Instance fields and `new byte[]`/objects in `install()` or the constructor live in persistent EEPROM and survive power loss. The APDU buffer is transient and is valid only for the current command. Do not allocate arrays or objects in `process()`: EEPROM is small and cannot be freed, so repeated allocation in command handling can exhaust it in ways that are easy to miss. For scratch space, use a transient array such as `JCSystem.makeTransientByteArray(..., JCSystem.CLEAR_ON_DESELECT)`. `process()` must not throw uncaught exceptions.
+
 ## How to change things
 
 ### Add a read-only probe command
@@ -62,6 +64,76 @@ A placeholder: `install()` registers the AID, `process()` accepts SELECT and thr
 1. Build a `CommandApdu`, call `channel.transmit()`, branch on `response.sw()`.
 2. Print a label, the SW on failure, and `Util.toHex(response.data())` on success.
 3. Run `./gradlew cinpoRun --args='--skip-install --task=probe'`.
+
+### Add an APDU command in the applet
+
+If you replace the placeholder applet behavior, define `INS_FOO`, add a `case` in `process()`, and keep CLA/INS/SW handling consistent. Read incoming data, write the response into the APDU buffer, and send it. For commands that may arrive in chunks, keep receiving until all data has been read.
+
+```java
+import javacard.framework.APDU;
+import javacard.framework.Applet;
+import javacard.framework.ISO7816;
+import javacard.framework.ISOException;
+import javacard.framework.JCSystem;
+import javacard.framework.Util;
+
+public final class MaguroApplet extends Applet {
+    // Constants: use `static final`; Java Card does not support a general static initializer block.
+    private static final byte CLA_PROBE = (byte) 0x80;
+    private static final byte INS_FOO = (byte) 0x20;
+
+    private final byte[] persistentData;
+    private final byte[] scratch;
+
+    private MaguroApplet() {
+        persistentData = new byte[64]; // Persistent EEPROM: allocate in install()/constructor only.
+        // Scratch RAM: use JCSystem.makeTransientByteArray, not `new byte[]` in process().
+        scratch = JCSystem.makeTransientByteArray((short) 64, JCSystem.CLEAR_ON_DESELECT);
+    }
+
+    public static void install(byte[] bArray, short bOffset, byte bLength) {
+        new MaguroApplet().register(bArray, (short) (bOffset + 1), bArray[bOffset]);
+    }
+
+    public void process(APDU apdu) {
+        if (selectingApplet()) {
+            return;
+        }
+
+        byte[] buffer = apdu.getBuffer();
+        if (buffer[ISO7816.OFFSET_CLA] != CLA_PROBE) {
+            ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
+        }
+
+        switch (buffer[ISO7816.OFFSET_INS]) {
+            case INS_FOO:
+                handleFoo(apdu);
+                return;
+            default:
+                ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
+        }
+    }
+
+    private void handleFoo(APDU apdu) {
+        byte[] buffer = apdu.getBuffer();
+        short bytesRead = apdu.setIncomingAndReceive();
+        short offsetCData = apdu.getOffsetCdata();
+        short total = 0;
+
+        // For extended/segmented input, loop until all incoming data has been read.
+        while (bytesRead > 0) {
+            Util.arrayCopyNonAtomic(buffer, offsetCData, scratch, total, bytesRead);
+            // Alternative APIs: Util.arrayCopyNonAtomic / arrayFillNonAtomic / arrayCompare.
+            total += bytesRead;
+            bytesRead = apdu.receiveBytes(offsetCData);
+        }
+
+        Util.arrayCopyNonAtomic(scratch, (short) 0, buffer, (short) 0, total);
+        apdu.setOutgoingAndSend((short) 0, total);
+        // Errors: use ISOException.throwIt(sw). Do not throw `new Exception()` or use try-with-resources.
+    }
+}
+```
 
 ### Add a task argument
 

@@ -50,16 +50,82 @@ CLA `0x80`, selected by `instanceAid`. The applet must return `SW_CLA_NOT_SUPPOR
 | GET_CERTIFICATE | `0x11` | offset | Returns up to 240 bytes starting at `offset` |
 | GET_CERTIFICATE_LENGTH | `0x12` | — | Returns the stored length as 2 bytes |
 
-Certificate storage is one persistent `byte[2048]`. Allocate persistent objects only at install/constructor time. `process()` must not throw uncaught exceptions.
+Certificate storage is one persistent `byte[2048]`. Instance fields and `new byte[]`/objects in `install()` or the constructor live in persistent EEPROM and survive power loss. The APDU buffer is transient and is valid only for the current command. Do not allocate arrays or objects in `process()`: EEPROM is small and cannot be freed, so repeated allocation in command handling can exhaust it in ways that are easy to miss. For scratch space, use a transient array such as `JCSystem.makeTransientByteArray(..., JCSystem.CLEAR_ON_DESELECT)`. `process()` must not throw uncaught exceptions.
 
 ## How to change things
 
 ### Add an APDU command
 
-1. Define `private static final byte INS_FOO = (byte) 0xNN;` in the applet and add a `case` to the `switch` in `process()`.
-2. Read with `apdu.setIncomingAndReceive()`, write the response into the APDU buffer, and send with `apdu.setOutgoingAndSend(offset, length)`.
+1. Define `INS_FOO`, add a `case` in `process()`, and keep CLA/INS/SW handling consistent on both sides.
+2. Read incoming data, write the response into the APDU buffer, and send it. For commands that may arrive in chunks, keep receiving until all data has been read.
 3. Mirror the constant in the host task: `channel.transmit(new CommandApdu(CLA, INS_FOO, p1, p2, data, le))`.
 4. Exercise it from the verification task for this template.
+
+```java
+import javacard.framework.APDU;
+import javacard.framework.Applet;
+import javacard.framework.ISO7816;
+import javacard.framework.ISOException;
+import javacard.framework.JCSystem;
+import javacard.framework.Util;
+
+public final class HelloApplet extends Applet {
+    // Constants: use `static final`; Java Card does not support a general static initializer block.
+    private static final byte CLA_CINPO = (byte) 0x80;
+    private static final byte INS_FOO = (byte) 0x20;
+
+    private final byte[] persistentData;
+    private final byte[] scratch;
+
+    private HelloApplet() {
+        persistentData = new byte[64]; // Persistent EEPROM: allocate in install()/constructor only.
+        // Scratch RAM: use JCSystem.makeTransientByteArray, not `new byte[]` in process().
+        scratch = JCSystem.makeTransientByteArray((short) 64, JCSystem.CLEAR_ON_DESELECT);
+    }
+
+    public static void install(byte[] bArray, short bOffset, byte bLength) {
+        new HelloApplet().register();
+    }
+
+    public void process(APDU apdu) {
+        if (selectingApplet()) {
+            return;
+        }
+
+        byte[] buffer = apdu.getBuffer();
+        if (buffer[ISO7816.OFFSET_CLA] != CLA_CINPO) {
+            ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
+        }
+
+        switch (buffer[ISO7816.OFFSET_INS]) {
+            case INS_FOO:
+                handleFoo(apdu);
+                return;
+            default:
+                ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
+        }
+    }
+
+    private void handleFoo(APDU apdu) {
+        byte[] buffer = apdu.getBuffer();
+        short bytesRead = apdu.setIncomingAndReceive();
+        short offsetCData = apdu.getOffsetCdata();
+        short total = 0;
+
+        // For extended/segmented input, loop until all incoming data has been read.
+        while (bytesRead > 0) {
+            Util.arrayCopyNonAtomic(buffer, offsetCData, scratch, total, bytesRead);
+            // Alternative APIs: Util.arrayCopyNonAtomic / arrayFillNonAtomic / arrayCompare.
+            total += bytesRead;
+            bytesRead = apdu.receiveBytes(offsetCData);
+        }
+
+        Util.arrayCopyNonAtomic(scratch, (short) 0, buffer, (short) 0, total);
+        apdu.setOutgoingAndSend((short) 0, total);
+        // Errors: use ISOException.throwIt(sw). Do not throw `new Exception()` or use try-with-resources.
+    }
+}
+```
 
 ### Add a task kind
 
