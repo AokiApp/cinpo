@@ -7,7 +7,7 @@
 [![Publish](https://github.com/AokiApp/cinpo/actions/workflows/publish.yml/badge.svg)](https://github.com/AokiApp/cinpo/actions/workflows/publish.yml)
 [![License](https://img.shields.io/badge/License-ANAL--T-4c1?labelColor=30363d)](LICENSE.md)
 
-[Getting Started](#getting-started) · [Templates](#templates) · [Writing Tasks](#writing-tasks) · [Tasks](docs/tasks.md) · [Manifest](docs/manifest.md) · [Profiles](docs/profiles.md) · [Vendor](docs/vendor.md) · [License](#license)
+[Getting Started](#getting-started) · [Templates](#templates) · [Writing Tasks](#writing-tasks) · [Manifest](docs/manifest.md) · [Profiles](docs/profiles.md) · [Vendor](docs/vendor.md)
 
 </div>
 
