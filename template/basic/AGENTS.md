@@ -1,529 +1,189 @@
 # AGENTS.md
 
-> AI agent instructions for CINPO application projects generated from this template.
+Rules for agents (and humans) working in this project. Follow them literally.
 
-## Project Overview
+## What this project is
 
-This is a **CINPO** (Card INstallation and Provision Orchestrator) application project — a JavaCard applet with annotation-driven host-side provisioning and testing tasks. CINPO acts like "Spring Boot for JavaCard": you declare tasks with annotations, inject dependencies, and the framework handles GlobalPlatform authentication, CAP compilation, simulator lifecycle, and APDU transport.
+**CINPO** (**C**ard **IN**stallation and **P**rovision **O**rchestrator), "Spring Boot for Java Card", is a framework for installing and provisioning Java Card applets. You write host-side tasks as ordinary Java classes, annotate them (`@CardTaskDef`), inject what you need (`@Inject`), and CINPO handles manifest validation, CAP compilation/conversion, installation on the JCDK simulator or a real card, APDU transport, and GlobalPlatform secure-channel authentication. No `main()`, build scripts, or ad-hoc Gradle tasks — `./gradlew cinpoRun` does it all. Repository: [github.com/AokiApp/cinpo](https://github.com/AokiApp/cinpo). Documentation: [docs/](https://github.com/AokiApp/cinpo/tree/main/docs).
 
-**What this project produces**: A smart card applet (runs on a physical JavaCard or simulator) plus host-side Java programs that communicate with the applet via APDU commands.
+This project, generated from the `basic` starter template, is a Java Card applet (`applet/HelloApplet.java`) plus host-side tasks (`host/`); `provision` runs by default, `test` with `--test`. It shows one flow: issue an X.509 leaf certificate on the host, write it into the applet's storage, read it back and verify it. Treat that flow as the contract and keep both ends consistent.
 
-## Directory Structure
+## The two worlds
 
-```
-.
-├── AGENTS.md              # This file — AI agent instructions
-├── manifest.yaml          # Applet package declaration (AIDs, SDK version)
-├── build.gradle           # Gradle build (CINPO plugin + dependencies)
-├── settings.gradle        # Gradle settings (project name)
-├── applet/                # JavaCard applet source (runs ON the card)
-│   └── *.java             # JavaCard API only — no java.util, no java.io
-├── host/                  # Host-side tasks (runs on the PC/server)
-│   ├── provision/         # Default provisioning tasks (selected by `write` or `--task=provision`)
-│   ├── test/              # Verification tasks (selected by `--test` or `--task=test`)
-│   └── <custom>/          # Any additional task kind directory
-├── profile/               # Runtime profile overrides
-│   └── jcdksim.yaml       # Oracle JCDK simulator profile (dev-only keys)
-└── vendor/                # Oracle JavaCard SDK files (gitignored, required at runtime)
-```
-
-## Prerequisites
-
-### Vendor SDK Files
-
-The Oracle JavaCard Development Kit is **required** to compile applets and run the simulator. These are proprietary and not distributed with this project.
-
-- The parent repository contains an encrypted `vendor.zip`
-- Extract with: `VENDOR_PASSWORD=<password> ../scripts/extract_vendor.sh` (from parent), then `cp -a ../vendor ./vendor`
-- Or place extracted vendor files directly in `./vendor/`
-- **Without vendor files, `cinpoRun` and `cinpoJar` will fail**
-
-### Java 21
-
-The host-side code requires JDK 21 (configured via Gradle toolchain). The applet code is compiled separately by the JavaCard SDK tools.
-
-### Gradle Credentials
-
-CINPO framework artifacts resolve from GitHub Packages or GitHub Pages:
-
-```properties
-# In ~/.gradle/gradle.properties or as environment variables
-gpr.user=<github-username>
-gpr.key=<github-token-with-packages:read>
-```
-
-Or via environment: `GITHUB_ACTOR` and `GITHUB_TOKEN`. If neither is set, resolution falls back to GitHub Pages (public, no auth needed).
-
-## Build & Run Commands
-
-All commands are executed from this project directory. The Gradle wrapper lives one level up (`../gradlew`) when working inside a monorepo checkout; standalone projects use `./gradlew`.
-
-```bash
-# Run default provisioning (install applet + run provision tasks)
-../gradlew cinpoRun
-
-# Run provisioning then test verification
-../gradlew cinpoRun --args='--test'
-
-# Run specific task kinds
-../gradlew cinpoRun --args='--task=provision --task=test'
-
-# Skip applet installation (re-run tasks only against already-installed applet)
-../gradlew cinpoRun --args='--skip-install --task=provision'
-
-# Pass template-specific arguments after --
-../gradlew cinpoRun --args='write -- --record sample01'
-
-# Build self-contained fat JAR
-../gradlew cinpoJar
-
-# Run fat JAR
-java -jar build/libs/cinpo-appliance.jar write --test
-
-# Debug mode (verbose APDU logging)
-../gradlew cinpoRun --args='--debug --test'
-```
-
-## Architecture & Dual-World Model
-
-### The Two Worlds
-
-This project spans **two execution environments** that communicate via APDU byte-level protocol:
-
-| | Card World (`applet/`) | Host World (`host/`) |
+| | Card world (`applet/`) | Host world (`host/`) |
 |---|---|---|
-| **Runs on** | JavaCard chip / simulator | JVM on PC/server |
-| **Language** | JavaCard 3.0.4 (subset of Java) | Java 21 (full JVM) |
-| **Types** | `byte`, `short`, `byte[]` only | Full Java type system |
-| **Memory** | Persistent EEPROM, ~32KB | Unlimited heap |
-| **Communication** | Receives APDUs, sends responses | Sends APDUs via `ApduChannel` |
-| **Libraries** | `javacard.framework.*` only | Any Maven dependency |
+| Runs on | Java Card chip / JCDK simulator | JVM (development machine / production) |
+| Language | Java Card subset (3.0.4 API) | Java 21 |
+| Types | `byte`, `short`, `boolean`, `byte[]` | the full Java type system |
+| Memory | persistent EEPROM (survives power loss); transient APDU buffer per command | ordinary heap |
+| Libraries | `javacard.framework.*` only | anything (here: Bouncy Castle) |
 
-### The Contract Between Worlds
+The only boundary between them is the APDU protocol: do not import applet classes from host code or vice versa. Shared knowledge (CLA `0x80`, the `INS_*` bytes) is duplicated on purpose; if you change one side, change the other in the same change.
 
-The applet and host tasks share an implicit **APDU protocol contract**:
+## Before you change
 
-```
-┌──────────────┐    APDU Command     ┌──────────────┐
-│  Host Task   │ ──────────────────► │   Applet     │
-│  (Java 21)   │                     │  (JavaCard)  │
-│              │ ◄────────────────── │              │
-└──────────────┘    APDU Response    └──────────────┘
-```
+1. Read `manifest.yaml`: package name, AIDs, `toolSdkVersion`, `targetApiVersion` (and companion bundles, if any). It is the source of truth.
+2. Find both sides of the contract: the applet handler and the host task that sends the command. Change both in one edit.
+3. Make the smallest change that proves the behavior, then run the verification command for this template.
+4. If the change alters a contract (CLA, INS, AID, security level, chunk size, certificate subject), update the test/probe check and the docs in the same change.
 
-**This contract is defined by matching constants on both sides:**
+## Commands and how a run works
 
-- **CLA** (Class byte): identifies your applet's command set (e.g., `0x80`)
-- **INS** (Instruction byte): identifies each command (e.g., `0x01` = ECHO, `0x02` = HELLO)
-- **P1, P2**: parameter bytes (often used as 16-bit offset)
-- **Data format**: the byte layout of command data and response data
+- `./gradlew cinpoRun` — validates `manifest.yaml`, compiles and converts the applet, (re)installs it, then runs resolved task kinds in order (default: `provision`).
+- `./gradlew cinpoRun --args='--test'` — runs `provision` then `test`.
+- `./gradlew cinpoRun --args='--skip-install --test'` — rerun tasks without reinstalling (host-only changes).
+- `./gradlew cinpoRun --args='--debug --test'` — verbose APDU/task logging.
+- `./gradlew cinpoJar` — build the self-contained production JAR.
+- On Windows use `.\gradlew.bat`. Without the Oracle archives in `vendor/`, `cinpoRun` and `cinpoJar` fail immediately — a setup failure, not a code failure (see [vendor setup](https://github.com/AokiApp/cinpo/blob/main/docs/vendor.md)).
 
-When you add a new command, you **must** update both sides to match.
+At compile time an annotation processor indexes `@CardTaskDef` classes into `META-INF/cinpo/<kind>`. At runtime, for each selected kind: discover → instantiate (no-arg constructor) → inject `@Inject` fields → call `run()`. An unchecked exception aborts the pipeline and exits non-zero. See [Writing tasks](https://github.com/AokiApp/cinpo/blob/main/docs/tasks.md#how-it-works).
 
-## How To: Common Development Tasks
+## The applet at a glance (`applet/HelloApplet.java`)
 
-### Add a New APDU Command
+CLA `0x80`, selected by `instanceAid`. The applet must return `SW_CLA_NOT_SUPPORTED` / `SW_INS_NOT_SUPPORTED` for wrong CLA/unknown INS.
 
-1. **Define the INS constant in the applet** (`applet/YourApplet.java`):
-   ```java
-   private static final byte INS_MY_COMMAND = (byte) 0x20;
-   ```
+| Command | INS | P1/P2 | Behavior |
+|---------|-----|-------|----------|
+| ECHO | `0x01` | — | Receives data, sends it back unchanged |
+| HELLO | `0x02` | — | Returns `"Hello, CINPO!"` |
+| PUT_CERTIFICATE | `0x10` | offset | Appends a chunk at `offset`; `offset == 0` resets the stored length (220-byte chunks from host) |
+| GET_CERTIFICATE | `0x11` | offset | Returns up to 240 bytes starting at `offset` |
+| GET_CERTIFICATE_LENGTH | `0x12` | — | Returns the stored length as 2 bytes |
 
-2. **Add case to the `process()` switch**:
-   ```java
-   case INS_MY_COMMAND:
-       handleMyCommand(apdu, buffer);
-       return;
-   ```
+Certificate storage is one persistent `byte[2048]`. Instance fields and `new byte[]`/objects in `install()` or the constructor live in persistent EEPROM and survive power loss. The APDU buffer is transient and is valid only for the current command. Do not allocate arrays or objects in `process()`: EEPROM is small and cannot be freed, so repeated allocation in command handling can exhaust it in ways that are easy to miss. For scratch space, use a transient array such as `JCSystem.makeTransientByteArray(..., JCSystem.CLEAR_ON_DESELECT)`. `process()` must not throw uncaught exceptions.
 
-3. **Implement the applet handler**:
-   ```java
-   private void handleMyCommand(APDU apdu, byte[] buffer) {
-       short received = apdu.setIncomingAndReceive();
-       // Process buffer[ISO7816.OFFSET_CDATA] through buffer[OFFSET_CDATA + received - 1]
-       // Write response into buffer[0..N]
-       apdu.setOutgoingAndSend((short) 0, responseLength);
-   }
-   ```
+## How to change things
 
-4. **Mirror the INS constant in host task** (`host/provision/` or `host/test/`):
-   ```java
-   private static final int INS_MY_COMMAND = 0x20;
-   ```
+### Add an APDU command
 
-5. **Call from host**:
-   ```java
-   ResponseApdu response = channel.transmit(
-       new CommandApdu(CLA_MY, INS_MY_COMMAND, p1, p2, inputData, expectedResponseLength));
-   ```
-
-### Add a New Task Kind
-
-1. Create a new directory: `host/mytask/`
-2. Create the task class:
-   ```java
-   package mytask;
-
-   import app.aoki.cinpo.task.CardTask;
-   import app.aoki.cinpo.task.CardTaskDef;
-   import app.aoki.cinpo.task.Inject;
-   import app.aoki.cinpo.apdu.ApduChannel;
-   import app.aoki.cinpo.config.AppletManifest;
-
-   @CardTaskDef(value = "mytask", order = 100)
-   public final class MyCustomTask implements CardTask {
-       @Inject private ApduChannel channel;
-       @Inject private AppletManifest manifest;
-
-       public MyCustomTask() {}
-
-       @Override
-       public void run() {
-           // Your logic here
-       }
-   }
-   ```
-3. Run with: `../gradlew cinpoRun --args='--task=mytask'`
-
-### Add a New Applet to the Package
-
-1. Create the applet class in `applet/`:
-   ```java
-   package com.example.mypackage;
-   import javacard.framework.*;
-
-   public final class SecondApplet extends Applet {
-       public static void install(byte[] buffer, short offset, byte length) {
-           byte aidLength = buffer[offset];
-           new SecondApplet().register(buffer, (short)(offset + 1), aidLength);
-       }
-       @Override
-       public void process(APDU apdu) { /* ... */ }
-   }
-   ```
-
-2. Register in `manifest.yaml`:
-   ```yaml
-   applets:
-     - id: main
-       className: com.example.mypackage.MainApplet
-       classAid: D27600008501010001
-       instanceAid: D2760000850101000001
-       privilege: "00"
-     - id: second
-       className: com.example.mypackage.SecondApplet
-       classAid: D27600008501010002
-       instanceAid: D2760000850101000002
-       privilege: "00"
-   ```
-
-3. Access from host tasks:
-   ```java
-   byte[] secondAid = manifest.applets().get(1).instanceAid();
-   // or find by id if API supports it
-   ```
-
-### Accept Runtime Arguments in Tasks
-
-```java
-import app.aoki.cinpo.task.TaskArguments;
-
-@CardTaskDef("provision")
-public final class ConfigurableTask implements CardTask {
-    @Inject private TaskArguments taskArguments;
-
-    @Override
-    public void run() {
-        String recordId = taskArguments.firstValue("record").orElse("default");
-        String dbPath = taskArguments.firstValue("db").orElse("host/data/cards.db");
-        // Use these values in your logic
-    }
-}
-```
-
-Invoke: `../gradlew cinpoRun --args='write -- --record myrecord --db ./mydata.db'`
-
-### Bundle Data Files as Resources
-
-Place non-Java files anywhere under `host/`. They are packaged as classpath resources:
-
-```
-host/
-├── provision/
-│   └── MyTask.java
-└── data/
-    └── default-records.db
-```
-
-Access from task code:
-```java
-InputStream is = getClass().getClassLoader().getResourceAsStream("data/default-records.db");
-```
-
-## Applet Code (`applet/`) — Detailed Rules
-
-### JavaCard Language Restrictions
-
-| Allowed | NOT Allowed |
-|---------|-------------|
-| `byte`, `short`, `boolean` | `int`, `long`, `float`, `double` |
-| `byte[]`, `short[]` | `String`, `Object[]`, generics |
-| `javacard.framework.*` | `java.util.*`, `java.io.*`, `java.lang.String` |
-| `javacardx.apdu.ExtendedLength` | `java.nio.*`, reflection, threads |
-| Static final constants | Dynamic class loading |
-| `Util.arrayCopyNonAtomic()` | `System.arraycopy()` |
-| `ISOException.throwIt(SW)` | `new Exception()`, try-with-resources |
-
-### Memory Model
-
-- **All instance fields are persistent** (stored in EEPROM, survive power loss)
-- **APDU buffer is transient RAM** (only valid during one command)
-- **Allocate arrays in constructor only** — `new byte[N]` in `process()` will leak EEPROM on every call
-- Use `JCSystem.makeTransientByteArray()` for scratch buffers that don't persist
-
-### APDU Processing Pattern
-
-```java
-public void process(APDU apdu) {
-    if (selectingApplet()) return;  // Always first
-
-    byte[] buffer = apdu.getBuffer();
-
-    // 1. Validate CLA
-    if (buffer[ISO7816.OFFSET_CLA] != MY_CLA) {
-        ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
-    }
-
-    // 2. Dispatch on INS
-    switch (buffer[ISO7816.OFFSET_INS]) {
-        case INS_X: handleX(apdu, buffer); return;
-        default: ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
-    }
-}
-
-// Receiving data from host:
-private void handleWrite(APDU apdu, byte[] buffer) {
-    short len = apdu.setIncomingAndReceive();
-    // Data is at buffer[ISO7816.OFFSET_CDATA .. OFFSET_CDATA+len-1]
-}
-
-// Sending data to host:
-private void handleRead(APDU apdu, byte[] buffer) {
-    Util.arrayCopyNonAtomic(myData, (short)0, buffer, (short)0, myDataLen);
-    apdu.setOutgoingAndSend((short)0, myDataLen);
-}
-```
-
-### Status Words
-
-| SW | Meaning | When to use |
-|----|---------|-------------|
-| `0x9000` | Success | Implicit on normal return |
-| `ISO7816.SW_CLA_NOT_SUPPORTED` | Wrong CLA | CLA byte doesn't match |
-| `ISO7816.SW_INS_NOT_SUPPORTED` | Unknown INS | INS not in switch |
-| `ISO7816.SW_WRONG_LENGTH` | Bad data length | Incoming data too long/short |
-| `ISO7816.SW_WRONG_P1P2` | Bad parameters | P1/P2 out of range |
-| `ISO7816.SW_CONDITIONS_NOT_SATISFIED` | State error | Operation not allowed now |
-| `ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED` | Auth needed | PIN not verified |
-
-## Host-Side Tasks (`host/`) — Detailed Rules
-
-### Task Class Requirements
-
-1. **Must be `public final`**
-2. **Must have a public no-argument constructor**
-3. **Must implement `CardTask`**
-4. **Must have `@CardTaskDef` annotation** with at minimum a `value`
-5. **Package name must match the directory** (e.g., files in `host/provision/` → `package provision;`)
-6. **No `main()` method** — the framework is the entry point
-
-### Task Execution Lifecycle
-
-```
-1. Framework discovers annotated task classes (compile-time index)
-2. Tasks are instantiated (no-arg constructor)
-3. @Inject fields are populated
-4. run() is called
-5. Exceptions propagate and abort the pipeline
-```
-
-### Error Handling
-
-Throw `IllegalStateException` (or any `RuntimeException`) to abort. The framework prints the error and exits non-zero.
-
-```java
-private ResponseApdu transmitOk(CommandApdu command) {
-    ResponseApdu response = channel.transmit(command);
-    if (response.sw() != 0x9000) {
-        throw new IllegalStateException("APDU failed: SW=%04X".formatted(response.sw()));
-    }
-    return response;
-}
-```
-
-### Injectable Types Reference
-
-| Type | Description | Typical Use |
-|------|-------------|-------------|
-| `ApduChannel` | Send/receive APDUs to the card | Every task that talks to the card |
-| `AppletManifest` | Parsed `manifest.yaml` (AIDs, package info) | Getting applet AIDs for SELECT |
-| `Profile` | Active runtime profile config | Conditional logic per environment |
-| `SecureChannelProfile` | SCP key material | Opening additional secure sessions |
-| `TaskArguments` | Arguments passed after `--` | Template-specific runtime config |
-
-## Manifest (`manifest.yaml`)
-
-```yaml
-schema: cinpo.applet.v1
-
-basePackage: com.example.myapplet        # Java package for applet sources
-toolSdkVersion: "26.0"                   # Oracle JavaCard SDK version
-targetApiVersion: "3.0.4"                # JavaCard API version to target
-
-package:
-  name: com.example.myapplet             # CAP file package identifier
-  aid: D276000085010100                  # Package AID (hex, even length)
-  version: "1.0"                         # Package version
-
-applets:
-  - id: main                             # Logical identifier (for reference)
-    className: com.example.myapplet.MainApplet  # Fully qualified class name
-    classAid: D27600008501010001         # Class AID (hex, must be under package AID)
-    instanceAid: D2760000850101000001    # Instance AID (hex, used in SELECT)
-    privilege: "00"                      # Installation privilege byte
-```
-
-**AID rules:**
-- All AIDs are hex strings with even length
-- Class AIDs must be prefixed by the package AID
-- Instance AIDs are what you SELECT from host tasks
-- AIDs must be globally unique on the card
-
-## Profiles (`profile/`)
-
-```yaml
-schema: cinpo.profile.v1
-name: jcdksim                    # Profile name (matches filename without .yaml)
-runtime: jcresim                 # jcresim = simulator, pcsc = physical reader
-
-secureChannel:
-  protocol: scp03                # scp03 (AES, recommended) or scp02 (3DES, legacy)
-  isdAid: A000000151000000       # Issuer Security Domain AID
-  keyVersionNumber: 16           # Key version on the card
-  keyIdentifier: 0               # Key identifier
-  securityLevel: 1               # 1=C-MAC, 3=C-MAC+C-ENC
-  encKey: "1111..."              # 32-byte hex (64 chars) for SCP03
-  macKey: "2222..."              # 32-byte hex (64 chars) for SCP03
-  dekKey: "3333..."              # 32-byte hex (64 chars) for SCP03
-```
-
-**⚠️ The `jcdksim.yaml` keys are development-only test keys. Never use them on production cards.**
-
-For physical card readers, use `runtime: pcsc` and optionally specify:
-```yaml
-pcsc:
-  reader: "Specific Reader Name"
-  excludedReaders:
-    - "Built-in Contactless Reader"
-```
-
-## Key Imports Quick Reference
-
-### Applet (JavaCard API)
+1. Define `INS_FOO`, add a `case` in `process()`, and keep CLA/INS/SW handling consistent on both sides.
+2. Read incoming data, write the response into the APDU buffer, and send it. For commands that may arrive in chunks, keep receiving until all data has been read.
+3. Mirror the constant in the host task: `channel.transmit(new CommandApdu(CLA, INS_FOO, p1, p2, data, le))`.
+4. Exercise it from the verification task for this template.
 
 ```java
 import javacard.framework.APDU;
 import javacard.framework.Applet;
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
-import javacard.framework.Util;
 import javacard.framework.JCSystem;
-import javacard.framework.OwnerPIN;
-import javacardx.apdu.ExtendedLength;
-```
+import javacard.framework.Util;
 
-### Host tasks (CINPO API)
+public final class HelloApplet extends Applet {
+    // Constants: use `static final`; Java Card does not support a general static initializer block.
+    private static final byte CLA_CINPO = (byte) 0x80;
+    private static final byte INS_FOO = (byte) 0x20;
 
-```java
-import app.aoki.cinpo.apdu.ApduChannel;
-import app.aoki.cinpo.apdu.CommandApdu;
-import app.aoki.cinpo.apdu.Iso7816Commands;
-import app.aoki.cinpo.apdu.ResponseApdu;
-import app.aoki.cinpo.config.AppletManifest;
-import app.aoki.cinpo.task.CardTask;
-import app.aoki.cinpo.task.CardTaskDef;
-import app.aoki.cinpo.task.Inject;
-import app.aoki.cinpo.task.TaskArguments;
-```
+    private final byte[] persistentData;
+    private final byte[] scratch;
 
-## Implementation Discipline
+    private HelloApplet() {
+        persistentData = new byte[64]; // Persistent EEPROM: allocate in install()/constructor only.
+        // Scratch RAM: use JCSystem.makeTransientByteArray, not `new byte[]` in process().
+        scratch = JCSystem.makeTransientByteArray((short) 64, JCSystem.CLEAR_ON_DESELECT);
+    }
 
-- Before adding a helper for parsing, encoding, hex formatting, APDU construction, TLV traversal, or other low-level protocol work, search the available CINPO APIs and reuse existing utilities when possible. Start from packages such as `app.aoki.cinpo.apdu` and `app.aoki.cinpo.util`; then broaden the search if the needed abstraction is not there.
-- Do not substitute manifest/configuration values for card runtime state. `app.aoki.cinpo.config.AppletManifest` tells you what the project intends to install/select; it does not prove what is currently selected or present on the card. If a task claims card runtime state, query the card through `app.aoki.cinpo.apdu.ApduChannel` and parse the actual `ResponseApdu`.
-- Do not infer APDU semantics from a tag name, class name, method name, or memory of a similar command. Confirm the exact command bytes, P1/P2 meaning, Le/Lc shape, and response format from existing APIs, a specification, or an executed trace.
-- If execution or verification fails because dependencies, credentials, hardware, or simulator state are unavailable, say that verification failed and do not claim the behavior is proven.
-- Avoid writing incident-specific rules tied to one class name, task name, AID, APDU, or template name. Capture the reusable rule, but mention useful package/API names as starting points so future agents know where to look without treating the list as exhaustive.
+    public static void install(byte[] bArray, short bOffset, byte bLength) {
+        new HelloApplet().register();
+    }
 
-## Common Pitfalls & Troubleshooting
-
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| Build fails with "vendor not found" | Missing Oracle SDK files | Extract vendor.zip or copy vendor/ directory |
-| `SW=6D00` at runtime | INS byte not recognized by applet | Check INS constant matches between host and applet |
-| `SW=6E00` at runtime | CLA byte wrong | Check CLA constant matches between host and applet |
-| `SW=6700` at runtime | Wrong data length sent | Check APDU data size vs what applet expects |
-| `SW=6982` at runtime | Security condition not satisfied | PIN not verified or authentication required |
-| `SW=6A86` at runtime | P1/P2 out of range | Check offset calculation logic |
-| Task not discovered | Missing annotation or wrong package | Ensure `@CardTaskDef`, correct package name matching directory |
-| "No tasks found for kind X" | Directory doesn't exist or class not annotated | Create `host/X/` directory with properly annotated class |
-| Applet throws `6F00` | Uncaught exception on card | Bug in applet code — check array bounds, null refs |
-| EEPROM exhaustion | Allocating `new byte[]` in `process()` | Move all allocations to constructor |
-| Response data corrupt | Writing response before copying incoming data | Copy incoming data to instance field first, then write response |
-
-## Testing Workflow
-
-```
-1. Edit applet code in applet/
-2. Edit/add host provision task in host/provision/
-3. Edit/add host test task in host/test/
-4. Run: ../gradlew cinpoRun --args='--test'
-   → Compiles applet → Starts simulator → Installs applet
-   → Runs provision tasks → Runs test tasks
-5. Iterate. Use --skip-install to avoid reinstalling when only host tasks changed:
-   ../gradlew cinpoRun --args='--skip-install --test'
-```
-
-**Note**: `--skip-install` only works if the applet is already installed from a previous run. If you changed applet code, you must reinstall.
-
-## Dependencies
-
-Managed in `build.gradle`:
-
-| Dependency | Purpose |
-|-----------|---------|
-| `app.aoki.cinpo:cinpo:0.+` | Core CINPO framework (tasks, APDU, GP) |
-| `org.yaml:snakeyaml:2.2` | YAML parsing for manifest/profiles |
-| `org.bouncycastle:bcprov-jdk18on:1.78.1` | Cryptography provider |
-| `org.bouncycastle:bcpkix-jdk18on:1.78.1` | X.509/PKIX certificate support |
-
-Add additional dependencies in `build.gradle` → `dependencies {}` for host-side tasks. Applet code has no external dependencies (JavaCard API is provided by the SDK at compile time).
-
-## Source Layout Rules
-
-The `build.gradle` configures:
-```groovy
-sourceSets {
-    main {
-        java.srcDirs = ['host']            // All Java under host/ is compiled
-        resources {
-            srcDirs = ['host']              // Non-Java files become classpath resources
-            exclude '**/*.java'
+    public void process(APDU apdu) {
+        if (selectingApplet()) {
+            return;
         }
+
+        byte[] buffer = apdu.getBuffer();
+        if (buffer[ISO7816.OFFSET_CLA] != CLA_CINPO) {
+            ISOException.throwIt(ISO7816.SW_CLA_NOT_SUPPORTED);
+        }
+
+        switch (buffer[ISO7816.OFFSET_INS]) {
+            case INS_FOO:
+                handleFoo(apdu);
+                return;
+            default:
+                ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
+        }
+    }
+
+    private void handleFoo(APDU apdu) {
+        byte[] buffer = apdu.getBuffer();
+        short bytesRead = apdu.setIncomingAndReceive();
+        short offsetCData = apdu.getOffsetCdata();
+        short total = 0;
+
+        // For extended/segmented input, loop until all incoming data has been read.
+        while (bytesRead > 0) {
+            Util.arrayCopyNonAtomic(buffer, offsetCData, scratch, total, bytesRead);
+            // Alternative APIs: Util.arrayCopyNonAtomic / arrayFillNonAtomic / arrayCompare.
+            total += bytesRead;
+            bytesRead = apdu.receiveBytes(offsetCData);
+        }
+
+        Util.arrayCopyNonAtomic(scratch, (short) 0, buffer, (short) 0, total);
+        apdu.setOutgoingAndSend((short) 0, total);
+        // Errors: use ISOException.throwIt(sw). Do not throw `new Exception()` or use try-with-resources.
     }
 }
 ```
 
-This means:
-- Java package roots start at `host/` (so `host/provision/Foo.java` → `package provision;`)
-- Non-Java files in `host/` are accessible as classpath resources at runtime
-- Applet code is compiled separately by the CINPO Gradle plugin (not via standard `javac`)
+### Add a task kind
+
+1. `host/<kind>/YourTask.java` with `package <kind>;`.
+2. `@CardTaskDef("<kind>") public final class YourTask implements CardTask`, with a public no-argument constructor.
+3. Run it: `./gradlew cinpoRun --args='--task=<kind>'`.
+
+Task API details are in [Writing tasks](https://github.com/AokiApp/cinpo/blob/main/docs/tasks.md).
+
+## The host tasks at a glance
+
+- **`host/provision/HelloProvision.java`** (`@CardTaskDef(value = "provision", order = 100)`): SELECTs the instance AID from the manifest, verifies `HELLO`, issues a leaf with `CertificateIssuer.issueLeafCertificate()`, and writes it in 220-byte chunks.
+- **`host/test/HelloTest.java`** (`@CardTaskDef(value = "test", order = 100)`): SELECTs the applet, verifies `ECHO`, reads the certificate length and bytes, parses it as X.509, and asserts subject `CN=CINPO Template Leaf`.
+
+The issuer's subject/validity and the test's assertions are coupled; change both together.
+
+## Hard rules
+
+1. **AIDs come from the manifest, never from literals.** Inject `AppletManifest` and use the AID from `manifest.applets()`.
+2. **Task classes** must be `public final`, have a `public` no-argument constructor, implement `app.aoki.cinpo.task.CardTask`, and carry `@CardTaskDef("<kind>")`. The package conventionally matches the directory under `host/`, but discovery is by annotation.
+3. **Check status words.** After every APDU, require the expected SW; otherwise throw `IllegalStateException` with the SW (or, in a read-only probe, report it explicitly).
+4. **`manifest.yaml` is the source of truth.** After editing it, `basePackage`, the applet `package`, `package.name`, `applets[0].className`, and the AIDs must agree.
+5. **If verification cannot run here** (no `vendor/`, no bundle, no card, no network), say so — do not report success. A check that could not run is not a passing check.
+6. **Do not guess.** Read `manifest.yaml` → `applet/` → `host/` → the [docs](https://github.com/AokiApp/cinpo/tree/main/docs); if the answer is not there, say so.
+
+## Do not
+
+- Do not commit anything under `vendor/`.
+- Do not use `profile/jcdksim.yaml`'s well-known test keys on a real card.
+- Do not set `toolSdkVersion` to anything other than `26.0`.
+- Do not add a `main()` method or a shell script to run tasks — CINPO runs tasks via `@CardTaskDef`.
+- Do not weaken `HelloTest` or the certificate/protocol assertions.
+
+## Definition of done
+
+```bash
+./gradlew cinpoRun --args='--test'
+```
+
+must pass: it installs the applet, provisions the certificate, and verifies the echo and certificate round-trip. On failure, check `vendor/` first, then the first failing task's exception/SW; add `--debug` for APDU traffic. See the [failure model](https://github.com/AokiApp/cinpo/blob/main/docs/tasks.md#failure-model).
+
+If the check cannot run here, say so. If the change alters a contract, update the test and the docs in the same change.
+
+## Where new knowledge goes
+
+Do not append every new fact here. Put it where it can be maintained:
+
+| Kind of knowledge | Home | Shape |
+|---|---|---|
+| Invariant for every project from this template | this file | one rule, linked to a check |
+| Procedure or workflow | `README.md` | numbered steps with commands |
+| API or specification detail | CINPO docs (linked above) | reference plus example |
+| Fact specific to this generated project | end of this file | `## Project-specific notes` |
+| A mistake that can be reproduced | a test or CI check | assertion and failure message |
+| A one-off incident | commit message or issue | not a rule |
+
+Promotion order: reproduce it, encode it as a check, write the smallest example, and only then add a rule if it is universal. When you add a rule, remove or merge one. `must` means enforced by code or a test; `conventionally` means recommended, not enforced. If you need an exception, it was not a `must`.
+
+## Project-specific notes
+
+<!-- Rules that apply only to this generated project. Keep the template sections above unchanged. -->

@@ -46,7 +46,6 @@ public final class ManifestLoader {
  
     private static final Logger LOG = Logger.getLogger(ManifestLoader.class.getName());
     private static final String EXPECTED_SCHEMA = "cinpo.applet.v1";
-    private static final String LEGACY_SCHEMA = "cardemus.applet.v1";
     private static final String CLASSPATH_RESOURCE = "manifest.yaml";
 
     private ManifestLoader() {
@@ -111,13 +110,8 @@ public final class ManifestLoader {
         // Validate schema version
         String schema = YamlMapUtil.getString(data, "schema", source);
         if (!EXPECTED_SCHEMA.equals(schema)) {
-            if (LEGACY_SCHEMA.equals(schema)) {
-                LOG.warning(() -> "Legacy manifest schema in " + source
-                        + ": " + LEGACY_SCHEMA + " is accepted for now; prefer " + EXPECTED_SCHEMA);
-            } else {
-                LOG.warning(() -> "Manifest schema mismatch: " + schema
-                        + " (expected: " + EXPECTED_SCHEMA + ") in " + source);
-            }
+            LOG.warning(() -> "Manifest schema mismatch: " + schema
+                    + " (expected: " + EXPECTED_SCHEMA + ") in " + source);
         }
 
         // Parse top-level fields

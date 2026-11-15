@@ -10,9 +10,6 @@ package:
   version: "1.0"
 
 companionBundles: []
-#  - id: globalplatform-1.7
-#    jar: vendor/globalplatform/org.globalplatform-1.7/gpapi-globalplatform.jar
-#    exports: vendor/globalplatform/org.globalplatform-1.7/exports
 
 applets:
   - id: hello
