@@ -7,7 +7,7 @@
 [![Publish](https://github.com/AokiApp/cinpo/actions/workflows/publish.yml/badge.svg)](https://github.com/AokiApp/cinpo/actions/workflows/publish.yml)
 [![JDK](https://img.shields.io/badge/JDK-21-ed8b00?logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
 [![Java Card](https://img.shields.io/badge/Java%20Card-3.0.4-007396)](https://www.oracle.com/java/java-card/)
-[![License](https://img.shields.io/badge/Source%20Available-AokiApp%20NAAL--Tight-4c1?labelColor=30363d)](LICENSE.md)
+[![License](https://img.shields.io/badge/Source%20Available-AokiApp%20NAL--T-4c1?labelColor=30363d)](LICENSE.md)
 
 [Getting Started](#getting-started) · [Templates](#templates) · [Writing Tasks](#writing-tasks) · [Tasks](docs/tasks.md) · [Manifest](docs/manifest.md) · [Profiles](docs/profiles.md) · [Vendor](docs/vendor.md) · [License](#license)
 
