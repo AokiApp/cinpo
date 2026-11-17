@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.jar.Attributes;
@@ -27,10 +28,12 @@ import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.tasks.Classpath;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.api.provider.ListProperty;
 
 /**
  * Builds the production CINPO appliance JAR for template projects.
@@ -51,14 +54,47 @@ public abstract class CinpoJarTask extends DefaultTask {
     private static final String MAIN_CLASS = "app.aoki.cinpo.cli.CinpoCli";
     private static final Attributes.Name AUTOMATIC_MODULE_NAME_ATTRIBUTE =
             new Attributes.Name("Automatic-Module-Name");
+    private static final Attributes.Name RUNTIMES_ATTRIBUTE = new Attributes.Name("X-Cinpo-Runtimes");
     private static final String AUTOMATIC_MODULE_NAME = "app.aoki.cinpo";
     private static final String MANIFEST_ENTRY = "META-INF/MANIFEST.MF";
     private static final String BUNDLED_SIMULATOR_ENTRY_PREFIX = "cinpo-simulator";
     private static final String API_EXPORT_ENTRY_PREFIX = "api_export_files_";
 
+    private static final String RUNTIME_JCRESIM = "jcresim";
+    private static final String RUNTIME_JCARDENGINE = "jcardengine";
+    private static final String RUNTIME_PCSC = "pcsc";
+    private static final List<String> ALL_RUNTIMES = List.of(RUNTIME_PCSC, RUNTIME_JCARDENGINE, RUNTIME_JCRESIM);
+
+    /**
+     * Archive file-name prefixes for the transitive closure needed by the jcardengine runtime:
+     * the in-process Java Card runtime, its Java Card class stubs, and the crypto and
+     * APDU toolchain globalplatformpro pulls in. Names come from the resolved Gradle cache
+     * ({@code <artifact>-<version>.jar}), so matching on a prefix is version-independent.
+     */
+    private static final String[] JCARDENGINE_ARCHIVE_PREFIXES = {
+            "jcardengine-",
+            "globalplatformpro-",
+            "apdu4j-",
+            "capfile-",
+            "tlv-",
+            "byte-buddy-",
+            "asm-",
+            "bcprov-",
+            "bcpkix-",
+            "bcutil-",
+            "jackson-core-",
+            "jackson-databind-",
+            "jackson-annotations-",
+            "jackson-dataformat-yaml-",
+            "slf4j-api-"
+    };
+
+    private static final String JCRESIM_ARCHIVE = "socketprovider.jar";
+
     private final ConfigurableFileCollection classpath;
     private final DirectoryProperty bundledSimulatorDirectory;
     private final RegularFileProperty archiveFile;
+    private final ListProperty<String> runtimes;
 
     /**
      * Creates a task instance with the default appliance archive path and simulator cache path.
@@ -74,6 +110,18 @@ public abstract class CinpoJarTask extends DefaultTask {
                 getProject().getLayout().getBuildDirectory().dir("cinpo-cache/jcsl/" + platform));
         archiveFile = objects.fileProperty().convention(
                 getProject().getLayout().getBuildDirectory().file("libs/cinpo-appliance.jar"));
+        runtimes = objects.listProperty(String.class).convention(ALL_RUNTIMES);
+    }
+
+    /**
+     * Returns the runtimes this appliance bundles.
+     *
+     * @return the subset of {@code pcsc}, {@code jcardengine}, and {@code jcresim} to package;
+     *         defaults to all three
+     */
+    @Input
+    public ListProperty<String> getRuntimes() {
+        return runtimes;
     }
 
     /**
@@ -114,6 +162,7 @@ public abstract class CinpoJarTask extends DefaultTask {
      */
     @TaskAction
     public void runTask() {
+        validateRuntimes();
         Path outputPath = getArchiveFile().get().getAsFile().toPath();
         try {
             Files.createDirectories(outputPath.getParent());
@@ -123,6 +172,19 @@ public abstract class CinpoJarTask extends DefaultTask {
             throw new UncheckedIOException("Failed to build CINPO appliance JAR: " + outputPath, e);
         }
         getLogger().lifecycle("Built CINPO appliance JAR: {}", getProject().relativePath(outputPath));
+    }
+
+    /**
+     * Fails fast when an unknown runtime name is configured, instead of silently producing
+     * an appliance that behaves as if the name were ignored.
+     */
+    private void validateRuntimes() {
+        for (String runtime : runtimes.get()) {
+            if (!ALL_RUNTIMES.contains(runtime)) {
+                throw new IllegalArgumentException(
+                        "Unknown cinpoJar runtime: '" + runtime + "'. Known runtimes: " + ALL_RUNTIMES);
+            }
+        }
     }
 
     /**
@@ -137,7 +199,7 @@ public abstract class CinpoJarTask extends DefaultTask {
         // ZIP entries while keeping project classes/resources ahead of dependency contents.
         Set<String> writtenEntries = new LinkedHashSet<>();
         String targetApiVersion = targetApiVersion();
-        Manifest manifest = manifest();
+        Manifest manifest = manifest(runtimes.get());
         try (JarOutputStream output = new JarOutputStream(
                 new BufferedOutputStream(Files.newOutputStream(outputPath)), manifest)) {
             writtenEntries.add(MANIFEST_ENTRY);
@@ -148,6 +210,10 @@ public abstract class CinpoJarTask extends DefaultTask {
                     continue;
                 }
                 if (Files.isRegularFile(path) && isArchive(path)) {
+                    if (isRuntimeExcluded(path)) {
+                        getLogger().lifecycle("cinpoJar: skipping {} (runtime not bundled)", path.getFileName());
+                        continue;
+                    }
                     writeArchive(output, writtenEntries, path, targetApiVersion);
                 }
             }
@@ -177,6 +243,10 @@ public abstract class CinpoJarTask extends DefaultTask {
         // prepareJavaCardTools copies and configures jcsl into build/cinpo-cache/jcsl/<os>-<arch>.
         // The runtime side intentionally does not know about Gradle's build directory; it only looks
         // for classpath resources below cinpo-simulator/<os>-<arch>. Keep this mapping explicit here.
+        if (!runtimes.get().contains(RUNTIME_JCRESIM)) {
+            getLogger().lifecycle("cinpoJar: skipping bundled simulator because jcresim is not selected");
+            return;
+        }
         String platform = Util.detectOS() + "-" + Util.detectArch();
         Path simulatorDirectory = getBundledSimulatorDirectory().get().getAsFile().toPath();
         if (!Files.isDirectory(simulatorDirectory)) {
@@ -189,16 +259,37 @@ public abstract class CinpoJarTask extends DefaultTask {
     /**
      * Creates the appliance manifest used by {@code java -jar}.
      *
-     * @return manifest declaring the CINPO CLI main class
+     * @param selectedRuntimes runtimes the appliance bundles
+     * @return manifest declaring the CINPO CLI main class and the bundled runtimes
      */
-    private static Manifest manifest() {
+    private static Manifest manifest(List<String> selectedRuntimes) {
         Manifest manifest = new Manifest();
         Attributes attributes = manifest.getMainAttributes();
         attributes.put(Attributes.Name.MANIFEST_VERSION, "1.0");
         attributes.put(Attributes.Name.MAIN_CLASS, MAIN_CLASS);
         // Fixed module name so the automatic module does not depend on the JAR file name.
         attributes.put(AUTOMATIC_MODULE_NAME_ATTRIBUTE, AUTOMATIC_MODULE_NAME);
+        // The CLI reads this attribute to fail fast when an excluded runtime is selected.
+        attributes.put(RUNTIMES_ATTRIBUTE, String.join(",", selectedRuntimes));
         return manifest;
+    }
+
+    /**
+     * Returns {@code true} when the archive is needed only by a runtime that this build did
+     * not select. Matching is done on the archive file name, which carries
+     * {@code <artifact>-<version>.jar}, so the rules are stable across release upgrades.
+     */
+    private boolean isRuntimeExcluded(Path path) {
+        List<String> selected = runtimes.get();
+        String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
+        if (!selected.contains(RUNTIME_JCARDENGINE)) {
+            for (String prefix : JCARDENGINE_ARCHIVE_PREFIXES) {
+                if (name.startsWith(prefix)) {
+                    return true;
+                }
+            }
+        }
+        return !selected.contains(RUNTIME_JCRESIM) && name.equals(JCRESIM_ARCHIVE);
     }
 
     /**

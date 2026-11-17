@@ -194,6 +194,24 @@ java -jar build/libs/cinpo-appliance.jar write --profile mycard --test
 java -jar build/libs/cinpo-appliance.jar write --profile mycard -- --record customer-42
 ```
 
+### Appliance runtimes
+
+The appliance bundles every runtime by default. To ship a smaller artifact, choose the runtimes to include; the others are dropped along with their dependencies:
+
+```bash
+./gradlew cinpoJar -Pcinpo.appliance.runtimes=pcsc
+```
+
+or in the project's `build.gradle`:
+
+```groovy
+tasks.named('cinpoJar') {
+    runtimes = ['pcsc']
+}
+```
+
+Valid values are `pcsc`, `jcardengine`, and `jcresim`; the default is all three. Dropping `jcardengine` removes the in-process Java Card runtime and its transitive dependencies (BouncyCastle, Byte Buddy, jcardsim, globalplatformpro, apdu4j, Jackson). Dropping `jcresim` removes the embedded simulator binaries (`jcsl`) and Oracle's `socketprovider.jar`. Selecting an excluded runtime fails with a clear `UnsupportedRuntimeException` rather than a missing-class error from deep inside an adapter. The runtime name of the default `jcdksim` profile is `jcresim`.
+
 ## Templates
 
 `scripts/bootstrap.sh` and `scripts/bootstrap.ps1` copy one of three starter templates into the destination directory. Select one with `--template` (`-Template` on PowerShell); the default is `basic`.

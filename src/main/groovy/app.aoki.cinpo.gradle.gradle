@@ -113,9 +113,14 @@ tasks.named('test') {
 // classes contributes host task classes, manifest.yaml, generated CAP resources,
 // and the separately compiled applet classes used by JCardEngine runtime installs;
 // prepareJavaCardTools contributes the configured simulator runtime bundled by CinpoJarTask.
+def cinpoApplianceRuntimes = providers.gradleProperty('cinpo.appliance.runtimes')
 tasks.register('cinpoJar', CinpoJarTask) {
     classpath.from(mainSourceSet.runtimeClasspath)
     classpath.from(layout.buildDirectory.dir('classes/java/applet'))
+    runtimes.set(cinpoApplianceRuntimes.map { value ->
+        def parsed = value.split(',').collect { it.trim().toLowerCase() }.findAll { !it.isEmpty() }
+        parsed.isEmpty() ? ['pcsc', 'jcardengine', 'jcresim'] : parsed
+    }.orElse(['pcsc', 'jcardengine', 'jcresim']))
     dependsOn tasks.named('classes')
     dependsOn prepareJavaCardTools
 }
