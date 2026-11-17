@@ -34,6 +34,28 @@ public final class MyProvision implements CardTask {
 
 No manual wiring. No scripts. Just annotate, inject, run.
 
+## Modules
+
+CINPO is published as several Maven artifacts so that applications only carry what they use. `app.aoki.cinpo:cinpo` is the framework core; `app.aoki.cinpo:cinpo-runtime-*` are the runtime adapters your project selects.
+
+| Module | Description |
+|--------|-------------|
+| `app.aoki.cinpo:cinpo` | Framework core: CLI, orchestrator, manifest parser, GP / SCP crypto, APDU I/O, task loader. Required by every consumer and by every runtime module. |
+| `app.aoki.cinpo:cinpo-runtime-jcresim` | Oracle JCDK simulator runtime. Brings in the Oracle JCDK simulator's socket provider bridge and the `jcsl` binary. Needed only for `runtime: jcresim` profiles. |
+| `app.aoki.cinpo:cinpo-runtime-jcardengine` | In-process Java Card engine runtime. Brings in `jCardEngine` and its dependencies (Byte Buddy, BouncyCastle, …). Needed only for `runtime: jcardengine` profiles. |
+| `app.aoki.cinpo:cinpo-runtime-pcsc` | PC/SC runtime. Uses the host's PC/SC stack via `javax.smartcardio`. No native dependencies. |
+
+A typical consumer declares the core plus the runtimes it actually needs:
+
+```groovy
+dependencies {
+    implementation 'app.aoki.cinpo:cinpo:0.5.0'
+    implementation 'app.aoki.cinpo:cinpo-runtime-jcresim:0.5.0'
+}
+```
+
+All three runtime modules depend on `cinpo` transitively, so you do not need to declare it separately. The appliance JAR produced by `cinpoJar` includes only what your project and its dependencies pull in — a project that only ever uses `runtime: jcresim` will carry the simulator's class files and native libraries but not the PC/SC or jcardengine dependencies. For guidance on what changed from previous 0.x releases, see [migration-0.5.0](docs/migration-0.5.0.md).
+
 ## Philosophy
 
 CINPO defines a streamlined developer experience for Java Card applet development. It provides complete workflows and frameworks for building, provisioning, testing, and deploying in the wild, from creating the template project to packaging for production. It is designed just like "Spring Boot for Java Card."

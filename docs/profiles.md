@@ -91,7 +91,8 @@ Real SCP keys are not test keys. Keep them out of git and do not reuse `profile/
 
 | `runtime` value | Transport |
 |----------------|-----------|
-| `jcresim` | Oracle JCDK simulator (auto-managed) |
+| `jcresim` | Oracle JCDK simulator (auto-managed). Requires the Oracle JCDK vendor archives in `vendor/`. |
+| `jcardengine` | In-process Java Card engine. No native simulator; runs the applet as compiled `classes`. |
 | `pcsc` | PC/SC card reader (javax.smartcardio) |
 
 ## Supported protocols
