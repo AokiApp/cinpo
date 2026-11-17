@@ -11,8 +11,10 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
@@ -55,6 +57,7 @@ public abstract class CinpoJarTask extends DefaultTask {
     private static final String MANIFEST_ENTRY = "META-INF/MANIFEST.MF";
     private static final String BUNDLED_SIMULATOR_ENTRY_PREFIX = "cinpo-simulator";
     private static final String API_EXPORT_ENTRY_PREFIX = "api_export_files_";
+    private static final String SERVICE_ENTRY_PREFIX = "META-INF/services/";
 
     private final ConfigurableFileCollection classpath;
     private final DirectoryProperty bundledSimulatorDirectory;
@@ -136,6 +139,7 @@ public abstract class CinpoJarTask extends DefaultTask {
         // once an entry name is written, later duplicate entries are skipped. This avoids duplicate
         // ZIP entries while keeping project classes/resources ahead of dependency contents.
         Set<String> writtenEntries = new LinkedHashSet<>();
+        LinkedHashMap<String, LinkedHashSet<String>> mergedServices = new LinkedHashMap<>();
         String targetApiVersion = targetApiVersion();
         Manifest manifest = manifest();
         try (JarOutputStream output = new JarOutputStream(
@@ -144,14 +148,15 @@ public abstract class CinpoJarTask extends DefaultTask {
             for (File file : getClasspath().getFiles()) {
                 Path path = file.toPath();
                 if (Files.isDirectory(path)) {
-                    writeDirectory(output, writtenEntries, path, targetApiVersion);
+                    writeDirectory(output, writtenEntries, path, "", targetApiVersion, mergedServices);
                     continue;
                 }
                 if (Files.isRegularFile(path) && isArchive(path)) {
-                    writeArchive(output, writtenEntries, path, targetApiVersion);
+                    writeArchive(output, writtenEntries, path, targetApiVersion, mergedServices);
                 }
             }
-            writeBundledSimulator(output, writtenEntries);
+            writeBundledSimulator(output, writtenEntries, mergedServices);
+            writeMergedServices(output, writtenEntries, mergedServices);
         }
     }
 
@@ -173,7 +178,8 @@ public abstract class CinpoJarTask extends DefaultTask {
      * @param writtenEntries entry names already written to the archive
      * @throws IOException if simulator files cannot be copied into the archive
      */
-    private void writeBundledSimulator(JarOutputStream output, Set<String> writtenEntries) throws IOException {
+    private void writeBundledSimulator(JarOutputStream output, Set<String> writtenEntries,
+            LinkedHashMap<String, LinkedHashSet<String>> mergedServices) throws IOException {
         // prepareJavaCardTools copies and configures jcsl into build/cinpo-cache/jcsl/<os>-<arch>.
         // The runtime side intentionally does not know about Gradle's build directory; it only looks
         // for classpath resources below cinpo-simulator/<os>-<arch>. Keep this mapping explicit here.
@@ -183,7 +189,58 @@ public abstract class CinpoJarTask extends DefaultTask {
             getLogger().warn("CINPO simulator runtime was not bundled because it was not found: {}", simulatorDirectory);
             return;
         }
-        writeDirectory(output, writtenEntries, simulatorDirectory, BUNDLED_SIMULATOR_ENTRY_PREFIX + "/" + platform, null);
+        writeDirectory(output, writtenEntries, simulatorDirectory, BUNDLED_SIMULATOR_ENTRY_PREFIX + "/" + platform, null, mergedServices);
+    }
+
+    /**
+     * Writes the merged {@code META-INF/services/<name>} files accumulated from every input.
+     *
+     * @param output archive stream being written
+     * @param writtenEntries entry names already written to the archive
+     * @param mergedServices services collected from every input, in classpath order
+     * @throws IOException if the services section cannot be written
+     */
+    private static void writeMergedServices(JarOutputStream output, Set<String> writtenEntries,
+            LinkedHashMap<String, LinkedHashSet<String>> mergedServices) throws IOException {
+        if (mergedServices.isEmpty()) {
+            return;
+        }
+        for (Map.Entry<String, LinkedHashSet<String>> entry : mergedServices.entrySet()) {
+            String targetName = SERVICE_ENTRY_PREFIX + entry.getKey();
+            byte[] content = String.join("\n", entry.getValue()).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            JarEntry targetEntry = new JarEntry(targetName);
+            targetEntry.setTime(writeServicesTime());
+            output.putNextEntry(targetEntry);
+            output.write(content);
+            output.closeEntry();
+            writtenEntries.add(targetName);
+        }
+    }
+
+    private static long writeServicesTime() {
+        // Deterministic timestamp keeps the appliance reproducible in merges.
+        return 0L;
+    }
+
+    /**
+     * Collects one services entry into the merged-service bucket.
+     *
+     * @param mergedServices map from service name to lines, populated in place
+     * @param entryName normalized entry name (already known to start with the services prefix)
+     * @param content raw bytes of the services file
+     */
+    private static void collectServiceLines(LinkedHashMap<String, LinkedHashSet<String>> mergedServices,
+            String entryName, byte[] content) {
+        String serviceName = entryName.substring(SERVICE_ENTRY_PREFIX.length());
+        LinkedHashSet<String> lines = mergedServices.computeIfAbsent(serviceName, key -> new LinkedHashSet<>());
+        String[] raw = new String(content, java.nio.charset.StandardCharsets.UTF_8).split("[\r\n]+");
+        for (String line : raw) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                continue;
+            }
+            lines.add(trimmed);
+        }
     }
 
     /**
@@ -202,22 +259,6 @@ public abstract class CinpoJarTask extends DefaultTask {
     }
 
     /**
-     * Writes a directory tree using paths relative to its root.
-     *
-     * @param output archive stream being written
-     * @param writtenEntries entry names already written to the archive
-     * @param root directory whose files should be copied
-     * @throws IOException if directory traversal or file copying fails
-     */
-    private static void writeDirectory(
-            JarOutputStream output,
-            Set<String> writtenEntries,
-            Path root,
-            String targetApiVersion) throws IOException {
-        writeDirectory(output, writtenEntries, root, "", targetApiVersion);
-    }
-
-    /**
      * Writes a directory tree under an optional archive entry prefix.
      *
      * @param output archive stream being written
@@ -231,7 +272,8 @@ public abstract class CinpoJarTask extends DefaultTask {
             Set<String> writtenEntries,
             Path root,
             String entryPrefix,
-            String targetApiVersion) throws IOException {
+            String targetApiVersion,
+            LinkedHashMap<String, LinkedHashSet<String>> mergedServices) throws IOException {
         // Directory inputs are project outputs/resources. Their relative paths are already the
         // desired classpath paths, except for the simulator directory where entryPrefix relocates
         // native files into the resource namespace understood by JcreSimAdapter.
@@ -242,6 +284,10 @@ public abstract class CinpoJarTask extends DefaultTask {
                     .toList()) {
                 String relativeName = normalizeEntryName(root.relativize(source));
                 String entryName = entryPrefix.isBlank() ? relativeName : entryPrefix + "/" + relativeName;
+                if (entryName.startsWith(SERVICE_ENTRY_PREFIX)) {
+                    collectServiceLines(mergedServices, entryName, Files.readAllBytes(source));
+                    continue;
+                }
                 if (shouldSkipEntry(entryName, targetApiVersion) || !writtenEntries.add(entryName)) {
                     continue;
                 }
@@ -266,14 +312,24 @@ public abstract class CinpoJarTask extends DefaultTask {
             JarOutputStream output,
             Set<String> writtenEntries,
             Path archive,
-            String targetApiVersion) throws IOException {
+            String targetApiVersion,
+            LinkedHashMap<String, LinkedHashSet<String>> mergedServices) throws IOException {
         // Flatten dependency archives into the appliance. Signature metadata is filtered by
         // shouldSkipEntry because the original signatures are invalid after merging many archives.
         try (ZipInputStream input = new ZipInputStream(new BufferedInputStream(Files.newInputStream(archive)))) {
             ZipEntry sourceEntry;
             while ((sourceEntry = input.getNextEntry()) != null) {
                 String entryName = normalizeEntryName(sourceEntry.getName());
-                if (sourceEntry.isDirectory() || shouldSkipEntry(entryName, targetApiVersion) || !writtenEntries.add(entryName)) {
+                if (sourceEntry.isDirectory()) {
+                    input.closeEntry();
+                    continue;
+                }
+                if (entryName.startsWith(SERVICE_ENTRY_PREFIX)) {
+                    collectServiceLines(mergedServices, entryName, input.readAllBytes());
+                    input.closeEntry();
+                    continue;
+                }
+                if (shouldSkipEntry(entryName, targetApiVersion) || !writtenEntries.add(entryName)) {
                     input.closeEntry();
                     continue;
                 }
