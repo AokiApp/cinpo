@@ -81,6 +81,29 @@ run_publish_task() {
     return "${gradle_status}"
 }
 
+# Maven artifacts the framework publishes, one per Gradle project. The task name
+# is the same for every module because each one declares a 'mavenJava' publication.
+MVN_MODULE_ARTIFACTS=(
+    cinpo-core
+    cinpo-runtime-jcardengine
+    cinpo-runtime-jcresim
+    cinpo-runtime-pcsc
+)
+
+publish_maven_artifact() {
+    local module="$1"
+    run_publish_task \
+        ":${module}:publishMavenJavaPublicationToGithubPackagesRepository" \
+        "app/aoki/cinpo/${module}/maven-metadata.xml" \
+        "app/aoki/cinpo/${module}/${PROJECT_VERSION}/${module}-${PROJECT_VERSION}.pom" \
+        "app/aoki/cinpo/${module}/${PROJECT_VERSION}/${module}-${PROJECT_VERSION}.module" \
+        "app/aoki/cinpo/${module}/${PROJECT_VERSION}/${module}-${PROJECT_VERSION}.jar"
+}
+
+for module in "${MVN_MODULE_ARTIFACTS[@]}"; do
+    publish_maven_artifact "${module}"
+done
+
 run_publish_task \
     publishApp.aoki.cinpo.gradlePluginMarkerMavenPublicationToGithubPackagesRepository \
     "app/aoki/cinpo/gradle/app.aoki.cinpo.gradle.gradle.plugin/maven-metadata.xml" \
@@ -90,12 +113,6 @@ run_publish_task \
     publishApp.aoki.cinpo.prepare-java-card-toolsPluginMarkerMavenPublicationToGithubPackagesRepository \
     "app/aoki/cinpo/prepare-java-card-tools/app.aoki.cinpo.prepare-java-card-tools.gradle.plugin/maven-metadata.xml" \
     "app/aoki/cinpo/prepare-java-card-tools/app.aoki.cinpo.prepare-java-card-tools.gradle.plugin/${PROJECT_VERSION}/app.aoki.cinpo.prepare-java-card-tools.gradle.plugin-${PROJECT_VERSION}.pom"
-
-run_publish_task \
-    publishMavenJavaPublicationToGithubPackagesRepository \
-    "app/aoki/cinpo/cinpo/maven-metadata.xml" \
-    "app/aoki/cinpo/cinpo/${PROJECT_VERSION}/cinpo-${PROJECT_VERSION}.pom" \
-    "app/aoki/cinpo/cinpo/${PROJECT_VERSION}/cinpo-${PROJECT_VERSION}.jar"
 
 run_publish_task \
     publishPluginMavenPublicationToGithubPackagesRepository \
