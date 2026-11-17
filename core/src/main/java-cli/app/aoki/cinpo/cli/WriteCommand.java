@@ -8,7 +8,7 @@ import app.aoki.cinpo.orchestrator.Orchestrator;
 import app.aoki.cinpo.orchestrator.Phase;
 import app.aoki.cinpo.orchestrator.phase.InitPhase;
 import app.aoki.cinpo.orchestrator.phase.TaskKindPhase;
-import app.aoki.cinpo.runtime.RuntimeAdapters;
+import app.aoki.cinpo.runtime.ApduChannelFactory;
 import app.aoki.cinpo.task.TaskArguments;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -112,7 +112,7 @@ public class WriteCommand implements Runnable {
         List<Phase> phases = new ArrayList<>();
         phases.add(new InitPhase());
         if (!skipInstall) {
-            phases.add(RuntimeAdapters.forProfile(profile).createInstallPhase(profile));
+            phases.add(ApduChannelFactory.forProfile(profile).createInstallPhase(profile));
         }
         for (String taskKind : resolvedTaskKinds) {
             phases.add(new TaskKindPhase(taskKind, requireTasks));
