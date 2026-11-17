@@ -76,6 +76,12 @@ jobs:
         working-directory: ${{ runner.temp }}/cinpo-verify-project
         run: java -jar build/libs/cinpo-appliance.jar write --test
 
+      # java -jar ignores module metadata, so this check catches a bundled
+      # foreign module-info.class or java/ stub that java -jar would not.
+      - name: Verify appliance on module path
+        working-directory: ${{ runner.temp }}/cinpo-verify-project
+        run: java -p build/libs/cinpo-appliance.jar -m app.aoki.cinpo/app.aoki.cinpo.cli.CinpoCli --version
+
   verify-windows:
     name: Verify template builds (Windows)
     runs-on: windows-latest
@@ -135,3 +141,7 @@ jobs:
       - name: Verify cinpoJar appliance
         working-directory: ${{ runner.temp }}\cinpo-verify-project
         run: java -jar build\libs\cinpo-appliance.jar write --test
+
+      - name: Verify appliance on module path
+        working-directory: ${{ runner.temp }}\cinpo-verify-project
+        run: java -p build\libs\cinpo-appliance.jar -m app.aoki.cinpo/app.aoki.cinpo.cli.CinpoCli --version

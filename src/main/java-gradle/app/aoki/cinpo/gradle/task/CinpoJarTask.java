@@ -49,6 +49,9 @@ import org.gradle.api.tasks.TaskAction;
 public abstract class CinpoJarTask extends DefaultTask {
 
     private static final String MAIN_CLASS = "app.aoki.cinpo.cli.CinpoCli";
+    private static final Attributes.Name AUTOMATIC_MODULE_NAME_ATTRIBUTE =
+            new Attributes.Name("Automatic-Module-Name");
+    private static final String AUTOMATIC_MODULE_NAME = "app.aoki.cinpo";
     private static final String MANIFEST_ENTRY = "META-INF/MANIFEST.MF";
     private static final String BUNDLED_SIMULATOR_ENTRY_PREFIX = "cinpo-simulator";
     private static final String API_EXPORT_ENTRY_PREFIX = "api_export_files_";
@@ -193,6 +196,8 @@ public abstract class CinpoJarTask extends DefaultTask {
         Attributes attributes = manifest.getMainAttributes();
         attributes.put(Attributes.Name.MANIFEST_VERSION, "1.0");
         attributes.put(Attributes.Name.MAIN_CLASS, MAIN_CLASS);
+        // Fixed module name so the automatic module does not depend on the JAR file name.
+        attributes.put(AUTOMATIC_MODULE_NAME_ATTRIBUTE, AUTOMATIC_MODULE_NAME);
         return manifest;
     }
 
@@ -322,12 +327,35 @@ public abstract class CinpoJarTask extends DefaultTask {
     private static boolean shouldSkipEntry(String entryName, String targetApiVersion) {
         // The appliance owns its manifest, and merged signed JAR metadata would make java -jar fail
         // with invalid signature errors because entries no longer match their original digests.
+        // Module descriptors belong to the dependency that ships them; the appliance is not a
+        // module, so it must not inherit one from a dependency — not from the root, and not from
+        // a multi-release section. The java/ stubs jCardEngine ships for compiling applets are
+        // never loaded at runtime (the bootstrap loader reads the JDK's own java/*), but they
+        // split java.base if the JAR is ever placed on the module path.
         String upperName = entryName.toUpperCase(Locale.ROOT);
         return MANIFEST_ENTRY.equalsIgnoreCase(entryName)
                 || upperName.endsWith(".SF")
                 || upperName.endsWith(".DSA")
                 || upperName.endsWith(".RSA")
+                || isModuleInfoEntry(entryName)
+                || entryName.startsWith("java/")
                 || isApiExportEntryForOtherVersion(entryName, targetApiVersion);
+    }
+
+    /**
+     * Matches a module descriptor at the archive root or inside a multi-release section such as
+     * {@code META-INF/versions/9/module-info.class}.
+     */
+    private static boolean isModuleInfoEntry(String entryName) {
+        if (entryName.equals("module-info.class")) {
+            return true;
+        }
+        if (!entryName.startsWith("META-INF/versions/") || !entryName.endsWith("/module-info.class")) {
+            return false;
+        }
+        int lastSlash = entryName.lastIndexOf('/');
+        String release = entryName.substring("META-INF/versions/".length(), lastSlash);
+        return !release.isEmpty() && release.chars().allMatch(Character::isDigit);
     }
 
     private static boolean isApiExportEntryForOtherVersion(String entryName, String targetApiVersion) {
