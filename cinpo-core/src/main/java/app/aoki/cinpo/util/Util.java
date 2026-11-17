@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -57,50 +56,6 @@ public final class Util {
             throw new IllegalArgumentException("Byte value must be between 0x00 and 0xFF");
         }
         return value;
-    }
-
-    // ─── Platform helpers ────────────────────────────────────────────────
-
-    public static String detectOS() {
-        String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
-        if (os.contains("linux")) return "linux";
-        if (os.contains("mac") || os.contains("darwin")) return "darwin";
-        if (os.contains("win")) return "windows";
-        throw new IllegalStateException("Unsupported operating system: " + os);
-    }
-
-    public static String detectArch() {
-        String arch = System.getProperty("os.arch").toLowerCase(Locale.ROOT);
-        if (arch.contains("aarch64") || arch.contains("arm64")) return "aarch64";
-        if (arch.contains("amd64") || arch.contains("x86_64")) return "amd64";
-        throw new IllegalStateException("Unsupported CPU architecture: " + arch);
-    }
-
-    public static boolean isWindows() {
-        return "windows".equals(detectOS());
-    }
-
-    /**
-     * Returns the Oracle JCDK simulator executable name for the current OS.
-     * Oracle names the binary {@code jcsl} on Linux/macOS and {@code jcsw.exe} on Windows.
-     *
-     * @return the simulator executable file name
-     */
-    public static String simulatorExecutableName() {
-        return isWindows() ? "jcsw.exe" : "jcsl";
-    }
-
-    /**
-     * Returns the shared-library files that accompany the simulator executable on the
-     * current OS. Used to stage the runtime out of the appliance JAR.
-     *
-     * @return companion native library file names
-     */
-    public static List<String> simulatorRuntimeLibraryNames() {
-        if (isWindows()) {
-            return List.of("legacy.dll", "libcrypto-3.dll", "libssl-3.dll");
-        }
-        return List.of("legacy.so", "libcrypto.so", "libcrypto.so.3", "libssl.so", "libssl.so.3");
     }
 
     // ─── Binary read helpers ─────────────────────────────────────────────

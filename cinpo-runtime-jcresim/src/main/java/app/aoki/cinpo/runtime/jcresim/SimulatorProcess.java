@@ -1,6 +1,5 @@
 package app.aoki.cinpo.runtime.jcresim;
 
-import app.aoki.cinpo.util.Util;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -152,7 +151,7 @@ final class SimulatorProcess implements AutoCloseable {
      * {@code LD_LIBRARY_PATH} (colon separated).
      */
     static void prependNativeLibraryPath(Map<String, String> environment, Path libraryDirectory) {
-        boolean windows = Util.isWindows();
+        boolean windows = JcreSimPlatform.isWindows();
         String variable = windows ? "PATH" : "LD_LIBRARY_PATH";
         String separator = windows ? ";" : ":";
         String libPath = libraryDirectory.toAbsolutePath().toString();

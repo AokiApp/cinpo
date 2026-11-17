@@ -3,7 +3,6 @@ package app.aoki.cinpo.runtime.jcresim;
 import app.aoki.cinpo.apdu.ApduChannel;
 import app.aoki.cinpo.apdu.CommandApdu;
 import app.aoki.cinpo.apdu.ResponseApdu;
-import app.aoki.cinpo.util.Util;
 import com.oracle.smartcardio.socket.SocketCardTerminalProvider;
 import java.io.IOException;
 import java.io.InputStream;
@@ -72,7 +71,7 @@ public final class JcreSimAdapter {
             return buildCachePath;
         }
 
-        String executableName = Util.simulatorExecutableName();
+        String executableName = JcreSimPlatform.simulatorExecutableName();
         Path managedSimulator = Path.of("build").resolve("cinpo-cache").resolve("jcdk")
                 .resolve("simulator").resolve("runtime").resolve("bin").resolve(executableName);
         if (Files.isExecutable(managedSimulator)) {
@@ -82,15 +81,15 @@ public final class JcreSimAdapter {
         throw new IllegalStateException(
                 "Oracle JCRE simulator executable (" + executableName + ") not found. Searched locations:\n" +
                 "  - cinpo.simulator.path=" + (configuredPath == null ? "<unset>" : configuredPath) + "\n" +
-                "  - build/cinpo-cache/jcsl/" + Util.detectOS() + "-" + Util.detectArch() + "/" + executableName + "\n" +
+                "  - build/cinpo-cache/jcsl/" + JcreSimPlatform.detectOS() + "-" + JcreSimPlatform.detectArch() + "/" + executableName + "\n" +
                 "  - build/cinpo-cache/jcdk/simulator/runtime/bin/" + executableName + "\n" +
                 "Configure cinpo.simulator.path or prepare the managed JCDK build cache first.");
     }
 
     private static Path extractBundledSimulatorIfPresent() {
-        String os = Util.detectOS();
-        String arch = Util.detectArch();
-        String executableName = Util.simulatorExecutableName();
+        String os = JcreSimPlatform.detectOS();
+        String arch = JcreSimPlatform.detectArch();
+        String executableName = JcreSimPlatform.simulatorExecutableName();
         String resourcePrefix = "cinpo-simulator/" + os + "-" + arch + "/";
         String markerResource = resourcePrefix + executableName;
         ClassLoader loader = JcreSimAdapter.class.getClassLoader();
@@ -100,7 +99,7 @@ public final class JcreSimAdapter {
 
         List<String> stagedFiles = new ArrayList<>();
         stagedFiles.add(executableName);
-        stagedFiles.addAll(Util.simulatorRuntimeLibraryNames());
+        stagedFiles.addAll(JcreSimPlatform.simulatorRuntimeLibraryNames());
 
         Path sharedDir = Path.of(System.getProperty("java.io.tmpdir"), "cinpo-simulator", os + "-" + arch);
         try {
@@ -169,10 +168,10 @@ public final class JcreSimAdapter {
      * @return path to the simulator executable in build cache, or null if not found
      */
     private static Path findJcslInBuildCache() {
-        String os = Util.detectOS();
-        String arch = Util.detectArch();
+        String os = JcreSimPlatform.detectOS();
+        String arch = JcreSimPlatform.detectArch();
         Path buildCache = Path.of("build").resolve("cinpo-cache").resolve("jcsl");
-        return buildCache.resolve(os + "-" + arch).resolve(Util.simulatorExecutableName());
+        return buildCache.resolve(os + "-" + arch).resolve(JcreSimPlatform.simulatorExecutableName());
     }
 
     /**

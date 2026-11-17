@@ -2,7 +2,7 @@ package app.aoki.cinpo.gradle.task;
 
 import app.aoki.cinpo.config.AppletManifest;
 import app.aoki.cinpo.config.ManifestLoader;
-import app.aoki.cinpo.util.Util;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -72,7 +72,7 @@ public abstract class CinpoJarTask extends DefaultTask {
 
         ObjectFactory objects = getProject().getObjects();
         classpath = objects.fileCollection();
-        String platform = Util.detectOS() + "-" + Util.detectArch();
+        String platform = detectPlatform();
         bundledSimulatorDirectory = objects.directoryProperty().convention(
                 getProject().getLayout().getBuildDirectory().dir("cinpo-cache/jcsl/" + platform));
         archiveFile = objects.fileProperty().convention(
@@ -183,7 +183,7 @@ public abstract class CinpoJarTask extends DefaultTask {
         // prepareJavaCardTools copies and configures jcsl into build/cinpo-cache/jcsl/<os>-<arch>.
         // The runtime side intentionally does not know about Gradle's build directory; it only looks
         // for classpath resources below cinpo-simulator/<os>-<arch>. Keep this mapping explicit here.
-        String platform = Util.detectOS() + "-" + Util.detectArch();
+        String platform = detectPlatform();
         Path simulatorDirectory = getBundledSimulatorDirectory().get().getAsFile().toPath();
         if (!Files.isDirectory(simulatorDirectory)) {
             getLogger().warn("CINPO simulator runtime was not bundled because it was not found: {}", simulatorDirectory);
@@ -419,5 +419,27 @@ public abstract class CinpoJarTask extends DefaultTask {
             return false;
         }
         return !entryName.startsWith(API_EXPORT_ENTRY_PREFIX + targetApiVersion + "/");
+    }
+
+    private static String detectPlatform() {
+        // The plugin must know which OS/arch directory to bundle, but jcresim is
+        // an optional dependency the consumer adds separately — keep this knowledge
+        // local to the task rather than depending on the jcresim module.
+        String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
+        String arch = System.getProperty("os.arch").toLowerCase(Locale.ROOT);
+        String osName = os.contains("linux") ? "linux"
+                : os.contains("mac") || os.contains("darwin") ? "darwin"
+                : os.contains("win") ? "windows"
+                : null;
+        if (osName == null) {
+            throw new IllegalStateException("Unsupported operating system: " + os);
+        }
+        String archName = arch.contains("aarch64") || arch.contains("arm64") ? "aarch64"
+                : arch.contains("amd64") || arch.contains("x86_64") ? "amd64"
+                : null;
+        if (archName == null) {
+            throw new IllegalStateException("Unsupported CPU architecture: " + arch);
+        }
+        return osName + "-" + archName;
     }
 }
