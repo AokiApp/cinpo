@@ -112,7 +112,7 @@ public class WriteCommand implements Runnable {
         List<Phase> phases = new ArrayList<>();
         phases.add(new InitPhase());
         if (!skipInstall) {
-            phases.add(ApduChannelFactory.forProfile(profile).createInstallPhase(profile));
+            phases.add(ApduChannelFactory.createInstallPhase(profile));
         }
         for (String taskKind : resolvedTaskKinds) {
             phases.add(new TaskKindPhase(taskKind, requireTasks));
