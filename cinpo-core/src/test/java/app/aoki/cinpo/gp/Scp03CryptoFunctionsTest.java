@@ -18,7 +18,9 @@ import org.junit.jupiter.api.Test;
  *
  * <p>Derivation constants (S-ENC=0x04, S-MAC=0x06, S-RMAC=0x07; card/host cryptogram
  * = 0x00 / 0x01) are cross-checked independently against a pyca/cryptography
- * implementation of the same derivation (EB845BBC.../94D914.../F034ED.../114F6BC5.../FAFA93C2...).
+ * implementation of the same derivation (EB845BBC.../94D914.../F034ED.../114F6BC5.../FAFA93C2...
+ * for S8; 313082B4.../1F3975... for S16; 86C8BD65.../692443... for pseudo-random
+ * challenges).
  */
 class Scp03CryptoFunctionsTest {
 
@@ -79,6 +81,42 @@ class Scp03CryptoFunctionsTest {
                 Util.toHex(Arrays.copyOfRange(kdf(sMac, 0x00, 0x0040, context), 0, 8)));
         assertEquals("FAFA93C2EDE62463",
                 Util.toHex(Arrays.copyOfRange(kdf(sMac, 0x01, 0x0040, context), 0, 8)));
+    }
+
+    // S16 mode (Amendment D §6.2; 16-byte challenges/cryptograms)
+    @Test
+    void s16Cryptograms_matchReference() throws Exception {
+        byte[] key = Util.parseHex("404142434445464748494A4B4C4D4E4F");
+        byte[] context = Util.concat(Util.parseHex("000102030405060708090A0B0C0D0E0F"),
+                Util.parseHex("101112131415161718191A1B1C1D1E1F"));
+        byte[] sMac = kdf(key, 0x06, 0x0080, context);
+
+        // L = 0x0080 (128 bits) — full 16-byte cryptograms
+        assertEquals("313082B4105AE33D7C2D323A1E5CD6FF",
+                Util.toHex(kdf(sMac, 0x01, 0x0080, context)));
+        assertEquals("1F3975EB7C6D743F38BB5842328732A1",
+                Util.toHex(kdf(sMac, 0x00, 0x0080, context)));
+    }
+
+    // Amendment D §6.2.2.1: pseudo-random card challenge, context = seq‖invoker_AID
+    @Test
+    void pseudoRandomCardChallenge_s8_matchesReference() throws Exception {
+        // S8 (field = 8 bytes): L = 0x0040, 64 bits
+        byte[] key = Util.parseHex("404142434445464748494A4B4C4D4E4F");
+        byte[] context = Util.concat(new byte[]{0x00, 0x00, 0x01},
+                Util.parseHex("A000000151000000"));
+        assertEquals("86C8BD65FA1044EE",
+                Util.toHex(Arrays.copyOfRange(kdf(key, 0x02, 0x0040, context), 0, 8)));
+    }
+
+    @Test
+    void pseudoRandomCardChallenge_s16_matchesReference() throws Exception {
+        // S16 (field = 16 bytes): L = 0x0080, 128 bits
+        byte[] key = Util.parseHex("404142434445464748494A4B4C4D4E4F");
+        byte[] context = Util.concat(new byte[]{0x00, 0x00, 0x01},
+                Util.parseHex("A000000151000000"));
+        assertEquals("6924434C956736C8EE6122E8A3FC612F",
+                Util.toHex(kdf(key, 0x02, 0x0080, context)));
     }
 
     // ── helper: Amd D §4.1.5 KDF (counter mode, CMAC PRF) — used only via public API ──

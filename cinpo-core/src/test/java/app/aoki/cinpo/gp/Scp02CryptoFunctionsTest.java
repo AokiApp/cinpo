@@ -94,6 +94,15 @@ class Scp02CryptoFunctionsTest {
         assertEquals("AD804734CE044FFC", Util.toHex(cmac));
     }
 
+    // FIPS-81 DES KAT — https://csrc.nist.gov/publications/detail/fips/81/archived
+    // Used as the single-DES primitive under retail MAC.
+    @Test
+    void desEcbEncrypt_fips81Vector() throws Exception {
+        byte[] key = Util.parseHex("0123456789ABCDEF");
+        assertEquals("3FA40E8A984D4815",
+                Util.toHex(GpCrypto.desEcbEncrypt(key, Util.parseHex("4E6F772069732074"))));
+    }
+
     @Test
     void padIso9797Method2_padsWith80() {
         byte[] out = GpCrypto.padIso9797Method2(new byte[16], 8);
