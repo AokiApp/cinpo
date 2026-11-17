@@ -4,7 +4,7 @@ plugins {
 }
 
 dependencies {
-    api project(':core')
+    api project(':cinpo-core')
 
     // Oracle's socket terminal provider is an Oracle-licensed runtime input; it is
     // never embedded in this published artifact. It is needed at compile time only

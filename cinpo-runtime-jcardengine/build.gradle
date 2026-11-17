@@ -4,7 +4,7 @@ plugins {
 }
 
 dependencies {
-    api project(':core')
+    api project(':cinpo-core')
     implementation 'com.github.martinpaljak:jcardengine:26.06.05-SNAPSHOT'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
