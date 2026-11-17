@@ -1,0 +1,3 @@
+app.aoki.cinpo.runtime.jcresim.JcreSimRuntimeAdapter
+app.aoki.cinpo.runtime.jcardengine.JCardEngineRuntimeAdapter
+app.aoki.cinpo.runtime.pcsc.PcscRuntimeAdapter
