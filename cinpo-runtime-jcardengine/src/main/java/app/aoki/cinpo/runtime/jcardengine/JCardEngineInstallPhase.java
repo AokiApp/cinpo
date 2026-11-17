@@ -1,10 +1,9 @@
-package app.aoki.cinpo.orchestrator.phase;
+package app.aoki.cinpo.runtime.jcardengine;
 
 import app.aoki.cinpo.apdu.ApduChannel;
 import app.aoki.cinpo.config.AppletManifest;
 import app.aoki.cinpo.orchestrator.Orchestrator;
 import app.aoki.cinpo.orchestrator.Phase;
-import app.aoki.cinpo.runtime.jcardengine.JCardEngineAdapter;
 import java.io.IOException;
 import java.util.logging.Logger;
 

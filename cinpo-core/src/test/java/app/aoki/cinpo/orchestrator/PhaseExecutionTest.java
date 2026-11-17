@@ -9,7 +9,7 @@ import app.aoki.cinpo.config.Profile;
 import app.aoki.cinpo.config.ScpConfig;
 import app.aoki.cinpo.orchestrator.phase.InitPhase;
 import app.aoki.cinpo.orchestrator.phase.InstallPhase;
-import app.aoki.cinpo.orchestrator.phase.JCardEngineInstallPhase;
+import app.aoki.cinpo.runtime.jcardengine.JCardEngineInstallPhase;
 import app.aoki.cinpo.orchestrator.phase.TaskKindPhase;
 import app.aoki.cinpo.task.TaskArguments;
 import org.junit.jupiter.api.BeforeEach;

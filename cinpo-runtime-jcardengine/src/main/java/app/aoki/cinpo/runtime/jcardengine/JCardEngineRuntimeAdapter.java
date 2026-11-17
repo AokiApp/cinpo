@@ -3,7 +3,6 @@ package app.aoki.cinpo.runtime.jcardengine;
 import app.aoki.cinpo.apdu.ApduChannel;
 import app.aoki.cinpo.config.Profile;
 import app.aoki.cinpo.orchestrator.Phase;
-import app.aoki.cinpo.orchestrator.phase.JCardEngineInstallPhase;
 import app.aoki.cinpo.runtime.RuntimeAdapter;
 
 /**
