@@ -191,7 +191,7 @@ public abstract class CinpoJarTask extends DefaultTask {
      *
      * @return manifest declaring the CINPO CLI main class
      */
-    static Manifest manifest() {
+    private static Manifest manifest() {
         Manifest manifest = new Manifest();
         Attributes attributes = manifest.getMainAttributes();
         attributes.put(Attributes.Name.MANIFEST_VERSION, "1.0");
@@ -324,7 +324,7 @@ public abstract class CinpoJarTask extends DefaultTask {
      * @param entryName normalized archive entry name
      * @return {@code true} when the entry is appliance-owned metadata or invalid after merging
      */
-    static boolean shouldSkipEntry(String entryName, String targetApiVersion) {
+    private static boolean shouldSkipEntry(String entryName, String targetApiVersion) {
         // The appliance owns its manifest, and merged signed JAR metadata would make java -jar fail
         // with invalid signature errors because entries no longer match their original digests.
         // Module descriptors belong to the dependency that ships them; the appliance is not a
@@ -346,7 +346,7 @@ public abstract class CinpoJarTask extends DefaultTask {
      * Matches a module descriptor at the archive root or inside a multi-release section such as
      * {@code META-INF/versions/9/module-info.class}.
      */
-    static boolean isModuleInfoEntry(String entryName) {
+    private static boolean isModuleInfoEntry(String entryName) {
         if (entryName.equals("module-info.class")) {
             return true;
         }
