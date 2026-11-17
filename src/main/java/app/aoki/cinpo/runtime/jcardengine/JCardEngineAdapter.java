@@ -5,6 +5,7 @@ import app.aoki.cinpo.apdu.CommandApdu;
 import app.aoki.cinpo.apdu.ResponseApdu;
 import app.aoki.cinpo.config.AppletEntry;
 import app.aoki.cinpo.config.AppletManifest;
+import app.aoki.cinpo.runtime.UnsupportedRuntimeException;
 import app.aoki.cinpo.util.Util;
 import apdu4j.core.BIBO;
 import apdu4j.core.BIBOException;
@@ -25,6 +26,14 @@ public final class JCardEngineAdapter {
      * @return an APDU channel implementation
      */
     public ApduChannel createChannel() {
+        try {
+            Class.forName("pro.javacard.engine.JavaCardEngine", false, JCardEngineAdapter.class.getClassLoader());
+        } catch (ClassNotFoundException missing) {
+            throw new UnsupportedRuntimeException(
+                    "jcardengine is not bundled in this runtime. Add 'implementation"
+                            + " com.github.martinpaljak:jcardengine' to your project to use the jcardengine profile.",
+                    missing);
+        }
         return new JCardEngineChannel(createEngine());
     }
 

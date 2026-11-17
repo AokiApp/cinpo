@@ -44,7 +44,14 @@ def prepareJavaCardTools = tasks.named('prepareJavaCardTools')
 dependencies {
     implementation 'org.yaml:snakeyaml:2.2'
     implementation 'info.picocli:picocli:4.7.6'
-    implementation 'com.github.martinpaljak:jcardengine:26.06.05-SNAPSHOT'
+
+    // jCardEngine is an optional runtime. The framework compiles against it (the
+    // in-JVM Java Card runtime used to install and talk to applets without a CAP
+    // file), but consumers do not need it unless they select the jcardengine
+    // profile. Marking it compileOnly keeps it out of the published runtime
+    // classpath and out of the appliance unless explicitly added by the consumer.
+    compileOnly 'com.github.martinpaljak:jcardengine:26.06.05-SNAPSHOT'
+    testImplementation 'com.github.martinpaljak:jcardengine:26.06.05-SNAPSHOT'
 
     // Oracle Java Card tool classes are intentionally compiled against directly.
     // The Gradle plugin executes CAP generation in-process, without routing through
@@ -187,8 +194,7 @@ publishing {
                 def dependenciesNode = asNode().appendNode('dependencies')
                 [
                         ['org.yaml', 'snakeyaml', '2.2'],
-                        ['info.picocli', 'picocli', '4.7.6'],
-                        ['com.github.martinpaljak', 'jcardengine', '26.06.05-SNAPSHOT']
+                        ['info.picocli', 'picocli', '4.7.6']
                 ].each { dependency ->
                     def dependencyNode = dependenciesNode.appendNode('dependency')
                     dependencyNode.appendNode('groupId', dependency[0])

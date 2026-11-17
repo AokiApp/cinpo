@@ -194,23 +194,19 @@ java -jar build/libs/cinpo-appliance.jar write --profile mycard --test
 java -jar build/libs/cinpo-appliance.jar write --profile mycard -- --record customer-42
 ```
 
-### Appliance runtimes
+### What the appliance bundles
 
-The appliance bundles every runtime by default. To ship a smaller artifact, choose the runtimes to include; the others are dropped along with their dependencies:
+The appliance is the project's `runtimeClasspath`, flattened. Libraries that are on the classpath are bundled; libraries that are not are not, and selecting a runtime whose classes are missing fails with a clear `UnsupportedRuntimeException` from the adapter, not a missing-class error deep in the runtime.
 
-```bash
-./gradlew cinpoJar -Pcinpo.appliance.runtimes=pcsc
-```
-
-or in the project's `build.gradle`:
+The PC/SC runtime is always available (it uses only `javax.smartcardio` from the JDK). The Oracle simulator is available because projects created from a template carry `runtimeOnly files(...socketprovider.jar)` and the Oracle simulator runtime, via `prepareJavaCardTools`. The jcardengine runtime is optional: add it explicitly if you want to select it:
 
 ```groovy
-tasks.named('cinpoJar') {
-    runtimes = ['pcsc']
+dependencies {
+    implementation 'com.github.martinpaljak:jcardengine:26.06.05-SNAPSHOT'
 }
 ```
 
-Valid values are `pcsc`, `jcardengine`, and `jcresim`; the default is all three. Dropping `jcardengine` removes the in-process Java Card runtime and its transitive dependencies (BouncyCastle, Byte Buddy, jcardsim, globalplatformpro, apdu4j, Jackson). Dropping `jcresim` removes the embedded simulator binaries (`jcsl`) and Oracle's `socketprovider.jar`. Selecting an excluded runtime fails with a clear `UnsupportedRuntimeException` rather than a missing-class error from deep inside an adapter. The runtime name of the default `jcdksim` profile is `jcresim`.
+The starter templates carry this dependency, so the out-of-the-box project can select either simulator. To ship a small appliance that only talks to a real card, remove the dependency; the jcardengine profile then fails with `UnsupportedRuntimeException` instead of bundling BouncyCastle, Byte Buddy, and the Java Card runtime.
 
 ## Templates
 
