@@ -84,7 +84,7 @@ run_publish_task() {
 # Maven artifacts the framework publishes, one per Gradle project. The task name
 # is the same for every module because each one declares a 'mavenJava' publication.
 MVN_ARTIFACTS=(
-    cinpo:core
+    cinpo:cinpo-core
     cinpo-runtime-jcardengine:cinpo-runtime-jcardengine
     cinpo-runtime-jcresim:cinpo-runtime-jcresim
     cinpo-runtime-pcsc:cinpo-runtime-pcsc
