@@ -28,14 +28,14 @@ repositories {
 }
 
 def prepareJavaCardTools = tasks.named('prepareJavaCardTools')
-// The annotation processor lives in cinpo-core (app.aoki.cinpo.task.CardTaskProcessor).
+// The annotation processor lives in the app.aoki.cinpo framework artifact (app.aoki.cinpo.task.CardTaskProcessor).
 // Resolve it by coordinate so the consumer's annotationProcessor path is the
 // matrix of the framework's own module, not this plugin's jar.
-def cinpoCoreDependency = "app.aoki.cinpo:cinpo-core:${CinpoVersion.VERSION}"
+def cinpoCoreDependency = "app.aoki.cinpo:cinpo:${CinpoVersion.VERSION}"
 def companionBundleExportDirectories = providers.provider { CinpoGradleSupport.companionBundleExportDirectories(project) }
 
 dependencies {
-    // Reuse the framework's own cinpo-core artifact as the annotation processor.
+    // Reuse the framework's own app.aoki.cinpo artifact as the annotation processor.
     // The plugin jar alone does not contain CardTaskProcessor after the module split.
     annotationProcessor cinpoCoreDependency
 

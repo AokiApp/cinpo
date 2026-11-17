@@ -87,7 +87,7 @@ tasks.named('test') {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifactId = 'cinpo-core'
+            artifactId = 'cinpo'
             from components.java
         }
     }

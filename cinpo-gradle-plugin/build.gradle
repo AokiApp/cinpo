@@ -16,7 +16,7 @@ sourceSets {
 }
 
 dependencies {
-    implementation project(':cinpo-core')
+    implementation project(':core')
 
     // Oracle Java Card tool classes are intentionally compiled against directly.
     // The Gradle plugin executes CAP generation in-process, without routing through
@@ -36,7 +36,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
     testImplementation 'org.junit.platform:junit-platform-launcher:1.10.2'
-    testImplementation project(':cinpo-core')
+    testImplementation project(':core')
 }
 
 tasks.named('processResources') {

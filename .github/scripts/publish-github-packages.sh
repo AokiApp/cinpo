@@ -83,25 +83,28 @@ run_publish_task() {
 
 # Maven artifacts the framework publishes, one per Gradle project. The task name
 # is the same for every module because each one declares a 'mavenJava' publication.
-MVN_MODULE_ARTIFACTS=(
-    cinpo-core
-    cinpo-runtime-jcardengine
-    cinpo-runtime-jcresim
-    cinpo-runtime-pcsc
+MVN_ARTIFACTS=(
+    cinpo:core
+    cinpo-runtime-jcardengine:cinpo-runtime-jcardengine
+    cinpo-runtime-jcresim:cinpo-runtime-jcresim
+    cinpo-runtime-pcsc:cinpo-runtime-pcsc
 )
 
 publish_maven_artifact() {
-    local module="$1"
+    local entry="$1"
+    local artifact module
+    IFS=':' read -r artifact module <<< "${entry}"
+    local version="${PROJECT_VERSION}"
     run_publish_task \
         ":${module}:publishMavenJavaPublicationToGithubPackagesRepository" \
-        "app/aoki/cinpo/${module}/maven-metadata.xml" \
-        "app/aoki/cinpo/${module}/${PROJECT_VERSION}/${module}-${PROJECT_VERSION}.pom" \
-        "app/aoki/cinpo/${module}/${PROJECT_VERSION}/${module}-${PROJECT_VERSION}.module" \
-        "app/aoki/cinpo/${module}/${PROJECT_VERSION}/${module}-${PROJECT_VERSION}.jar"
+        "app/aoki/cinpo/${artifact}/maven-metadata.xml" \
+        "app/aoki/cinpo/${artifact}/${version}/${artifact}-${version}.pom" \
+        "app/aoki/cinpo/${artifact}/${version}/${artifact}-${version}.module" \
+        "app/aoki/cinpo/${artifact}/${version}/${artifact}-${version}.jar"
 }
 
-for module in "${MVN_MODULE_ARTIFACTS[@]}"; do
-    publish_maven_artifact "${module}"
+for entry in "${MVN_ARTIFACTS[@]}"; do
+    publish_maven_artifact "${entry}"
 done
 
 run_publish_task \

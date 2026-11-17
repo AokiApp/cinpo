@@ -34,7 +34,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'app.aoki.cinpo:cinpo-core:0.5.0'
+    implementation 'app.aoki.cinpo:cinpo:0.5.0'
     implementation 'app.aoki.cinpo:cinpo-runtime-jcresim:0.5.0'
     implementation 'app.aoki.cinpo:cinpo-runtime-jcardengine:0.5.0'
     implementation 'app.aoki.cinpo:cinpo-runtime-pcsc:0.5.0'
