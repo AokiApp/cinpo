@@ -53,7 +53,7 @@ secureChannel:
 
 How the `--profile` argument is resolved:
 
-- **Named profile** (`--profile mycard`) — resolved from `profile/mycard.yaml` inside the application project directory. Only `profile/` is searched; there is no other directory fallback.
+- **Named profile** (`--profile mycard`) — resolved from `profile/mycard.yaml` inside the application project directory, then from `profile/mycard.yaml` on the classpath inside the appliance JAR. Other directories inside the project are not searched.
 - **Path-like value** (`--profile ./secrets/card.yaml`) — values containing `/`, `\`, or ending in `.yaml`/`.yml` are resolved relative to the application project directory. Absolute paths are used as-is.
 - **Missing profile** — the command fails with a message listing the paths that were searched, including the classpath path `profile/<name>.yaml`.
 - **Omitted `--profile`** — defaults to `jcdksim`, resolved from `profile/jcdksim.yaml` in the project or on the classpath. If you don't use the simulator, name your profile explicitly.

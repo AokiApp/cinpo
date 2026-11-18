@@ -40,8 +40,8 @@ CINPO is published as several Maven artifacts so that applications only carry wh
 
 | Module | Description |
 |--------|-------------|
-| `app.aoki.cinpo:cinpo` | Framework core: CLI, orchestrator, manifest parser, GP / SCP crypto, APDU I/O, task loader. Required by every consumer and by every runtime module. |
-| `app.aoki.cinpo:cinpo-runtime-jcresim` | Oracle JCDK simulator runtime. Brings in the Oracle JCDK simulator's socket provider bridge and the `jcsl` binary. Needed only for `runtime: jcresim` profiles. |
+| `app.aoki.cinpo:cinpo` | Framework core: CLI, orchestrator, manifest parser, GP / SCP crypto, APDU I/O, task loader. Every runtime module brings it in transitively. |
+| `app.aoki.cinpo:cinpo-runtime-jcresim` | Oracle JCDK simulator runtime. Uses Oracle's socket provider bridge, which you supply through the vendor archive; the bridge is not shipped in this artifact. The `jcsl` binaries also come from the vendor archive and are embedded into the appliance JAR when this runtime is used. Needed only for `runtime: jcresim` profiles. |
 | `app.aoki.cinpo:cinpo-runtime-jcardengine` | In-process Java Card engine runtime. Brings in `jCardEngine` and its dependencies (Byte Buddy, BouncyCastle, …). Needed only for `runtime: jcardengine` profiles. |
 | `app.aoki.cinpo:cinpo-runtime-pcsc` | PC/SC runtime. Uses the host's PC/SC stack via `javax.smartcardio`. No native dependencies. |
 
@@ -54,7 +54,7 @@ dependencies {
 }
 ```
 
-All three runtime modules depend on `cinpo` transitively, so you do not need to declare it separately. The appliance JAR produced by `cinpoJar` includes only what your project and its dependencies pull in — a project that only ever uses `runtime: jcresim` will carry the simulator's class files and native libraries but not the PC/SC or jcardengine dependencies. For guidance on what changed from previous 0.x releases, see [migration-0.5.0](docs/migration-0.5.0.md).
+The three runtime modules depend on `cinpo` transitively, so declaring the core artifact is optional. The starter templates declare it explicitly along with all three runtimes, which works as well. The appliance JAR produced by `cinpoJar` contains what your project puts on `runtimeClasspath`. To ship a smaller appliance, remove the runtime modules you do not use from the template's `dependencies` block. A project that declares only `cinpo-runtime-jcresim` carries the simulator's class files and native libraries, but not the PC/SC or jcardengine dependencies. For guidance on what changed from previous 0.x releases, see [migration-0.5.0](docs/migration-0.5.0.md).
 
 ## Philosophy
 
@@ -64,7 +64,7 @@ The goal is to put the developer experience first and make applet development ea
 
 So applet development is a few simple steps: create a project from the template, write your applet, add annotations to your provisioning code, and run everything with one command. No entrypoint `Main` class, no build shell scripts, no ad-hoc Gradle tasks.
 
-And for production, everything ships as a single self-contained appliance JAR with minimal dependencies. That means a smaller attack surface, and the same artifact runs on an air-gapped network. Portability is a core design value.
+And for production, everything ships as a single self-contained appliance JAR. It carries only the runtime modules you declare, so a trimmed project has fewer dependencies and a smaller attack surface. The same artifact runs on an air-gapped network. Portability is a core design value.
 
 ## Getting Started
 
@@ -103,7 +103,7 @@ my-project/
 
 ### 2. Prepare the vendor directory
 
-CINPO does not redistribute the Oracle JCDK; you must download it and place the Tools and Simulator archives in `my-project/vendor/` (see [docs/vendor.md](docs/vendor.md)). The Tools archive is required for every project; the Simulator archive is needed only when the project uses `runtime: jcresim` (the starter templates do). Without them, `cinpoRun` and `cinpoJar` fail.
+CINPO does not redistribute the Oracle JCDK; you must download it and place the Tools and Simulator archives in `my-project/vendor/` (see [docs/vendor.md](docs/vendor.md)). The Tools archive is required for every project. The Simulator archive is needed only while `cinpo-runtime-jcresim` is declared in `build.gradle`; the starter templates declare it, so a fresh template project needs the archive even if you plan to use a physical card. Remove that dependency if you do not use `jcresim`. Without the required archives, `cinpoRun` and `cinpoJar` fail.
 
 After placement, `my-project/vendor/` should look like this:
 
@@ -196,13 +196,13 @@ The simulator is a starting point; the same commands work against a physical car
 
 #### Profiles
 
-The default is `jcdksim` (simulator, well-known test keys). For a physical card, create `profile/<name>.yaml` with `runtime: pcsc` and your own keys — see [docs/profiles.md](docs/profiles.md).
+The default is `jcdksim` (simulator, well-known test keys). For a physical card, create `profile/<name>.yaml` with `runtime: pcsc` and your own keys — see [docs/profiles.md](docs/profiles.md). Add `cinpo-runtime-pcsc` to your `dependencies` if you removed it; the starter templates already include it.
 
 ```bash
 ./gradlew cinpoRun --args='--profile mycard --test'
 ```
 
-Production machines typically run the appliance instead of Gradle. Build a self-contained fat JAR with the embedded simulator:
+Production machines typically run the appliance instead of Gradle. Build a self-contained appliance JAR:
 
 ```bash
 ./gradlew cinpoJar
@@ -215,6 +215,8 @@ java -jar build/libs/cinpo-appliance.jar write --profile jcdksim
 java -jar build/libs/cinpo-appliance.jar write --profile mycard --test
 java -jar build/libs/cinpo-appliance.jar write --profile mycard -- --record customer-42
 ```
+
+When the `jcresim` runtime is declared, the appliance also embeds the simulator binaries from `vendor/`. A project that removed `jcresim` does not include them and should pass `--profile` with a profile that names its own runtime.
 
 ## Templates
 

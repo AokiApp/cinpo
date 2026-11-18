@@ -270,7 +270,8 @@ public abstract class CinpoJarTask extends DefaultTask {
     }
 
     private static long writeServicesTime() {
-        // Deterministic timestamp keeps the appliance reproducible in merges.
+        // A fixed timestamp keeps the merged service entries byte-for-byte stable across builds.
+        // Other JAR entries keep their source timestamps, so the whole appliance is not reproducible.
         return 0L;
     }
 
