@@ -7,7 +7,7 @@ CINPO does not redistribute Oracle's proprietary toolkit and does not download i
    - Linux: `java_card_devkit_simulator-linux-bin-v26.0-b_788-05-MAY-2026.tar.gz`
    - Windows: `java_card_devkit_simulator-win-bin-v26.0-b_788-05-MAY-2026.zip`
 
-Copy the Tools archive into your project's `vendor/` directory. Copy the Simulator archive as well when `cinpo-runtime-jcresim` is declared. For a jcresim project:
+Copy the Tools archive into your project's `vendor/` directory, and the Simulator archive too when `cinpo-runtime-jcresim` is declared. For a jcresim project:
 
 ```bash
 mkdir -p vendor
@@ -32,7 +32,7 @@ Notes:
 
 - `vendor/` is gitignored. The archives are proprietary; do not commit them.
 - Checksums for the expected files are pinned in `scripts/extract_vendor.sh` if you want to verify integrity.
-- Without the required archives, `cinpoRun` and `cinpoJar` fail. A build that still declares `cinpo-runtime-jcresim` asks for the Simulator archive even when the active profile uses another runtime. Remove that dependency if you do not use `jcresim`.
+- Without the required archives, `cinpoRun` and `cinpoJar` fail. If you still declare `cinpo-runtime-jcresim`, the build asks for the Simulator archive even when your active profile uses another runtime; drop it if you don't use `jcresim`.
 
 ## Companion bundles
 

@@ -17,7 +17,7 @@ All four artifacts use `groupId=app.aoki.cinpo` and version `0.5.0`. The Gradle 
 
 The source-level API your project uses did not change. The packages `app.aoki.cinpo.apdu.*`, `app.aoki.cinpo.config.*`, `app.aoki.cinpo.orchestrator.*`, `app.aoki.cinpo.task.*`, `app.aoki.cinpo.gp.*`, and `app.aoki.cinpo.util.*` still contain the classes imported by the bundled templates.
 
-What changed is the *dependency declaration*. Upgrading only the `cinpo` version is not enough: the 0.5.0 artifact is the core only, so you must add the runtime modules you use. The Gradle plugin must also move to 0.5.0 so it can add the annotation processor from the framework artifact. Without a runtime module on `runtimeClasspath`, adapter lookup fails with `Unsupported runtime`. If your project is based on the consumer template, the template built for 0.5.0 already declares both:
+What changed is the *dependency declaration*. Upgrading only the `cinpo` version is not enough: the 0.5.0 artifact is the core only, so you must add the runtime modules you use. The Gradle plugin must also move to 0.5.0 so it can add the annotation processor from the framework artifact. Without a runtime module on `runtimeClasspath`, adapter lookup fails with `Unsupported runtime`. If your project is based on the consumer template, it already declares both:
 
 ```groovy
 plugins {
