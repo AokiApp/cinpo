@@ -23,7 +23,7 @@ secureChannel:
 
 These keys are public. Never use them on a real card — they exist so that a fresh project works out of the box for development.
 
-The CLI defaults `--profile` to the name `jcdksim`. CINPO has no builtin profiles and no profile registry: that name is resolved like any other, from `profile/jcdksim.yaml` in the project or from the same path on the classpath. An appliance JAR carries the project's profiles, so a bare `java -jar cinpo-appliance.jar write` works even from a directory with no `profile/` folder. A project that does not use the simulator should name its own profile with `--profile`; if it leaves the default in place, profile lookup or runtime adapter lookup fails with a clear error.
+The CLI defaults `--profile` to `jcdksim`. CINPO has no builtin profiles and no registry: it is resolved like any other name, from `profile/jcdksim.yaml` in the project or from the same path on the classpath. An appliance JAR carries the project's profiles, so a bare `java -jar cinpo-appliance.jar write` works even from a directory with no `profile/` folder. If you don't use the simulator, name your own profile; leaving the default in place fails at profile or adapter lookup.
 
 ## Custom profiles
 
@@ -56,7 +56,7 @@ How the `--profile` argument is resolved:
 - **Named profile** (`--profile mycard`) — resolved from `profile/mycard.yaml` inside the application project directory. Only `profile/` is searched; there is no other directory fallback.
 - **Path-like value** (`--profile ./secrets/card.yaml`) — values containing `/`, `\`, or ending in `.yaml`/`.yml` are resolved relative to the application project directory. Absolute paths are used as-is.
 - **Missing profile** — the command fails with a message listing the paths that were searched, including the classpath path `profile/<name>.yaml`.
-- **Omitted `--profile`** — the CLI supplies the name `jcdksim`, which is resolved from `profile/jcdksim.yaml` in the project or from the classpath. A project that does not use the simulator must name a profile explicitly.
+- **Omitted `--profile`** — defaults to `jcdksim`, resolved from `profile/jcdksim.yaml` in the project or on the classpath. If you don't use the simulator, name your profile explicitly.
 - **`reader` set in the `pcsc` block** — that reader is used exclusively; no automatic fallback or selection happens. `excludedReaders` is only consulted for automatic reader selection.
 
 Notes on the `secureChannel` block:

@@ -1,6 +1,6 @@
 # Preparing the `vendor/` directory
 
-CINPO does not redistribute Oracle's proprietary toolkit and does not download it for you. The Tools archive below is required for every project; the Simulator archive is required only by projects that use the `jcresim` runtime (the starter templates' `jcdksim` profile does). A project that only talks to physical cards over PC/SC can omit the Simulator archive entirely. Both kinds of archive come from [Oracle's Java Card downloads page](https://www.oracle.com/java/technologies/javacard-downloads.html) (linked from [Java Card](https://www.oracle.com/java/java-card/) as "Java Card Downloads"):
+CINPO does not redistribute Oracle's proprietary toolkit and does not download it for you. The Tools archive below is required for every project; the Simulator archive is needed only when you use `runtime: jcresim` (the starter templates do). If you only use PC/SC, you can omit it. Both come from [Oracle's Java Card downloads page](https://www.oracle.com/java/technologies/javacard-downloads.html) (linked from [Java Card](https://www.oracle.com/java/java-card/) as "Java Card Downloads"):
 
 1. **JCDK Tools 26.0**: click `java_card_devkit_tools-bin-v26.0-b_705-04-MAY-2026.zip` and accept the license (a license lightbox is shown). This is the JCDK Tools 26.0 archive.
 2. **JCDK Simulator 26.0** for your OS, accepted the same way — only when you use `runtime: jcresim`:
@@ -24,7 +24,7 @@ vendor/
     (or java_card_devkit_simulator-win-bin-v26.0-b_788-05-MAY-2026.zip)   # Windows
 ```
 
-The Tools archive is always required. The Simulator archive is required only when the project uses the `jcresim` runtime (the default `jcdksim` profile does); take the one matching the OS you build on. Their versions must match the `toolSdkVersion` in your `manifest.yaml` (26.0 today).
+The Tools archive is always required. The Simulator archive is required only when you use the `jcresim` runtime (the default `jcdksim` profile does); take the one matching the OS you build on. Their versions must match the `toolSdkVersion` in your `manifest.yaml` (26.0 today).
 
 Notes:
 
