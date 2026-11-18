@@ -30,7 +30,7 @@ Notes:
 
 - `vendor/` is gitignored. The archives are proprietary; do not commit them.
 - Checksums for the expected files are pinned in `scripts/extract_vendor.sh` if you want to verify integrity.
-- Without the archives your project uses, `cinpoRun` and `cinpoJar` fail. For a `jcresim` project that failure mentions the Simulator archive; a project without the `jcresim` runtime never asks for it.
+- Without them, `cinpoRun` and `cinpoJar` fail. For a `jcresim` project that failure mentions the Simulator archive; a project without the `jcresim` runtime never asks for it.
 
 ## Companion bundles
 
