@@ -9,6 +9,7 @@ import app.aoki.cinpo.config.Profile;
 import app.aoki.cinpo.config.ScpConfig;
 import app.aoki.cinpo.orchestrator.phase.InitPhase;
 import app.aoki.cinpo.orchestrator.phase.InstallPhase;
+import app.aoki.cinpo.runtime.ApduChannelFactory;
 import app.aoki.cinpo.runtime.jcardengine.JCardEngineInstallPhase;
 import app.aoki.cinpo.orchestrator.phase.TaskKindPhase;
 import app.aoki.cinpo.task.TaskArguments;
@@ -327,7 +328,8 @@ class PhaseExecutionTest {
     }
 
     /**
-     * Simulates WriteCommand.buildPhaseList() logic for testing.
+     * Builds the same phase list as WriteCommand by delegating install-phase selection
+     * to the production runtime registry.
      */
     private List<Phase> buildPhasesLikeCli(String runtime, boolean test, List<String> taskKinds, boolean skipInstall) {
         List<String> resolvedTaskKinds = resolveTaskKinds(test, taskKinds);
@@ -336,11 +338,8 @@ class PhaseExecutionTest {
         List<Phase> phases = new ArrayList<>();
         phases.add(new InitPhase());
         if (!skipInstall) {
-            if ("jcardengine".equalsIgnoreCase(runtime)) {
-                phases.add(new JCardEngineInstallPhase());
-            } else {
-                phases.add(new InstallPhase());
-            }
+            Profile runtimeProfile = new Profile("cli-test", runtime, testProfile.secureChannel());
+            phases.add(ApduChannelFactory.createInstallPhase(runtimeProfile));
         }
         for (String taskKind : resolvedTaskKinds) {
             phases.add(new TaskKindPhase(taskKind, requireTasks));
