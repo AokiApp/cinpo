@@ -268,23 +268,31 @@ public abstract class CinpoJarTask extends DefaultTask {
     }
 
     /**
-     * Collects one services entry into the merged-service bucket.
+     * Collects one services entry into the merged-service bucket. Inline comments, blank lines,
+     * and a UTF-8 BOM are ignored, matching the provider-configuration file format ServiceLoader reads.
+     * A file with no providers leaves no bucket behind.
      *
      * @param mergedServices map from service name to lines, populated in place
      * @param entryName normalized entry name (already known to start with the services prefix)
      * @param content raw bytes of the services file
      */
-    private static void collectServiceLines(LinkedHashMap<String, LinkedHashSet<String>> mergedServices,
+    static void collectServiceLines(LinkedHashMap<String, LinkedHashSet<String>> mergedServices,
             String entryName, byte[] content) {
         String serviceName = entryName.substring(SERVICE_ENTRY_PREFIX.length());
         LinkedHashSet<String> lines = mergedServices.computeIfAbsent(serviceName, key -> new LinkedHashSet<>());
-        String[] raw = new String(content, java.nio.charset.StandardCharsets.UTF_8).split("[\r\n]+");
-        for (String line : raw) {
-            String trimmed = line.trim();
-            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
-                continue;
+        String text = new String(content, java.nio.charset.StandardCharsets.UTF_8);
+        if (!text.isEmpty() && text.charAt(0) == '\uFEFF') {
+            text = text.substring(1);
+        }
+        for (String line : text.split("[\r\n]+")) {
+            int comment = line.indexOf('#');
+            String provider = (comment >= 0 ? line.substring(0, comment) : line).trim();
+            if (!provider.isEmpty()) {
+                lines.add(provider);
             }
-            lines.add(trimmed);
+        }
+        if (lines.isEmpty()) {
+            mergedServices.remove(serviceName);
         }
     }
 
