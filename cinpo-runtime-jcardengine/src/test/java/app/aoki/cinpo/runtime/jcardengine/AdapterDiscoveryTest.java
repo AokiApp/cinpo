@@ -1,12 +1,13 @@
 package app.aoki.cinpo.runtime.jcardengine;
 
+import app.aoki.cinpo.config.Profile;
+import app.aoki.cinpo.config.ScpConfig;
 import app.aoki.cinpo.runtime.ApduChannelFactory;
-import app.aoki.cinpo.runtime.RuntimeAdapter;
+import app.aoki.cinpo.util.Util;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Verifies that a runtime module contributes exactly its own adapter to discovery.
@@ -15,8 +16,29 @@ class AdapterDiscoveryTest {
 
     @Test
     void onlyTheDeclaredRuntimeIsDiscoverable() {
-        List<RuntimeAdapter> adapters = ApduChannelFactory.registered();
-        assertEquals(1, adapters.size());
-        assertEquals("jcardengine", adapters.get(0).name());
+        assertTrue(ApduChannelFactory.createInstallPhase(profile("jcardengine"))
+                instanceof JCardEngineInstallPhase);
+
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> ApduChannelFactory.createInstallPhase(profile("jcresim")));
+        assertTrue(e.getMessage().contains("(available: jcardengine)"));
+    }
+
+    private static Profile profile(String runtime) {
+        return new Profile("discovery-test", runtime, testScpConfig());
+    }
+
+    private static ScpConfig testScpConfig() {
+        byte[] key = Util.parseHex("1111111111111111111111111111111111111111111111111111111111111111");
+        return new ScpConfig(
+                "scp03",
+                Util.parseHex("A000000151000000"),
+                16,
+                0,
+                1,
+                key,
+                key,
+                key
+        );
     }
 }

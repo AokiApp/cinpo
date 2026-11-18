@@ -7,53 +7,37 @@ import app.aoki.cinpo.runtime.jcardengine.JCardEngineInstallPhase;
 import app.aoki.cinpo.util.Util;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ApduChannelFactoryTest {
 
     @Test
-    void registered_ContainsBuiltInRuntimes() {
-        assertTrue(ApduChannelFactory.registered().stream()
-                .map(RuntimeAdapter::name)
-                .anyMatch("jcresim"::equalsIgnoreCase));
-        assertTrue(ApduChannelFactory.registered().stream()
-                .map(RuntimeAdapter::name)
-                .anyMatch("jcardengine"::equalsIgnoreCase));
-        assertTrue(ApduChannelFactory.registered().stream()
-                .map(RuntimeAdapter::name)
-                .anyMatch("pcsc"::equalsIgnoreCase));
-    }
-
-    @Test
-    void forName_IsCaseInsensitiveAndTrimsWhitespace() {
-        assertEquals("pcsc", ApduChannelFactory.forName("  PCSC  ").name());
-        assertEquals("jcardengine", ApduChannelFactory.forName("JCARDENGINE").name());
-        assertEquals("jcresim", ApduChannelFactory.forName("JcreSim").name());
-    }
-
-    @Test
-    void forName_UnknownRuntimeFailsClearly() {
-        IllegalArgumentException e = assertThrows(
-                IllegalArgumentException.class, () -> ApduChannelFactory.forName("jcardsim"));
-        assertTrue(e.getMessage().contains("jcardsim"));
-    }
-
-    @Test
-    void forProfile_ResolvesRuntime() {
-        Profile profile = new Profile("test", "pcsc", testScpConfig());
-        assertEquals("pcsc", ApduChannelFactory.forProfile(profile).name());
-    }
-
-    @Test
-    void createInstallPhase_UsesTheRuntimeAdapter() {
+    void createInstallPhase_ResolvesTheProfileRuntime() {
         assertTrue(ApduChannelFactory.createInstallPhase(profileFor("jcardengine"))
                 instanceof JCardEngineInstallPhase);
         assertTrue(ApduChannelFactory.createInstallPhase(profileFor("jcresim"))
                 instanceof InstallPhase);
         assertTrue(ApduChannelFactory.createInstallPhase(profileFor("pcsc"))
                 instanceof InstallPhase);
+    }
+
+    @Test
+    void createInstallPhase_MatchesCaseAndSurroundingWhitespace() {
+        assertTrue(ApduChannelFactory.createInstallPhase(profileFor("JcreSim"))
+                instanceof InstallPhase);
+        assertTrue(ApduChannelFactory.createInstallPhase(profileFor("  PCSC  "))
+                instanceof InstallPhase);
+    }
+
+    @Test
+    void createInstallPhase_UnknownRuntimeFailsWithTheAvailableList() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> ApduChannelFactory.createInstallPhase(profileFor("jcardsim")));
+        assertTrue(e.getMessage().contains("jcardsim"));
+        assertTrue(e.getMessage().contains("available"));
+        assertTrue(e.getMessage().contains("pcsc"));
+        assertTrue(e.getMessage().contains("Add the matching"));
     }
 
     private static Profile profileFor(String runtime) {
