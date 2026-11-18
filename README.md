@@ -41,7 +41,7 @@ CINPO is published as several Maven artifacts so that applications only carry wh
 | Module | Description |
 |--------|-------------|
 | `app.aoki.cinpo:cinpo` | Framework core: CLI, orchestrator, manifest parser, GP / SCP crypto, APDU I/O, task loader. Every runtime module brings it in transitively. |
-| `app.aoki.cinpo:cinpo-runtime-jcresim` | Oracle JCDK simulator runtime. Uses Oracle's socket provider bridge, which you supply through the vendor archive; it is not shipped in this artifact. The `jcsl` binaries come from the same archive and are embedded into the appliance JAR when you use this runtime. Needed only for `runtime: jcresim` profiles. |
+| `app.aoki.cinpo:cinpo-runtime-jcresim` | Oracle JCDK simulator runtime. This jar contains only the CINPO adapter; the Oracle simulator itself comes from the archive you place in `vendor/` and is embedded into the appliance JAR when you use this runtime. Needed only for `runtime: jcresim` profiles. |
 | `app.aoki.cinpo:cinpo-runtime-jcardengine` | In-process Java Card engine runtime. Brings in `jCardEngine` and its dependencies (Byte Buddy, BouncyCastle, …). Needed only for `runtime: jcardengine` profiles. |
 | `app.aoki.cinpo:cinpo-runtime-pcsc` | PC/SC runtime. Uses the host's PC/SC stack via `javax.smartcardio`. No native dependencies. |
 
