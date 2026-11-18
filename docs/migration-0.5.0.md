@@ -1,6 +1,6 @@
 # Migrating to CINPO 0.5.0
 
-CINPO 0.5.0 splits the framework artifact into several Maven modules so that a consumer does not pull in the entire runtime transitively. This note documents what changed and what a consumer needs to do.
+CINPO 0.5.0 splits the framework artifact into several Maven modules so that you only pull in the runtimes you use. This note documents what changed and what you need to do.
 
 ## What changed at the publisher side
 
