@@ -163,7 +163,7 @@ public final class SetupPins implements CardTask {
 }
 ```
 
-Any task kind can be declared with `@CardTaskDef("<kind>")`. `provision` is simply the default selected kind when no explicit task selector is provided.
+Any task kind can be declared with `@CardTaskDef("<kind>")`. `provision` is simply the default when you don't select one.
 
 ### 6. Simulate
 
@@ -202,7 +202,7 @@ The default is `jcdksim` (simulator, well-known test keys). For a physical card,
 ./gradlew cinpoRun --args='--profile mycard --test'
 ```
 
-Production machines typically run the appliance instead of Gradle. Build a self-contained appliance JAR:
+Production machines typically run the appliance instead of Gradle. Build it with:
 
 ```bash
 ./gradlew cinpoJar
