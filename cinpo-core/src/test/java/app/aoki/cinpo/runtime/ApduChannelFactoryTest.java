@@ -2,6 +2,8 @@ package app.aoki.cinpo.runtime;
 
 import app.aoki.cinpo.config.Profile;
 import app.aoki.cinpo.config.ScpConfig;
+import app.aoki.cinpo.orchestrator.phase.InstallPhase;
+import app.aoki.cinpo.runtime.jcardengine.JCardEngineInstallPhase;
 import app.aoki.cinpo.util.Util;
 import org.junit.jupiter.api.Test;
 
@@ -42,6 +44,20 @@ class ApduChannelFactoryTest {
     void forProfile_ResolvesRuntime() {
         Profile profile = new Profile("test", "pcsc", testScpConfig());
         assertEquals("pcsc", ApduChannelFactory.forProfile(profile).name());
+    }
+
+    @Test
+    void createInstallPhase_UsesTheRuntimeAdapter() {
+        assertTrue(ApduChannelFactory.createInstallPhase(profileFor("jcardengine"))
+                instanceof JCardEngineInstallPhase);
+        assertTrue(ApduChannelFactory.createInstallPhase(profileFor("jcresim"))
+                instanceof InstallPhase);
+        assertTrue(ApduChannelFactory.createInstallPhase(profileFor("pcsc"))
+                instanceof InstallPhase);
+    }
+
+    private static Profile profileFor(String runtime) {
+        return new Profile("test", runtime, testScpConfig());
     }
 
     private static ScpConfig testScpConfig() {
