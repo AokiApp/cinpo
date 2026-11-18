@@ -183,7 +183,9 @@ public abstract class CinpoJarTask extends DefaultTask {
      *
      * <p>The simulator is embedded only when the jcresim runtime module is on the classpath.
      * A slim appliance that never declared jcresim stays slim; asking it to simulate then
-     * fails at adapter lookup, the same way any other missing runtime module does.
+     * fails at adapter lookup, the same way any other missing runtime module does. A
+     * classpath that carries jcresim without the Gradle wiring fails the build here
+     * instead of shipping an appliance whose simulator cannot start.
      *
      * @param output archive stream being written
      * @param writtenEntries entry names already written to the archive
@@ -195,8 +197,10 @@ public abstract class CinpoJarTask extends DefaultTask {
             return;
         }
         if (!getBundledSimulatorDirectory().isPresent()) {
-            getLogger().warn("CINPO simulator runtime was not bundled because no simulator directory was configured.");
-            return;
+            throw new IllegalStateException("The jcresim runtime module is on the classpath but this build did not "
+                    + "prepare a simulator. Declare app.aoki.cinpo:cinpo-runtime-jcresim directly in the main "
+                    + "runtime scope (api, implementation, or runtimeOnly) so the Gradle plugin can prepare it; "
+                    + "a dependency that only brings it in transitively is not enough.");
         }
         Path simulatorDirectory = getBundledSimulatorDirectory().get().getAsFile().toPath();
         if (!Files.isDirectory(simulatorDirectory)) {
