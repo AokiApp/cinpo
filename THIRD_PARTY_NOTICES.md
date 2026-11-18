@@ -2,7 +2,7 @@
 
 CINPO distributions and CINPO appliance fat JARs may contain third-party software. Third-party
 components are licensed by their respective copyright holders under their own terms and are not
-covered by the AokiApp Normative Application License - Tight.
+covered by the Apache License 2.0 that applies to CINPO.
 
 ## Gradle Wrapper
 
@@ -29,9 +29,9 @@ Also provide the appliance project source and Gradle build files in a form that 
 recipient to replace GlobalPlatformPro with an interface-compatible modified build and run
 `./gradlew cinpoJar`. GlobalPlatformPro remains governed by its upstream license.
 
-## Limited relinking permission
+## LGPL relinking
 
-For an LGPL-covered component only, AokiApp grants lawful recipients the additional permission to
-modify that component, reverse engineer the combined work solely to debug such modifications, and
-modify CINPO only as needed to relink it with an interface-compatible modified component. This does
-not otherwise modify the ANAL-Tight terms or license CINPO under the GNU GPL or GNU LGPL.
+When an appliance fat JAR or other distribution contains an LGPL-covered component, recipients may
+modify that LGPL-covered component and modify or rebuild CINPO as needed to relink or replace it
+with an interface-compatible modified version, consistent with the applicable LGPL terms. This does
+not license LGPL-covered components under the Apache License 2.0.
