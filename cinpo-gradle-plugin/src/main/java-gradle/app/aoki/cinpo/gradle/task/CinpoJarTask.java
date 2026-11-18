@@ -5,8 +5,11 @@ import app.aoki.cinpo.config.ManifestLoader;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -268,23 +271,30 @@ public abstract class CinpoJarTask extends DefaultTask {
     }
 
     /**
-     * Collects one services entry into the merged-service bucket.
+     * Collects one services entry into the merged-service bucket, passing every line
+     * through verbatim.
+     *
+     * <p>ServiceLoader owns the provider-configuration grammar when the merged file is
+     * read, so this merge preserves lines instead of re-implementing that parser.
+     * Concatenation is correct by construction: whatever the JDK accepts in the original
+     * files, it accepts in a single file holding the same lines.
      *
      * @param mergedServices map from service name to lines, populated in place
      * @param entryName normalized entry name (already known to start with the services prefix)
      * @param content raw bytes of the services file
      */
-    private static void collectServiceLines(LinkedHashMap<String, LinkedHashSet<String>> mergedServices,
+    static void collectServiceLines(LinkedHashMap<String, LinkedHashSet<String>> mergedServices,
             String entryName, byte[] content) {
         String serviceName = entryName.substring(SERVICE_ENTRY_PREFIX.length());
         LinkedHashSet<String> lines = mergedServices.computeIfAbsent(serviceName, key -> new LinkedHashSet<>());
-        String[] raw = new String(content, java.nio.charset.StandardCharsets.UTF_8).split("[\r\n]+");
-        for (String line : raw) {
-            String trimmed = line.trim();
-            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
-                continue;
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(new ByteArrayInputStream(content), java.nio.charset.StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                lines.add(line);
             }
-            lines.add(trimmed);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 
