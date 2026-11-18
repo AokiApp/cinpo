@@ -21,25 +21,20 @@ import java.util.stream.Collectors;
  */
 public final class ApduChannelFactory {
 
-    private static volatile List<RuntimeAdapter> cachedAdapters;
-
     private ApduChannelFactory() {
     }
 
     /**
      * Returns every adapter discoverable on this classpath, in registration order.
      *
+     * <p>Discovery runs on every call. One CLI run performs two or three lookups,
+     * so a cached snapshot would only pin the first caller's context classloader
+     * without buying measurable time.
+     *
      * @return the registered adapters (never {@code null})
      */
     public static List<RuntimeAdapter> registered() {
-        if (cachedAdapters == null) {
-            synchronized (ApduChannelFactory.class) {
-                if (cachedAdapters == null) {
-                    cachedAdapters = loadAdapters();
-                }
-            }
-        }
-        return cachedAdapters;
+        return loadAdapters();
     }
 
     /**
