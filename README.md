@@ -226,7 +226,7 @@ When you declare `jcresim`, the appliance also embeds the simulator binaries fro
 |----------|------------------|
 | `basic` | The default starter: a Hello applet, one `provision` task that issues and writes a leaf certificate, and one `test` task that reads it back. |
 | `authenticated` | An SCP03 secure-messaging example: the applet handles GlobalPlatform security commands through a companion bundle, and the test proves that an unauthenticated command is refused and the authenticated one succeeds. |
-| `probe` | A read-only card probe: the `probe` task kind selects an application or the default application and reads `GET DATA` without writing to the card. |
+| `probe` | A read-only card probe: the `probe` task kind selects an application or the default one and reads `GET DATA` without writing to the card. |
 
 ## Writing Tasks
 
