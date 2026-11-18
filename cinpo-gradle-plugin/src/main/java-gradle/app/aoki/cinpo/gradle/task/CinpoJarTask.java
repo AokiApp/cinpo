@@ -44,9 +44,11 @@ import org.gradle.api.tasks.TaskAction;
  * companion JARs.</p>
  *
  * <p>The JAR also embeds the configured Oracle simulator runtime under the resource layout consumed
- * by {@code JcreSimAdapter}: {@code cinpo-simulator/<os>-<arch>/...}. That keeps the README promise
- * that {@code java -jar build/libs/cinpo-appliance.jar write --profile jcdksim} works without first
- * preparing a Gradle build cache next to the appliance.</p>
+ * by {@code JcreSimAdapter}: {@code cinpo-simulator/<os>-<arch>/...}, but only when the jcresim
+ * runtime module is on the classpath. That keeps the README promise that
+ * {@code java -jar build/libs/cinpo-appliance.jar write --profile jcdksim} works without first
+ * preparing a Gradle build cache next to the appliance, while slim builds that never declared
+ * the jcresim runtime do not pay for a simulator they cannot use.</p>
  */
 public abstract class CinpoJarTask extends DefaultTask {
 
@@ -64,7 +66,7 @@ public abstract class CinpoJarTask extends DefaultTask {
     private final RegularFileProperty archiveFile;
 
     /**
-     * Creates a task instance with the default appliance archive path and simulator cache path.
+     * Creates a task instance with the default appliance archive path.
      */
     public CinpoJarTask() {
         setGroup("cinpo");
@@ -72,9 +74,10 @@ public abstract class CinpoJarTask extends DefaultTask {
 
         ObjectFactory objects = getProject().getObjects();
         classpath = objects.fileCollection();
-        String platform = detectPlatform();
-        bundledSimulatorDirectory = objects.directoryProperty().convention(
-                getProject().getLayout().getBuildDirectory().dir("cinpo-cache/jcsl/" + platform));
+        // The simulator directory is set by the plugin from the prepare script's
+        // platform-specific jcsl directory; this task holds no OS/arch detection of
+        // its own. Unset means the build never prepared a simulator.
+        bundledSimulatorDirectory = objects.directoryProperty();
         archiveFile = objects.fileProperty().convention(
                 getProject().getLayout().getBuildDirectory().file("libs/cinpo-appliance.jar"));
     }
@@ -94,7 +97,8 @@ public abstract class CinpoJarTask extends DefaultTask {
      * Returns the configured simulator runtime directory to embed as classpath resources.
      *
      * @return the {@code build/cinpo-cache/jcsl/<os>-<arch>} directory produced by
-     *         {@code prepareJavaCardTools}
+     *         {@code prepareJcresimSimulator}, set by the plugin; unset when the build
+     *         never prepared a simulator
      */
     @InputDirectory
     @Optional
@@ -174,22 +178,63 @@ public abstract class CinpoJarTask extends DefaultTask {
     /**
      * Adds the configured simulator runtime to the resource namespace expected by the runtime.
      *
+     * <p>The simulator is embedded only when the jcresim runtime module is on the classpath.
+     * A slim appliance that never declared jcresim stays slim; asking it to simulate then
+     * fails at adapter lookup, the same way any other missing runtime module does.
+     *
      * @param output archive stream being written
      * @param writtenEntries entry names already written to the archive
      * @throws IOException if simulator files cannot be copied into the archive
      */
     private void writeBundledSimulator(JarOutputStream output, Set<String> writtenEntries,
             LinkedHashMap<String, LinkedHashSet<String>> mergedServices) throws IOException {
-        // prepareJavaCardTools copies and configures jcsl into build/cinpo-cache/jcsl/<os>-<arch>.
-        // The runtime side intentionally does not know about Gradle's build directory; it only looks
-        // for classpath resources below cinpo-simulator/<os>-<arch>. Keep this mapping explicit here.
-        String platform = detectPlatform();
+        if (!jcresimRuntimeOnClasspath()) {
+            return;
+        }
+        if (!getBundledSimulatorDirectory().isPresent()) {
+            getLogger().warn("CINPO simulator runtime was not bundled because no simulator directory was configured.");
+            return;
+        }
         Path simulatorDirectory = getBundledSimulatorDirectory().get().getAsFile().toPath();
         if (!Files.isDirectory(simulatorDirectory)) {
             getLogger().warn("CINPO simulator runtime was not bundled because it was not found: {}", simulatorDirectory);
             return;
         }
+        // prepareJcresimSimulator copies and configures jcsl into build/cinpo-cache/jcsl/<os>-<arch>.
+        // The runtime side intentionally does not know about Gradle's build directory; it only looks
+        // for classpath resources below cinpo-simulator/<os>-<arch>. Keep this mapping explicit here.
+        String platform = simulatorPlatform(simulatorDirectory);
         writeDirectory(output, writtenEntries, simulatorDirectory, BUNDLED_SIMULATOR_ENTRY_PREFIX + "/" + platform, null, mergedServices);
+    }
+
+    /**
+     * Reports whether the jcresim runtime module contributes to this task's classpath.
+     *
+     * <p>The check runs on the resolved classpath, so it also covers transitive
+     * declarations of the module, not only direct {@code dependencies {}} entries.
+     *
+     * @return {@code true} when a {@code cinpo-runtime-jcresim} entry is present
+     */
+    private boolean jcresimRuntimeOnClasspath() {
+        for (File file : getClasspath().getFiles()) {
+            if (file.getName().startsWith("cinpo-runtime-jcresim")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Derives the {@code <os>-<arch>} resource prefix from the configured simulator directory.
+     *
+     * <p>The directory layout is {@code .../jcsl/<os>-<arch>}, so its final segment is exactly
+     * the platform {@code JcreSimAdapter} looks up in {@code cinpo-simulator/<os>-<arch>}.
+     *
+     * @param configuredSimulatorDirectory the configured simulator directory
+     * @return the platform segment, such as {@code linux-amd64}
+     */
+    private static String simulatorPlatform(Path configuredSimulatorDirectory) {
+        return configuredSimulatorDirectory.toAbsolutePath().normalize().getFileName().toString();
     }
 
     /**
@@ -419,27 +464,5 @@ public abstract class CinpoJarTask extends DefaultTask {
             return false;
         }
         return !entryName.startsWith(API_EXPORT_ENTRY_PREFIX + targetApiVersion + "/");
-    }
-
-    private static String detectPlatform() {
-        // The plugin must know which OS/arch directory to bundle, but jcresim is
-        // an optional dependency the consumer adds separately — keep this knowledge
-        // local to the task rather than depending on the jcresim module.
-        String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
-        String arch = System.getProperty("os.arch").toLowerCase(Locale.ROOT);
-        String osName = os.contains("linux") ? "linux"
-                : os.contains("mac") || os.contains("darwin") ? "darwin"
-                : os.contains("win") ? "windows"
-                : null;
-        if (osName == null) {
-            throw new IllegalStateException("Unsupported operating system: " + os);
-        }
-        String archName = arch.contains("aarch64") || arch.contains("arm64") ? "aarch64"
-                : arch.contains("amd64") || arch.contains("x86_64") ? "amd64"
-                : null;
-        if (archName == null) {
-            throw new IllegalStateException("Unsupported CPU architecture: " + arch);
-        }
-        return osName + "-" + archName;
     }
 }

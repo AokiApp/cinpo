@@ -50,7 +50,7 @@ public class WriteCommand implements Runnable {
     @Option(
         names = {"--profile", "-p"},
         defaultValue = "jcdksim",
-        description = "Profile name or YAML path (default: jcdksim builtin)"
+        description = "Profile name or YAML path (default: jcdksim)"
     )
     private String profileName;
 
@@ -75,9 +75,9 @@ public class WriteCommand implements Runnable {
     @Override
     public void run() {
         try {
-            LOG.fine(() -> "Loading profile: " + profileName);
             Profile profile = ProfileLoader.load(profileName);
- 
+            LOG.fine(() -> "Loaded profile: " + profile.name());
+
             LOG.fine("Loading manifest from classpath");
             AppletManifest manifest = ManifestLoader.loadFromClasspath();
  

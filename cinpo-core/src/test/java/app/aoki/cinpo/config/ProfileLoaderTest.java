@@ -59,7 +59,8 @@ class ProfileLoaderTest {
     }
 
     @Test
-    void loadNamedJcdksim_ReturnsBuiltinWhenNoProjectProfileExists() throws IOException {
+    void loadNamedProfile_FallsBackToClasspathProfile() throws IOException {
+        // jcdksim.yaml lives in this module's test resources under profile/.
         Profile profile = ProfileLoader.load("jcdksim", projectDir);
 
         assertEquals("jcdksim", profile.name());
@@ -73,7 +74,7 @@ class ProfileLoaderTest {
         String message = exception.getMessage();
         org.junit.jupiter.api.Assertions.assertTrue(message.contains(projectDir.resolve("profile/missing.yaml").toAbsolutePath().normalize().toString()));
         org.junit.jupiter.api.Assertions.assertFalse(message.contains(projectDir.resolve("project/profile/missing.yaml").toAbsolutePath().normalize().toString()));
-        org.junit.jupiter.api.Assertions.assertTrue(message.contains("Available builtins: jcdksim"));
+        org.junit.jupiter.api.Assertions.assertTrue(message.contains("classpath:profile/missing.yaml"));
     }
 
     private static void writeProfile(Path path, String name, String runtime) throws IOException {

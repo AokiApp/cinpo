@@ -103,7 +103,7 @@ my-project/
 
 ### 2. Prepare the vendor directory
 
-CINPO does not redistribute the Oracle JCDK; you must download it and place the Tools and Simulator archives in `my-project/vendor/` (see [docs/vendor.md](docs/vendor.md)). Without them, `cinpoRun` and `cinpoJar` fail.
+CINPO does not redistribute the Oracle JCDK; you must download it and place the Tools and Simulator archives in `my-project/vendor/` (see [docs/vendor.md](docs/vendor.md)). The Tools archive is required for every project; the Simulator archive is needed only when the project uses `runtime: jcresim` (the starter templates do). Without the archives your project uses, `cinpoRun` and `cinpoJar` fail.
 
 After placement, `my-project/vendor/` should look like this:
 

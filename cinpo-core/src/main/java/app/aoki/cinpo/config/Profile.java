@@ -7,24 +7,23 @@ import java.util.Objects;
  *
  * <p>A {@code Profile} encapsulates:
  * <ul>
- *   <li>Profile name (e.g., "jcdksim", "card1")</li>
+ *   <li>Profile name (e.g., "card1")</li>
  *   <li>Runtime adapter identifier ("jcresim", "jcardengine", or "pcsc")</li>
  *   <li>Secure channel configuration for GlobalPlatform operations</li>
  * </ul>
  *
  * <p>Profiles can be loaded from:
  * <ul>
- *   <li>Builtin defaults (see {@link BuiltinProfiles#JCDKSIM})</li>
  *   <li>YAML files in the project-local {@code profile/} directory</li>
+ *   <li>The same YAML path on the classpath (an appliance JAR carries its profiles this way)</li>
  *   <li>Absolute or relative file paths</li>
  * </ul>
  *
- * @param name           Profile name (e.g., "jcdksim", "card1")
+ * @param name           Profile name (e.g., "card1")
  * @param runtime        Runtime adapter identifier ("jcresim", "jcardengine", or "pcsc")
  * @param secureChannel  GlobalPlatform Secure Channel Protocol configuration
  * @param pcsc           PC/SC reader selection configuration
  * @see ProfileLoader
- * @see BuiltinProfiles
  */
 public record Profile(
         String name,

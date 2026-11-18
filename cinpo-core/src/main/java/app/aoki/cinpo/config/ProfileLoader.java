@@ -4,6 +4,8 @@ import app.aoki.cinpo.util.Util;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -11,22 +13,30 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Loads {@link Profile} configurations from YAML files or builtin defaults.
+ * Loads {@link Profile} configurations from YAML files.
  *
  * <h2>Profile Resolution Order</h2>
  * <ol>
  *   <li>If {@code nameOrPath} is an absolute path, load from that file</li>
  *   <li>If {@code nameOrPath} contains "/" or ends with ".yaml", load that path relative to the project directory</li>
  *   <li>Otherwise, check {@code profile/{nameOrPath}.yaml} below the project directory</li>
- *   <li>If file not found and name is "jcdksim", return {@link BuiltinProfiles#JCDKSIM}</li>
- *   <li>If not found, throw {@link IOException} with the searched location</li>
+ *   <li>Otherwise, check {@code profile/{nameOrPath}.yaml} on the classpath. This is how
+ *       an appliance JAR carries the profiles of the project it was built from</li>
+ *   <li>If not found, throw {@link IOException} with every location that was searched</li>
  * </ol>
+ *
+ * <p>There are no builtin profiles and no profile registry in the framework: a
+ * profile is always a YAML file, either in the project or on the classpath. The CLI
+ * defaults to the profile name {@code jcdksim}, which resolves through the same
+ * lookup as any other name. A project that does not use the simulator is expected to
+ * name its own profile; if it leaves the default in place, resolution or adapter
+ * lookup fails with a clear error.
  *
  * <h2>YAML Schema</h2>
  * <pre>
  * schema: cinpo.profile.v1
- * name: jcdksim
- * runtime: jcresim
+ * name: mycard
+ * runtime: pcsc
  * pcsc:
  *   reader: My Smart Card Reader
  *   excludedReaders:
@@ -37,25 +47,25 @@ import java.util.Map;
  *   keyVersionNumber: 16
  *   keyIdentifier: 0
  *   securityLevel: 1
- *   encKey: 1111111111111111111111111111111111111111111111111111111111111111
- *   macKey: 2222222222222222222222222222222222222222222222222222222222222222
- *   dekKey: 3333333333333333333333333333333333333333333333333333333333333333
+ *   encKey: &lt;your 32-byte hex ENC key&gt;
+ *   macKey: &lt;your 32-byte hex MAC key&gt;
+ *   dekKey: &lt;your 32-byte hex DEK key&gt;
  * </pre>
  *
  * @see Profile
- * @see BuiltinProfiles
  */
 public final class ProfileLoader {
 
     private static final String EXPECTED_SCHEMA = "cinpo.profile.v1";
     private static final String PROFILE_DIR = "profile";
+    private static final String CLASSPATH_PROFILE_PREFIX = "profile/";
 
     private ProfileLoader() {
         // Utility class - no instantiation
     }
 
     /**
-     * Loads a profile by name or file path.
+     * Loads a profile by name or file path, relative to the current directory.
      *
      * @param nameOrPath profile name (e.g., "jcdksim", "card1") or file path
      * @return loaded {@link Profile}
@@ -90,17 +100,23 @@ public final class ProfileLoader {
             }
         }
 
-        if ("jcdksim".equals(nameOrPath)) {
-            return BuiltinProfiles.JCDKSIM;
+        String classpathResource = CLASSPATH_PROFILE_PREFIX + nameOrPath + ".yaml";
+        ClassLoader loader = ProfileLoader.class.getClassLoader();
+        try (InputStream resource = loader.getResourceAsStream(classpathResource)) {
+            if (resource != null) {
+                return loadFromYaml(new String(resource.readAllBytes(), StandardCharsets.UTF_8),
+                        "classpath:" + classpathResource);
+            }
         }
 
+        String searched = candidates.stream()
+                .map(path -> path.toAbsolutePath().normalize().toString())
+                .reduce((left, right) -> left + "\n  - " + right)
+                .orElse("(no path)");
         throw new IOException(
                 "Profile not found: " + nameOrPath +
-                        "\nSearched:\n  - " + candidates.stream()
-                        .map(path -> path.toAbsolutePath().normalize().toString())
-                        .reduce((left, right) -> left + "\n  - " + right)
-                        .orElse("(no path)") +
-                        "\nAvailable builtins: jcdksim"
+                        "\nSearched:\n  - " + searched +
+                        "\n  - classpath:" + classpathResource
         );
     }
 
@@ -108,7 +124,7 @@ public final class ProfileLoader {
      * Resolves a profile name or path to every file path that should be checked.
      *
      * @param nameOrPath profile name or path
-     * @param projectDirectory application project directory used for relative lookup
+     * @param projectDirectory application project directory used for relative profile lookup
      * @return ordered candidate paths
      */
     private static List<Path> resolveCandidatePaths(String nameOrPath, Path projectDirectory) {
@@ -130,39 +146,44 @@ public final class ProfileLoader {
     }
 
     /**
-     * Loads a profile from a YAML file.
+     * Loads and parses a profile YAML file.
      *
      * @param path path to YAML file
      * @return loaded {@link Profile}
      * @throws IOException if file cannot be read
-     * @throws IllegalArgumentException if YAML content is invalid
      */
     private static Profile loadFromFile(Path path) throws IOException {
-        String yamlContent = Files.readString(path);
+        return loadFromYaml(Files.readString(path), path);
+    }
+
+    /**
+     * Parses profile YAML text, whether it came from a file or a classpath resource.
+     *
+     * @param yamlContent YAML text
+     * @param source label used in error messages
+     * @return loaded {@link Profile}
+     */
+    private static Profile loadFromYaml(String yamlContent, Object source) {
         Yaml yaml = new Yaml();
         Map<String, Object> data = yaml.load(yamlContent);
 
         if (data == null) {
-            throw new IllegalArgumentException("Profile YAML is empty: " + path);
+            throw new IllegalArgumentException("Profile YAML is empty: " + source);
         }
 
-        // Validate schema version
-        String schema = YamlMapUtil.getString(data, "schema", path);
+        String schema = YamlMapUtil.getString(data, "schema", source);
         if (!EXPECTED_SCHEMA.equals(schema)) {
             throw new IllegalArgumentException(
                     "Unsupported profile schema: " + schema +
-                            " (expected: " + EXPECTED_SCHEMA + ") in " + path
+                            " (expected: " + EXPECTED_SCHEMA + ") in " + source
             );
         }
 
-        // Parse top-level fields
-        String name = YamlMapUtil.getString(data, "name", path);
-        String runtime = YamlMapUtil.getString(data, "runtime", path);
-
-        // Parse secureChannel block
-        Map<String, Object> scpData = YamlMapUtil.getMap(data, "secureChannel", path);
-        ScpConfig secureChannel = parseScpConfig(scpData, path);
-        PcscConfig pcsc = parsePcscConfig(data, path);
+        String name = YamlMapUtil.getString(data, "name", source);
+        String runtime = YamlMapUtil.getString(data, "runtime", source);
+        Map<String, Object> scpData = YamlMapUtil.getMap(data, "secureChannel", source);
+        ScpConfig secureChannel = parseScpConfig(scpData, source);
+        PcscConfig pcsc = parsePcscConfig(data, source);
 
         return new Profile(name, runtime, secureChannel, pcsc);
     }
@@ -171,18 +192,18 @@ public final class ProfileLoader {
      * Parses the secureChannel section of a profile YAML.
      *
      * @param data secureChannel map from YAML
-     * @param path path to YAML file (for error messages)
+     * @param source label used in error messages
      * @return parsed {@link ScpConfig}
      */
-    private static ScpConfig parseScpConfig(Map<String, Object> data, Path path) {
-        String protocol = YamlMapUtil.getString(data, "protocol", path);
-        String isdAidHex = YamlMapUtil.getString(data, "isdAid", path);
-        int keyVersionNumber = YamlMapUtil.getInt(data, "keyVersionNumber", path);
-        int keyIdentifier = YamlMapUtil.getInt(data, "keyIdentifier", path);
-        int securityLevel = YamlMapUtil.getInt(data, "securityLevel", path);
-        String encKeyHex = YamlMapUtil.getString(data, "encKey", path);
-        String macKeyHex = YamlMapUtil.getString(data, "macKey", path);
-        String dekKeyHex = YamlMapUtil.getString(data, "dekKey", path);
+    private static ScpConfig parseScpConfig(Map<String, Object> data, Object source) {
+        String protocol = YamlMapUtil.getString(data, "protocol", source);
+        String isdAidHex = YamlMapUtil.getString(data, "isdAid", source);
+        int keyVersionNumber = YamlMapUtil.getInt(data, "keyVersionNumber", source);
+        int keyIdentifier = YamlMapUtil.getInt(data, "keyIdentifier", source);
+        int securityLevel = YamlMapUtil.getInt(data, "securityLevel", source);
+        String encKeyHex = YamlMapUtil.getString(data, "encKey", source);
+        String macKeyHex = YamlMapUtil.getString(data, "macKey", source);
+        String dekKeyHex = YamlMapUtil.getString(data, "dekKey", source);
 
         try {
             byte[] isdAid = Util.parseHex(isdAidHex);
@@ -201,18 +222,18 @@ public final class ProfileLoader {
                     dekKey
             );
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid hex string in " + path + ": " + e.getMessage(), e);
+            throw new IllegalArgumentException("Invalid hex string in " + source + ": " + e.getMessage(), e);
         }
     }
 
-    private static PcscConfig parsePcscConfig(Map<String, Object> data, Path path) {
+    private static PcscConfig parsePcscConfig(Map<String, Object> data, Object source) {
         Object value = data.get("pcsc");
         if (value == null) {
             return PcscConfig.automatic();
         }
         if (!(value instanceof Map<?, ?>)) {
             throw new IllegalArgumentException(
-                    "Field 'pcsc' must be a map in " + path
+                    "Field 'pcsc' must be a map in " + source
                             + " (found: " + value.getClass().getSimpleName() + ")");
         }
 
@@ -223,5 +244,4 @@ public final class ProfileLoader {
         List<String> excludedReaderNames = (List<String>) pcscData.getOrDefault("excludedReaders", List.of());
         return new PcscConfig(readerName, excludedReaderNames);
     }
-
 }

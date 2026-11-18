@@ -11,7 +11,7 @@ dependencies {
     // to implement the SocketCardTerminalProvider bridge, and at runtime projects
     // supply their own copy (see vendor/docs in the template projects).
     compileOnly files(rootProject.layout.buildDirectory.file('cinpo-cache/jcdk/simulator/client/COMService/socketprovider.jar'))
-            .builtBy(rootProject.tasks.named('prepareJavaCardTools'))
+            .builtBy(rootProject.tasks.named('prepareJcresimSimulator'))
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.10.2'

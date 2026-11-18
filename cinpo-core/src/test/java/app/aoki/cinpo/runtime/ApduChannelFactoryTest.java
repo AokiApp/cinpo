@@ -1,7 +1,8 @@
 package app.aoki.cinpo.runtime;
 
-import app.aoki.cinpo.config.BuiltinProfiles;
 import app.aoki.cinpo.config.Profile;
+import app.aoki.cinpo.config.ScpConfig;
+import app.aoki.cinpo.util.Util;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,7 +40,21 @@ class ApduChannelFactoryTest {
 
     @Test
     void forProfile_ResolvesRuntime() {
-        Profile profile = new Profile("test", "pcsc", BuiltinProfiles.JCDKSIM.secureChannel());
+        Profile profile = new Profile("test", "pcsc", testScpConfig());
         assertEquals("pcsc", ApduChannelFactory.forProfile(profile).name());
+    }
+
+    private static ScpConfig testScpConfig() {
+        byte[] key = Util.parseHex("1111111111111111111111111111111111111111111111111111111111111111");
+        return new ScpConfig(
+                "scp03",
+                Util.parseHex("A000000151000000"),
+                16,
+                0,
+                1,
+                key,
+                key,
+                key
+        );
     }
 }
