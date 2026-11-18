@@ -121,9 +121,10 @@ tasks.register('cinpoJar', CinpoJarTask) {
     dependsOn prepareJavaCardTools
 }
 
-// jcresim build inputs are wired only when the consumer actually declares the
-// jcresim runtime module. Slim builds (PC/SC or jCardEngine only) then never run
-// the simulator preparation, never require the simulator vendor archive, and
+// jcresim build inputs are wired only when the consumer declares the
+// jcresim runtime module in the main runtime scope (api, implementation,
+// or runtimeOnly). Slim builds (PC/SC or jCardEngine only) then never run the
+// simulator preparation, never require the simulator vendor archive, and
 // never carry Oracle's socket terminal provider. A missing runtime module fails
 // at adapter lookup exactly as it does on the framework side
 // (ApduChannelFactory: "Unsupported runtime: ...").
@@ -133,7 +134,14 @@ def socketProviderJar = files(
 ).builtBy(prepareJcresimSimulator)
 
 afterEvaluate {
-    boolean usesJcresimRuntime = configurations.any { configuration ->
+    // Only the main runtime scope decides. A jcresim declaration on compileOnly,
+    // annotationProcessor, or a test configuration never triggers simulator
+    // preparation, so those builds never pay for an archive they do not run.
+    // The java plugin names the main source set's runtime classpath configuration
+    // "runtimeClasspath" (JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME).
+    def runtimeClasspathConfiguration = configurations.getByName('runtimeClasspath')
+    def runtimeScope = [runtimeClasspathConfiguration] + runtimeClasspathConfiguration.extendsFrom
+    boolean usesJcresimRuntime = runtimeScope.any { configuration ->
         configuration.dependencies.any { dependency ->
             dependency.name != null && dependency.name.contains('cinpo-runtime-jcresim')
         }
