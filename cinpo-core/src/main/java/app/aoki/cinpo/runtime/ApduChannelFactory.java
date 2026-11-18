@@ -6,7 +6,6 @@ import app.aoki.cinpo.orchestrator.Phase;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
@@ -46,13 +45,14 @@ public final class ApduChannelFactory {
      */
     public static RuntimeAdapter forName(String runtime) {
         Objects.requireNonNull(runtime, "Runtime name must not be null");
-        String normalized = runtime.trim().toLowerCase(Locale.ROOT);
-        for (RuntimeAdapter adapter : registered()) {
-            if (adapter.name().equalsIgnoreCase(normalized)) {
+        List<RuntimeAdapter> adapters = registered();
+        String name = runtime.trim();
+        for (RuntimeAdapter adapter : adapters) {
+            if (adapter.name().equalsIgnoreCase(name)) {
                 return adapter;
             }
         }
-        String available = registered().stream()
+        String available = adapters.stream()
                 .map(RuntimeAdapter::name)
                 .sorted()
                 .collect(Collectors.joining(", "));
@@ -97,9 +97,7 @@ public final class ApduChannelFactory {
         ServiceLoader<RuntimeAdapter> loader = ServiceLoader.load(RuntimeAdapter.class);
         try {
             for (RuntimeAdapter adapter : loader) {
-                if (adapter != null) {
-                    adapters.add(adapter);
-                }
+                adapters.add(adapter);
             }
         } catch (ServiceConfigurationError e) {
             // A malformed provider breaks the whole runtime selection; failing fast is
