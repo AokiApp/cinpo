@@ -46,6 +46,8 @@ public final class JcreSimAdapter {
      * <p>
      * Discovery order:
      * <ol>
+     *   <li>the {@code cinpo.simulator.path} system property</li>
+     *   <li>a simulator runtime bundled on the classpath, staged to a temporary directory</li>
      *   <li>build/cinpo-cache/jcsl/&lt;os&gt;-&lt;arch&gt;/jcsl</li>
      *   <li>build/cinpo-cache/jcdk/simulator/runtime/bin/jcsl</li>
      * </ol>
@@ -166,7 +168,7 @@ public final class JcreSimAdapter {
     /**
      * Find the simulator executable in the build cache using OS and architecture detection.
      *
-     * @return path to the simulator executable in build cache, or null if not found
+     * @return path to the simulator executable in the build cache; existence is checked by the caller
      */
     private static Path findJcslInBuildCache() {
         String os = Util.detectOS();
