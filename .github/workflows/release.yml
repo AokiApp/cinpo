@@ -111,7 +111,8 @@ jobs:
           if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
             test "$(git rev-list -n 1 "$tag")" = "$(git rev-parse HEAD)"
           else
-            git tag -a "$tag" -m "CINPO $VERSION"
+            git -c user.name="$GIT_AUTHOR_NAME" -c user.email="$GIT_AUTHOR_EMAIL" \
+              tag -a "$tag" -m "CINPO $VERSION"
             git push origin "$tag"
           fi
 
