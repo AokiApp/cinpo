@@ -13,7 +13,15 @@ plugins {
 
 SourceSetContainer sourceSets = extensions.getByType(SourceSetContainer)
 SourceSet mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME)
-mainSourceSet.resources.srcDir(layout.buildDirectory.dir('generated/cinpo/resources/main'))
+
+// Root for files the CINPO tasks generate for the runtime classpath. The task
+// that writes here owns the directory; processResources reaches it through the
+// main resource source set. The source set entry is added after evaluation on
+// purpose: a consumer build script that assigns
+// `resources.srcDirs = [...]` replaces every directory registered before it,
+// which would silently drop the generated root from resources. Registering it
+// after the consumer has run keeps it for both Gradle and IDE imports.
+def generatedCapResourcesDir = layout.buildDirectory.dir('generated/cinpo/resources/main')
 
 repositories {
     maven {
@@ -71,27 +79,35 @@ tasks.register('compileAppletJava', JavaCompile) {
     dependsOn prepareJavaCardTools
 }
 
-tasks.register('generateCap', GenerateCapTask) {
+def generateCap = tasks.register('generateCap', GenerateCapTask) {
     group = 'cinpo'
     description = 'Builds the Java Card CAP file and stages it at cap/<packageName>.cap.'
     manifestFile = layout.projectDirectory.file('manifest.yaml')
     companionExportDirectories.from(companionBundleExportDirectories)
     appletClassesDirectory = layout.buildDirectory.dir('classes/java/applet')
     toolLibraryDirectory = layout.buildDirectory.dir('cinpo-cache/jcdk/tools/lib')
-    generatedResourcesDirectory = layout.buildDirectory.dir('generated/cinpo/resources/main')
+    generatedResourcesDirectory = generatedCapResourcesDir
+    workDirectory = layout.buildDirectory.dir('tmp/generateCap')
     dependsOn prepareJavaCardTools
     dependsOn tasks.named('compileAppletJava')
 }
 
+afterEvaluate {
+    // Adding the directory to the source set after the consumer's build script has
+    // run is what makes `resources.srcDirs = [...]` unable to drop it. The task
+    // output is the single registration point; processResources must not also
+    // include the same directory with from(), which Gradle rejects as a duplicate.
+    mainSourceSet.resources.srcDir(generatedCapResourcesDir)
+}
+
 tasks.named('processResources') {
-    dependsOn tasks.named('generateCap')
+    dependsOn generateCap
     from(layout.projectDirectory.file('manifest.yaml'))
     // Carry the project's profiles into the runtime classpath so cinpoJar can put
     // them into the appliance and --profile <name> works without a project directory.
     from(layout.projectDirectory.dir('profile')) {
         into 'profile'
     }
-    from(layout.buildDirectory.dir('generated/cinpo/resources/main'))
 }
 
 tasks.register('cinpoRun', CinpoRunTask) {

@@ -1,6 +1,8 @@
 package com.sun.javacard.cinpo;
 
 import app.aoki.cinpo.config.AppletManifest;
+import app.aoki.cinpo.gradle.javacard.CapBuildRequest;
+import app.aoki.cinpo.gradle.javacard.CapBuildResult;
 import app.aoki.cinpo.gradle.javacard.tools.JavaCardToolException;
 import com.sun.javacard.converter.CinpoConverterLogic;
 import com.sun.javacard.converter.ConversionProfile;
@@ -17,11 +19,12 @@ import java.nio.file.StandardCopyOption;
 /**
  * High-level wrapperless builder for classic Java Card CAP files.
  *
- * <p>This class is the single entry point that CINPO Gradle code calls. It lives
- * in the Oracle namespace because it is a small domain layer over Oracle Java
- * Card internals: converter profiles, JCASM parsing, CAP linking, CAP writing,
- * and off-card verification. The unusual package placement is intentional and
- * keeps low-level Oracle mechanics out of {@code app.aoki.*} code.</p>
+ * <p>This class is the single entry point the plugin calls through
+ * {@code CinpoJavaCardToolLoader}. It lives in the Oracle namespace because it is
+ * a small domain layer over Oracle Java Card internals: converter profiles, JCASM
+ * parsing, CAP linking, CAP writing, and off-card verification. The unusual
+ * package placement is intentional and keeps low-level Oracle mechanics out of
+ * {@code app.aoki.*} code.</p>
  *
  * <p>The implementation does not call {@code Main.main(...)},
  * {@code ConverterHarness.startConversion(...)}, {@code OptionParser.parse(...)},
@@ -43,9 +46,10 @@ public final class OracleClassicCapBuilder {
      * @param request project and manifest inputs needed for CAP generation
      * @return paths to both Oracle's generated CAP and CINPO's staged runtime resource
      */
-    public static OracleClassicCapResult build(OracleClassicCapRequest request) throws Exception {
+    public static CapBuildResult build(CapBuildRequest request) throws Exception {
         Files.createDirectories(request.workDirectory());
-        Files.createDirectories(request.stagedCapFile().getParent());
+        Path stagedCapFile = request.layout().resourceFile();
+        Files.createDirectories(stagedCapFile.getParent());
 
         AppletManifest manifest = request.manifest();
         Path packageOutputRoot = request.workDirectory().resolve("converter-output");
@@ -68,8 +72,8 @@ public final class OracleClassicCapBuilder {
         JCPackage jcPackage = CinpoJcasmLogic.parseGeneratedJca(profile);
         Path generatedCap = CinpoCapgenLogic.generateCap(profile, converter, jcPackage);
 
-        stage(generatedCap, request.stagedCapFile());
-        return new OracleClassicCapResult(generatedCap, request.stagedCapFile());
+        stage(generatedCap, stagedCapFile);
+        return new CapBuildResult(generatedCap, stagedCapFile);
     }
 
     /**

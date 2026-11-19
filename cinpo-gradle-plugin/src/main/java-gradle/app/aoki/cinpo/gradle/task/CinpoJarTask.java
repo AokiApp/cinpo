@@ -15,6 +15,8 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -66,6 +68,13 @@ public abstract class CinpoJarTask extends DefaultTask {
     private static final String BUNDLED_SIMULATOR_ENTRY_PREFIX = "cinpo-simulator";
     private static final String API_EXPORT_ENTRY_PREFIX = "api_export_files_";
     private static final String SERVICE_ENTRY_PREFIX = "META-INF/services/";
+    // Gradle's own reproducible archives use 1980-02-01 00:00 UTC, the earliest
+    // timestamp the ZIP format can represent. Appliance entries get this value
+    // instead of the source timestamp, matching preserveFileTimestamps = false in
+    // the build. Bytes the Oracle converter embeds in the CAP itself, such as its
+    // creation time, still vary between builds.
+    private static final long ARCHIVE_ENTRY_TIME =
+            LocalDateTime.of(1980, 2, 1, 0, 0).toInstant(ZoneOffset.UTC).toEpochMilli();
 
     private final ConfigurableFileCollection classpath;
     private final DirectoryProperty bundledSimulatorDirectory;
@@ -264,18 +273,12 @@ public abstract class CinpoJarTask extends DefaultTask {
             String targetName = SERVICE_ENTRY_PREFIX + entry.getKey();
             byte[] content = String.join("\n", entry.getValue()).getBytes(StandardCharsets.UTF_8);
             JarEntry targetEntry = new JarEntry(targetName);
-            targetEntry.setTime(writeServicesTime());
+            targetEntry.setTime(ARCHIVE_ENTRY_TIME);
             output.putNextEntry(targetEntry);
             output.write(content);
             output.closeEntry();
             writtenEntries.add(targetName);
         }
-    }
-
-    private static long writeServicesTime() {
-        // A fixed timestamp keeps the merged service entries byte-for-byte stable across builds.
-        // Other JAR entries keep their source timestamps, so the whole appliance is not reproducible.
-        return 0L;
     }
 
     /**
@@ -358,7 +361,7 @@ public abstract class CinpoJarTask extends DefaultTask {
                     continue;
                 }
                 JarEntry entry = new JarEntry(entryName);
-                entry.setTime(Files.getLastModifiedTime(source).toMillis());
+                entry.setTime(ARCHIVE_ENTRY_TIME);
                 output.putNextEntry(entry);
                 Files.copy(source, output);
                 output.closeEntry();
@@ -400,7 +403,7 @@ public abstract class CinpoJarTask extends DefaultTask {
                     continue;
                 }
                 JarEntry targetEntry = new JarEntry(entryName);
-                targetEntry.setTime(sourceEntry.getTime());
+                targetEntry.setTime(ARCHIVE_ENTRY_TIME);
                 output.putNextEntry(targetEntry);
                 input.transferTo(output);
                 output.closeEntry();
