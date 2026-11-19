@@ -22,10 +22,6 @@ public final class PcscAdapter {
 
     private final PcscConfig config;
 
-    public PcscAdapter() {
-        this(PcscConfig.automatic());
-    }
-
     public PcscAdapter(PcscConfig config) {
         this.config = Objects.requireNonNull(config);
     }
