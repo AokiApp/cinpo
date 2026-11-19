@@ -66,10 +66,3 @@ sourceSets {
         }
     }
 }
-
-// The probe template defines only the "probe" task kind. The plugin's cinpoTest
-// defaults to "provision" and "test", which this template does not provide, so
-// bind the test flow to the kind this project actually defines.
-tasks.named('cinpoTest') {
-    args = ['write', '--task=probe']
-}
