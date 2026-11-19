@@ -88,7 +88,7 @@ Rules:
 
 ## `applets`
 
-One entry per installable applet in the package. `applets` must contain at least one entry.
+One entry per installable applet in the package; it cannot be empty.
 
 | Key | Type | Notes |
 |-----|------|-------|
@@ -157,7 +157,7 @@ applets:
     privilege: "00"
 ```
 
-Host tasks can select the instance they need from `manifest.applets()` (for example by `id()` or by iterating the list) and send `SELECT` with that instance AID. Keep the package, class, and instance AIDs consistent with the package AID layout above.
+Host tasks can select the instance they need from `manifest.applets()` (for example by `id()` or by iterating the list) and send `SELECT` with that instance AID. Keep the package, class, and instance AIDs consistent with the layout above.
 
 ## Where to look next
 
