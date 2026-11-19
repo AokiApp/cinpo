@@ -13,7 +13,7 @@ import app.aoki.cinpo.orchestrator.Phase;
  * supplies the {@link Phase} used for installing applets.
  *
  * <p>Implementations are discovered via {@code META-INF/services/app.aoki.cinpo.runtime.RuntimeAdapter}.
- * A runtime whose module is absent from the appliance has no service entry and does not affect
+ * A runtime whose module is absent from the classpath has no service entry and does not affect
  * the other runtimes. A service entry that names a provider which cannot be loaded makes discovery
  * fail as a whole.
  */

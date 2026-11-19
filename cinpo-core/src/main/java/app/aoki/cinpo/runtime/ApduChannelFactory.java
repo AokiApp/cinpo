@@ -26,6 +26,7 @@ public final class ApduChannelFactory {
      *
      * @param profile the resolved profile
      * @return a new channel
+     * @throws IllegalArgumentException when no adapter is registered for the runtime
      */
     public static ApduChannel create(Profile profile) {
         return adapterFor(profile).createChannel(profile);
@@ -36,6 +37,7 @@ public final class ApduChannelFactory {
      *
      * @param profile the resolved profile
      * @return the install phase for the runtime
+     * @throws IllegalArgumentException when no adapter is registered for the runtime
      */
     public static Phase createInstallPhase(Profile profile) {
         return adapterFor(profile).createInstallPhase(profile);
@@ -65,8 +67,9 @@ public final class ApduChannelFactory {
             // preferable to silently running with a partial registry.
             throw new IllegalStateException("Failed to discover runtime adapters", e);
         }
+        String availableList = available.isEmpty() ? "none on the classpath" : String.join(", ", available);
         throw new IllegalArgumentException("Unsupported runtime: " + profile.runtime()
-                + " (available: " + String.join(", ", available) + ")."
+                + " (available: " + availableList + ")."
                 + " Add the matching app.aoki.cinpo:cinpo-runtime-* dependency to your build.");
     }
 }
