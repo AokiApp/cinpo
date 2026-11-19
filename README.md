@@ -49,10 +49,12 @@ A typical consumer declares the core plus the runtimes it actually needs:
 
 ```groovy
 dependencies {
-    implementation 'app.aoki.cinpo:cinpo:0.5.0'
-    implementation 'app.aoki.cinpo:cinpo-runtime-jcresim:0.5.0'
+    implementation 'app.aoki.cinpo:cinpo:<version>'
+    implementation 'app.aoki.cinpo:cinpo-runtime-jcresim:<version>'
 }
 ```
+
+Replace `<version>` with the version from the latest release. The starter templates keep this value in `gradle/libs.versions.toml`.
 
 The three runtime modules depend on `cinpo` transitively, so declaring the core artifact is optional. The starter templates declare it explicitly along with all three runtimes, which works as well. The appliance JAR produced by `cinpoJar` contains only what your project puts on `runtimeClasspath`. To ship a smaller one, remove the runtimes you don't use from the template's `dependencies` block. If you declare only `cinpo-runtime-jcresim`, the appliance carries the simulator's class files and native libraries, but not PC/SC or jcardengine. For guidance on what changed from previous 0.x releases, see [migration-0.5.0](docs/migration-0.5.0.md).
 

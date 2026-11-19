@@ -71,7 +71,7 @@ public final class CinpoGradleSupport {
                                 "app.aoki.cinpo:cinpo is declared without a concrete version. The CINPO Gradle "
                                         + "plugin wires the framework's annotation processor from this declaration, "
                                         + "so declare a concrete version, for example "
-                                        + "implementation 'app.aoki.cinpo:cinpo:0.5.0'.");
+                                        + "implementation 'app.aoki.cinpo:cinpo:<version>'.");
                     }
                 }
             }
