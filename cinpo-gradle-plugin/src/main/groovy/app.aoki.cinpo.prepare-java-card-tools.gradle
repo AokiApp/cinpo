@@ -205,7 +205,7 @@ def verifyDownloadedSimulatorArchive = {
     if (!simulatorFile.exists()) {
         throw new GradleException(
                 "Required vendor file '${simulatorFile.name}' is missing. Please download it from the Oracle Java Card website and place it in the 'vendor' directory. " +
-                        "(Projects that do not use the jcresim runtime do not need a simulator archive.)")
+                        "If you do not use the jcresim runtime, remove the cinpo-runtime-jcresim dependency from build.gradle instead.")
     }
     String expectedChecksum = SIMULATOR_CHECKSUMS[simulatorFile.name]
     if (expectedChecksum == null) {

@@ -13,18 +13,15 @@ import java.util.logging.Logger;
  *
  * <p>This phase:
  * <ol>
- *   <li>Reads the runtime identifier from the profile (e.g., "jcresim", "jcardengine", "pcsc")</li>
+ *   <li>Reads the runtime identifier from the profile and resolves it to a registered adapter</li>
  *   <li>Creates an appropriate {@link ApduChannel} via {@link ApduChannelFactory}</li>
  *   <li>Stores the channel in the orchestrator for use by subsequent phases</li>
  * </ol>
  *
  * <h2>Runtime Support</h2>
- * Supported runtime identifiers:
- * <ul>
- *   <li>{@code "jcresim"} - Oracle JCDK simulator runtime</li>
- *   <li>{@code "jcardengine"} - class-installed in-process Java Card runtime</li>
- *   <li>{@code "pcsc"} - PC/SC physical card reader</li>
- * </ul>
+ * The runtime identifier is resolved through {@link ApduChannelFactory}, which discovers the
+ * adapters on the classpath. The bundled modules provide {@code jcresim}, {@code jcardengine},
+ * and {@code pcsc}; a project can add its own adapter through the SPI.
  *
  * <h2>Lifecycle</h2>
  * This phase should typically be the first phase in the orchestration sequence.
