@@ -55,7 +55,7 @@ jobs:
           fi
 
       - name: Make scripts executable
-        run: chmod +x ./gradlew ./scripts/*.sh ./.github/scripts/publish-github-packages.sh
+        run: chmod +x ./gradlew ./scripts/*.sh ./.github/scripts/*.sh
 
       - name: Extract vendor archives
         run: ./scripts/extract_vendor.sh
@@ -66,7 +66,12 @@ jobs:
         run: ./gradlew --no-daemon clean check publishAllPublicationsToStagingRepository
 
       - name: Write checksums
-        run: ./scripts/write-checksums.sh build/staging-maven-repository > build/checksums.txt
+        run: |
+          set -euo pipefail
+          cd build/staging-maven-repository
+          find . -type f \( -name '*.pom' -o -name '*.module' -o -name '*.jar' \) -printf '%P\0' \
+            | sort -z \
+            | xargs -0 sha256sum > ../checksums.txt
 
       - name: Upload the staged repository
         uses: actions/upload-artifact@v4
@@ -76,11 +81,39 @@ jobs:
             build/staging-maven-repository
             build/checksums.txt
 
-      - name: Verify the basic template against the staged repository
-        run: ./scripts/verify-release-template.sh "${{ inputs.version }}" "$PWD/build/staging-maven-repository"
+      - name: Verify the basic template
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          work_dir="$(mktemp -d)"
+          trap 'rm -rf "$work_dir"' EXIT
+          ./scripts/bootstrap.sh "$work_dir/project"
+          template_version="$(sed -n 's/^cinpo = "\([^"]*\)".*/\1/p' "$work_dir/project/gradle/libs.versions.toml")"
+          test "$template_version" = "$VERSION"
+          cp -a vendor "$work_dir/project/vendor"
+          cd "$work_dir/project"
+          repository_uri="file://$GITHUB_WORKSPACE/build/staging-maven-repository"
+          ./gradlew --no-daemon -PcinpoRepository="$repository_uri" \
+            cinpoRun --args='--debug --test'
+          ./gradlew --no-daemon -PcinpoRepository="$repository_uri" cinpoJar
+          java -jar build/libs/cinpo-appliance.jar write --test
+          java -p build/libs/cinpo-appliance.jar \
+            -m app.aoki.cinpo/app.aoki.cinpo.cli.CinpoCli --help
 
       - name: Create the release tag
-        run: ./scripts/create-release-tag.sh "${{ inputs.version }}"
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          tag="v$VERSION"
+          git fetch --tags origin
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            test "$(git rev-list -n 1 "$tag")" = "$(git rev-parse HEAD)"
+          else
+            git tag -a "$tag" -m "CINPO $VERSION"
+            git push origin "$tag"
+          fi
 
       - name: Publish to GitHub Packages
         run: ./.github/scripts/publish-github-packages.sh
@@ -90,18 +123,65 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify published checksums
-        run: ./scripts/verify-published-checksums.sh build/checksums.txt
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          repository_url="https://maven.pkg.github.com/AokiApp/cinpo"
+          while read -r expected path; do
+            actual="$(curl \
+              --silent \
+              --show-error \
+              --fail \
+              --location \
+              --user "${GITHUB_ACTOR}:${GITHUB_TOKEN}" \
+              "${repository_url}/${path}" \
+              | sha256sum \
+              | awk '{print $1}')"
+            if [[ "$actual" != "$expected" ]]; then
+              echo "mismatch: ${path}" >&2
+              exit 1
+            fi
+          done < build/checksums.txt
+          echo "published checksums match"
 
       - name: Promote the staged repository to gh-pages
-        run: ./scripts/promote-gh-pages.sh "${{ inputs.version }}" "$PWD/build/staging-maven-repository" "$PWD/build/checksums.txt"
+        run: ./.github/scripts/promote-gh-pages.sh "${{ inputs.version }}" "$PWD/build/staging-maven-repository" "$PWD/build/checksums.txt"
 
       - name: Create the GitHub Release
-        run: ./scripts/create-github-release.sh "${{ inputs.version }}" "$PWD/build/checksums.txt"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          tag="v$VERSION"
+          notes_file="$(mktemp)"
+          trap 'rm -f "$notes_file"' EXIT
+          if [[ -f CHANGELOG.md ]]; then
+            awk -v ver="$VERSION" '
+              index($0, "## [" ver "]") == 1 { found = 1; next }
+              found && index($0, "## [") == 1 { exit }
+              found { print }
+            ' CHANGELOG.md > "$notes_file"
+          fi
+          if [[ ! -s "$notes_file" ]]; then
+            printf 'CINPO %s\n' "$VERSION" > "$notes_file"
+          fi
+          extra_args=()
+          if [[ "$VERSION" == *-* ]]; then
+            extra_args+=(--prerelease)
+          fi
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" --notes-file "$notes_file" "${extra_args[@]}"
+          else
+            gh release create "$tag" \
+              --title "CINPO $VERSION" \
+              --notes-file "$notes_file" \
+              --verify-tag \
+              "${extra_args[@]}"
+          fi
+          gh release upload "$tag" build/checksums.txt --clobber
 
   deploy-pages:
     name: Deploy the cumulative Maven repository

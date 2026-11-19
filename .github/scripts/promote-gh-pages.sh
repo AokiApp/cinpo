@@ -11,7 +11,7 @@ staging_dir="$2"
 checksums_file="$3"
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd -- "$script_dir/.." && pwd)"
+repo_root="$(cd -- "$script_dir/../.." && pwd)"
 cd "$repo_root"
 
 fail() {
@@ -66,20 +66,6 @@ grep -q "^\\\$DefaultRef = 'v${version}'$" "$pages_dir/bootstrap.ps1" || \
 
 cp "$checksums_file" "$pages_dir/checksums.txt"
 cp "$checksums_file" "$pages_dir/checksums-${version}.txt"
-
-python3 "$repo_root/scripts/merge-maven-metadata.py" "$pages_dir"
-
-find "$pages_dir" -name 'maven-metadata.xml' -print0 | while IFS= read -r -d '' metadata; do
-    directory="$(dirname "$metadata")"
-    name="$(basename "$metadata")"
-    (
-        cd "$directory"
-        sha1sum "$name" > "$name.sha1"
-        md5sum "$name" > "$name.md5"
-        sha256sum "$name" > "$name.sha256"
-        sha512sum "$name" > "$name.sha512"
-    )
-done
 
 git -C "$pages_dir" add -A
 if git -C "$pages_dir" diff --cached --quiet; then

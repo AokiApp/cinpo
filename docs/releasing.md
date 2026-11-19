@@ -68,7 +68,9 @@ The workflow runs on `main` and performs these steps in one job:
 9. create the GitHub Release
 
 The `deploy-pages` job deploys the `gh-pages` branch. `gh-pages` is the
-cumulative repository and was seeded with 0.5.0.
+cumulative repository and was seeded with 0.5.0. Every version directory is
+kept, but `maven-metadata.xml` is copied from the latest release. CINPO pins
+exact versions, so version ranges are not supported.
 
 A failed release is retried with the same version before anything is published.
 After publication, a fix goes into a new patch version; an existing version is
