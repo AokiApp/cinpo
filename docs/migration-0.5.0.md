@@ -39,15 +39,13 @@ plugins {
 }
 ```
 
-The implementation artifact is `app.aoki.cinpo:cinpo-gradle-plugin:0.5.0`. The old `app.aoki.cinpo.gradle` marker is not published for 0.5.0. The internal `app.aoki.cinpo.prepare-java-card-tools` helper is applied from the implementation jar; its marker is no longer published, so do not request it from a repository.
+The implementation artifact is `app.aoki.cinpo:cinpo-gradle-plugin:0.5.0`. The old `app.aoki.cinpo.gradle` marker and the internal `app.aoki.cinpo.prepare-java-card-tools` marker are not published for 0.5.0; the helper is applied from the implementation jar.
 
-What changed is the *dependency declaration* and the *Gradle plugin ID*. Upgrading only the `cinpo` version is not enough: the 0.5.0 artifact is the core only, so you must add the runtime modules you use. The Gradle plugin must also move to 0.5.0 so it can add the annotation processor from the framework artifact. Without a runtime module on `runtimeClasspath`, adapter lookup fails with `Unsupported runtime`. If your project is based on the consumer template, it already declares both:
+What changed is the *dependency declaration* and the *Gradle plugin ID*. Upgrading only the `cinpo` version is not enough: the 0.5.0 artifact is the core only, so you must add the runtime modules you use. The Gradle plugin must also move to 0.5.0 so it can add the annotation processor from the framework artifact.
+
+Without a runtime module on `runtimeClasspath`, adapter lookup fails with `Unsupported runtime`. If your project is based on the consumer template, it already declares the plugin and the runtime modules:
 
 ```groovy
-plugins {
-    id 'app.aoki.cinpo' version '0.5.0'
-}
-
 dependencies {
     implementation 'app.aoki.cinpo:cinpo:0.5.0'
     implementation 'app.aoki.cinpo:cinpo-runtime-jcresim:0.5.0'
