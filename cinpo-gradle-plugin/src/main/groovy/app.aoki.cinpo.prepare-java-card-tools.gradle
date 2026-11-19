@@ -310,7 +310,7 @@ def verifyConfiguredJcsl = {
 // and export files), filtered to the manifest's targetApiVersion.
 tasks.register('prepareJavaCardTools') {
     inputs.file(javaCardToolsArchive)
-    inputs.property('targetApiVersion', providers.provider { targetApiVersionFromManifest() })
+    inputs.property('targetApiVersion', providers.provider { targetApiVersionFromManifest() ?: '<none>' })
     outputs.dir extractedJavaCardToolsDir.map { it.dir('tools') }
 
     doLast {
