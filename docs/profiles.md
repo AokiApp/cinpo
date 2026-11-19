@@ -2,11 +2,13 @@
 
 A profile tells CINPO two things: **where APDUs go** (the simulator or a physical card) and **how the secure channel authenticates** (which protocol, which keys).
 
-## The builtin: `jcdksim`
+## The default profile: `jcdksim`
 
-`jcdksim` is the default profile, used when `--profile` is omitted. It targets the Oracle JCDK simulator (`jcresim`) with SCP03 and **well-known test keys** — no configuration is needed:
+`jcdksim` is just a profile YAML file, shipped in `profile/jcdksim.yaml` by the starter templates. It targets the Oracle JCDK simulator (`jcresim`) with SCP03 and **well-known test keys** — no extra configuration is needed:
 
 ```yaml
+schema: cinpo.profile.v1
+name: jcdksim
 runtime: jcresim
 secureChannel:
   protocol: scp03
@@ -21,7 +23,7 @@ secureChannel:
 
 These keys are public. Never use them on a real card — they exist so that a fresh project works out of the box for development.
 
-If `profile/jcdksim.yaml` does not exist, the builtin `jcdksim` is used, so the default works even without any profile files in the project.
+The CLI defaults `--profile` to `jcdksim`. CINPO has no builtin profiles and no registry: it is resolved like any other name, from `profile/jcdksim.yaml` in the project or from the same path on the classpath. An appliance JAR carries the project's profiles, so a bare `java -jar cinpo-appliance.jar write` works even from a directory with no `profile/` folder. If you don't use the simulator, name your own profile; leaving the default in place fails at profile or adapter lookup.
 
 ## Custom profiles
 
@@ -51,9 +53,10 @@ secureChannel:
 
 How the `--profile` argument is resolved:
 
-- **Named profile** (`--profile mycard`) — resolved from `profile/mycard.yaml` inside the application project directory. Only `profile/` is searched; there is no other directory fallback.
+- **Named profile** (`--profile mycard`) — resolved from `profile/mycard.yaml` in the project, then from the same path on the classpath inside the appliance JAR. Other directories aren't searched.
 - **Path-like value** (`--profile ./secrets/card.yaml`) — values containing `/`, `\`, or ending in `.yaml`/`.yml` are resolved relative to the application project directory. Absolute paths are used as-is.
-- **Missing profile** — the command fails with a message listing the paths that were searched. Only `jcdksim` falls back to a builtin.
+- **Missing profile** — the command fails with a message listing the paths that were searched, including the classpath path `profile/<name>.yaml`.
+- **Omitted `--profile`** — defaults to `jcdksim`, resolved from `profile/jcdksim.yaml` in the project or on the classpath. If you don't use the simulator, name your profile explicitly.
 - **`reader` set in the `pcsc` block** — that reader is used exclusively; no automatic fallback or selection happens. `excludedReaders` is only consulted for automatic reader selection.
 
 Notes on the `secureChannel` block:
@@ -91,7 +94,8 @@ Real SCP keys are not test keys. Keep them out of git and do not reuse `profile/
 
 | `runtime` value | Transport |
 |----------------|-----------|
-| `jcresim` | Oracle JCDK simulator (auto-managed) |
+| `jcresim` | Oracle JCDK simulator (auto-managed). Requires the Oracle JCDK vendor archives in `vendor/`. |
+| `jcardengine` | In-process Java Card engine. No native simulator; runs the applet as compiled `classes`. |
 | `pcsc` | PC/SC card reader (javax.smartcardio) |
 
 ## Supported protocols

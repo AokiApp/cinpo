@@ -1,0 +1,170 @@
+import app.aoki.cinpo.gradle.CinpoGradleSupport
+import app.aoki.cinpo.gradle.task.CinpoJarTask
+import app.aoki.cinpo.gradle.task.CinpoRunTask
+import app.aoki.cinpo.gradle.task.GenerateCapTask
+import org.gradle.api.tasks.SourceSet
+import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.api.tasks.compile.JavaCompile
+
+plugins {
+    id 'java'
+    id 'app.aoki.cinpo.prepare-java-card-tools'
+}
+
+SourceSetContainer sourceSets = extensions.getByType(SourceSetContainer)
+SourceSet mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME)
+mainSourceSet.resources.srcDir(layout.buildDirectory.dir('generated/cinpo/resources/main'))
+
+repositories {
+    maven {
+        name = 'javacardPro'
+        url = uri('https://mvn.javacard.pro/maven/')
+    }
+    maven {
+        name = 'javacardProSnapshots'
+        url = uri('https://mvn.javacard.pro/maven/SNAPSHOTS/')
+    }
+}
+
+def prepareJavaCardTools = tasks.named('prepareJavaCardTools')
+// The annotation processor lives in the app.aoki.cinpo framework artifact
+// (app.aoki.cinpo.task.CardTaskProcessor), which the plugin jar does not contain
+// after the module split. The consumer's own implementation declaration already
+// pins the framework version, so the processor is wired from that declaration.
+def companionBundleExportDirectories = providers.provider { CinpoGradleSupport.companionBundleExportDirectories(project) }
+
+afterEvaluate {
+    // The consumer's build script has run by now, so the declared core version is
+    // visible. Adding the framework's own artifact as the annotation processor at
+    // exactly that version keeps the processor on the same framework the host code
+    // compiles against, even when the plugin itself is newer.
+    dependencies {
+        annotationProcessor "app.aoki.cinpo:cinpo:${CinpoGradleSupport.declaredCinpoCoreVersion(project)}"
+    }
+}
+
+dependencies {
+    // JCardEngine installs applets from compiled classes instead of CAP files.
+    // Do not put Oracle's api_classic jar on runtimeClasspath: JCardEngine ships
+    // its own javacard.* runtime classes, and Oracle's native stubs would shadow
+    // them. Companion API jars are still needed when applet classes reference
+    // vendor packages that are not bundled by JCardEngine itself.
+    runtimeOnly files(
+            providers.provider { CinpoGradleSupport.companionBundleJars(project) }
+    )
+}
+
+tasks.register('compileAppletJava', JavaCompile) {
+    group = 'cinpo'
+    description = 'Compiles Java Card applet sources with converter-compatible bytecode.'
+    source = fileTree('applet') {
+        include '**/*.java'
+    }
+    destinationDirectory = layout.buildDirectory.dir('classes/java/applet')
+    classpath = files(
+            providers.provider { CinpoGradleSupport.targetApiJar(project) },
+            layout.buildDirectory.file('cinpo-cache/jcdk/tools/lib/tools.jar'),
+            providers.provider { CinpoGradleSupport.companionBundleJars(project) }
+    )
+    options.release = 8
+    options.encoding = 'UTF-8'
+    dependsOn prepareJavaCardTools
+}
+
+tasks.register('generateCap', GenerateCapTask) {
+    group = 'cinpo'
+    description = 'Builds the Java Card CAP file and stages it at cap/<packageName>.cap.'
+    manifestFile = layout.projectDirectory.file('manifest.yaml')
+    companionExportDirectories.from(companionBundleExportDirectories)
+    appletClassesDirectory = layout.buildDirectory.dir('classes/java/applet')
+    toolLibraryDirectory = layout.buildDirectory.dir('cinpo-cache/jcdk/tools/lib')
+    generatedResourcesDirectory = layout.buildDirectory.dir('generated/cinpo/resources/main')
+    dependsOn prepareJavaCardTools
+    dependsOn tasks.named('compileAppletJava')
+}
+
+tasks.named('processResources') {
+    dependsOn tasks.named('generateCap')
+    from(layout.projectDirectory.file('manifest.yaml'))
+    // Carry the project's profiles into the runtime classpath so cinpoJar can put
+    // them into the appliance and --profile <name> works without a project directory.
+    from(layout.projectDirectory.dir('profile')) {
+        into 'profile'
+    }
+    from(layout.buildDirectory.dir('generated/cinpo/resources/main'))
+}
+
+tasks.register('cinpoRun', CinpoRunTask) {
+    classpath.from(mainSourceSet.runtimeClasspath)
+    classpath.from(layout.buildDirectory.dir('classes/java/applet'))
+    dependsOn tasks.named('classes')
+    dependsOn prepareJavaCardTools
+}
+
+// AIがバカだからcinpoRunを強制的に呼び出してやるよ。
+// 見てるか～？gradle testしかできない能無し野郎～～～
+def cinpoTest = tasks.register('cinpoTest', CinpoRunTask) {
+    description = 'Runs the CINPO test flow against this project.'
+    classpath.from(mainSourceSet.runtimeClasspath)
+    classpath.from(layout.buildDirectory.dir('classes/java/applet'))
+    args = ['write', '--test']
+    dependsOn tasks.named('classes')
+    dependsOn prepareJavaCardTools
+}
+
+tasks.named('test') {
+    dependsOn cinpoTest
+}
+// Build the production appliance from the same runtime classpath used by cinpoRun.
+// classes contributes host task classes, manifest.yaml, generated CAP resources,
+// and the separately compiled applet classes used by JCardEngine runtime installs;
+// prepareJcresimSimulator contributes the configured simulator runtime bundled by CinpoJarTask.
+tasks.register('cinpoJar', CinpoJarTask) {
+    classpath.from(mainSourceSet.runtimeClasspath)
+    classpath.from(layout.buildDirectory.dir('classes/java/applet'))
+    dependsOn tasks.named('classes')
+    dependsOn prepareJavaCardTools
+}
+
+// jcresim build inputs are wired only when the consumer declares the
+// jcresim runtime module in the main runtime scope (api, implementation,
+// or runtimeOnly). Slim builds (PC/SC or jCardEngine only) then never run the
+// simulator preparation, never require the simulator vendor archive, and
+// never carry Oracle's socket terminal provider. A missing runtime module fails
+// at adapter lookup exactly as it does on the framework side
+// (ApduChannelFactory: "Unsupported runtime: ...").
+def prepareJcresimSimulator = tasks.named('prepareJcresimSimulator')
+def socketProviderJar = files(
+        layout.buildDirectory.file('cinpo-cache/jcdk/simulator/client/COMService/socketprovider.jar')
+).builtBy(prepareJcresimSimulator)
+
+afterEvaluate {
+    // Only the main runtime scope decides. A jcresim declaration on compileOnly,
+    // annotationProcessor, or a test configuration never triggers simulator
+    // preparation, so those builds never pay for an archive they do not run.
+    // The java plugin names the main source set's runtime classpath configuration
+    // "runtimeClasspath" (JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME).
+    def runtimeClasspathConfiguration = configurations.getByName('runtimeClasspath')
+    def runtimeScope = [runtimeClasspathConfiguration] + runtimeClasspathConfiguration.extendsFrom
+    boolean usesJcresimRuntime = runtimeScope.any { configuration ->
+        configuration.dependencies.any { dependency ->
+            dependency.name != null && dependency.name.contains('cinpo-runtime-jcresim')
+        }
+    }
+    if (usesJcresimRuntime) {
+        tasks.withType(CinpoRunTask).configureEach {
+            classpath.from(socketProviderJar)
+            dependsOn prepareJcresimSimulator
+        }
+        tasks.withType(CinpoJarTask).configureEach {
+            // The prepare task owns the platform-specific jcsl directory and hands it over
+            // through its task extension; the jar task only relocates that directory into
+            // the resource namespace JcreSimAdapter reads. The property stays unset for
+            // slim builds so no simulator directory is ever demanded of them.
+            bundledSimulatorDirectory.set(
+                    prepareJcresimSimulator.get().extensions.extraProperties.get('configuredJcslDir'))
+            classpath.from(socketProviderJar)
+            dependsOn prepareJcresimSimulator
+        }
+    }
+}

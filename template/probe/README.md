@@ -4,7 +4,7 @@ This project was generated from the `probe` starter template.
 
 **CINPO** (**C**ard **IN**stallation and **P**rovision **O**rchestrator), "Spring Boot for Java Card", is a framework for installing and provisioning Java Card applets. You write host-side tasks as ordinary Java classes, annotate them (`@CardTaskDef`), inject what you need (`@Inject`), and CINPO handles manifest validation, CAP compilation/conversion, installation on the JCDK simulator or a real card, APDU transport, and GlobalPlatform secure-channel authentication. No `main()`, build scripts, or ad-hoc Gradle tasks — `./gradlew cinpoRun` does it all. See the [CINPO repository](https://github.com/AokiApp/cinpo) and its [documentation](https://github.com/AokiApp/cinpo/tree/main/docs).
 
-This template is a read-only diagnostic: the applet is a placeholder, and `ProbeTask` selects an application or the default application, reads card data with `GET DATA`, and prints it. It does not write card state.
+This template is a read-only diagnostic: the applet is a placeholder, and `ProbeTask` selects an application or the default one, reads card data with `GET DATA`, and prints it. It does not write card state.
 
 ## What you get
 

@@ -81,6 +81,32 @@ run_publish_task() {
     return "${gradle_status}"
 }
 
+# Maven artifacts the framework publishes, one per Gradle project. The task name
+# is the same for every module because each one declares a 'mavenJava' publication.
+MVN_ARTIFACTS=(
+    cinpo:cinpo-core
+    cinpo-runtime-jcardengine:cinpo-runtime-jcardengine
+    cinpo-runtime-jcresim:cinpo-runtime-jcresim
+    cinpo-runtime-pcsc:cinpo-runtime-pcsc
+)
+
+publish_maven_artifact() {
+    local entry="$1"
+    local artifact module
+    IFS=':' read -r artifact module <<< "${entry}"
+    local version="${PROJECT_VERSION}"
+    run_publish_task \
+        ":${module}:publishMavenJavaPublicationToGithubPackagesRepository" \
+        "app/aoki/cinpo/${artifact}/maven-metadata.xml" \
+        "app/aoki/cinpo/${artifact}/${version}/${artifact}-${version}.pom" \
+        "app/aoki/cinpo/${artifact}/${version}/${artifact}-${version}.module" \
+        "app/aoki/cinpo/${artifact}/${version}/${artifact}-${version}.jar"
+}
+
+for entry in "${MVN_ARTIFACTS[@]}"; do
+    publish_maven_artifact "${entry}"
+done
+
 run_publish_task \
     publishApp.aoki.cinpo.gradlePluginMarkerMavenPublicationToGithubPackagesRepository \
     "app/aoki/cinpo/gradle/app.aoki.cinpo.gradle.gradle.plugin/maven-metadata.xml" \
@@ -90,12 +116,6 @@ run_publish_task \
     publishApp.aoki.cinpo.prepare-java-card-toolsPluginMarkerMavenPublicationToGithubPackagesRepository \
     "app/aoki/cinpo/prepare-java-card-tools/app.aoki.cinpo.prepare-java-card-tools.gradle.plugin/maven-metadata.xml" \
     "app/aoki/cinpo/prepare-java-card-tools/app.aoki.cinpo.prepare-java-card-tools.gradle.plugin/${PROJECT_VERSION}/app.aoki.cinpo.prepare-java-card-tools.gradle.plugin-${PROJECT_VERSION}.pom"
-
-run_publish_task \
-    publishMavenJavaPublicationToGithubPackagesRepository \
-    "app/aoki/cinpo/cinpo/maven-metadata.xml" \
-    "app/aoki/cinpo/cinpo/${PROJECT_VERSION}/cinpo-${PROJECT_VERSION}.pom" \
-    "app/aoki/cinpo/cinpo/${PROJECT_VERSION}/cinpo-${PROJECT_VERSION}.jar"
 
 run_publish_task \
     publishPluginMavenPublicationToGithubPackagesRepository \

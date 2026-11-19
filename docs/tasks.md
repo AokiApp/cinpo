@@ -193,7 +193,7 @@ Record describing `manifest.yaml`.
 
 ### `app.aoki.cinpo.config.Profile`
 
-Record describing a profile (`profile/<name>.yaml` or the builtin `jcdksim`).
+Record describing a profile (`profile/<name>.yaml`).
 
 | Accessor | Type | Notes |
 |----------|------|-------|
@@ -418,5 +418,5 @@ Run it with:
 ## Where to look next
 
 - Compilable examples in the templates: `template/basic/host/provision/HelloProvision.java`, `template/basic/host/test/HelloTest.java`, `template/probe/host/probe/ProbeTask.java`.
-- [Profiles](profiles.md) — `jcresim` (simulator) and `pcsc` (real card reader), `scp02` vs `scp03`.
+- [Profiles](profiles.md) — `jcresim` (simulator), `jcardengine` (in-process engine), and `pcsc` (real card reader), `scp02` vs `scp03`.
 - Framework changes are verified end-to-end by `.github/workflows/verify-template.yml` (bootstrap a template project into a temp directory, install the applet, run `--test`).

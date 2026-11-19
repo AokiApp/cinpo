@@ -6,7 +6,7 @@ Rules for agents (and humans) working in this project. Follow them literally.
 
 **CINPO** (**C**ard **IN**stallation and **P**rovision **O**rchestrator), "Spring Boot for Java Card", is a framework for installing and provisioning Java Card applets. You write host-side tasks as ordinary Java classes, annotate them (`@CardTaskDef`), inject what you need (`@Inject`), and CINPO handles manifest validation, CAP compilation/conversion, installation on the JCDK simulator or a real card, APDU transport, and GlobalPlatform secure-channel authentication. No `main()`, build scripts, or ad-hoc Gradle tasks — `./gradlew cinpoRun` does it all. Repository: [github.com/AokiApp/cinpo](https://github.com/AokiApp/cinpo). Documentation: [docs/](https://github.com/AokiApp/cinpo/tree/main/docs).
 
-This project, generated from the `probe` starter template, is a host-side diagnostic, not an applet project. `ProbeTask` selects an application (or the default application), reads card data with `GET DATA`, and prints the result. `MaguroApplet` is a placeholder that accepts SELECT and rejects everything else. The probe task never writes to the card and reports what the card says, including refusals.
+This project, generated from the `probe` starter template, is a host-side diagnostic, not an applet project. `ProbeTask` selects an application (or the default one), reads card data with `GET DATA`, and prints the result. `MaguroApplet` is a placeholder that accepts SELECT and rejects everything else. The probe task never writes to the card and reports what the card says, including refusals.
 
 ## The two worlds
 
@@ -41,7 +41,7 @@ At compile time an annotation processor indexes `@CardTaskDef` classes into `MET
 
 ## The probe task at a glance (`host/probe/ProbeTask.java`)
 
-`@CardTaskDef("probe")`. It reads `--aid` from `TaskArguments` (validates 5–16 bytes), SELECTs that AID or the default application, sends `GET DATA` for tag `0x66`, and prints results. A card refusal SW is reported, not thrown; the task is read-only.
+`@CardTaskDef("probe")`. It reads `--aid` from `TaskArguments` (validates 5–16 bytes), SELECTs that AID or the default one, sends `GET DATA` for tag `0x66`, and prints results. A card refusal SW is reported, not thrown; the task is read-only.
 
 ```java
 Optional<byte[]> aid = arguments.firstValue("aid").map(Util::parseHex);

@@ -34,6 +34,28 @@ public final class MyProvision implements CardTask {
 
 No manual wiring. No scripts. Just annotate, inject, run.
 
+## Modules
+
+CINPO is published as several Maven artifacts so that applications only carry what they use. `app.aoki.cinpo:cinpo` is the framework core; `app.aoki.cinpo:cinpo-runtime-*` are the runtime adapters your project selects.
+
+| Module | Description |
+|--------|-------------|
+| `app.aoki.cinpo:cinpo` | Framework core: CLI, orchestrator, manifest parser, GP / SCP crypto, APDU I/O, task loader. Every runtime module brings it in transitively. |
+| `app.aoki.cinpo:cinpo-runtime-jcresim` | Oracle JCDK simulator runtime. This jar contains only the CINPO adapter; the Oracle simulator itself comes from the archive you place in `vendor/` and is embedded into the appliance JAR when you use this runtime. Needed only for `runtime: jcresim` profiles. |
+| `app.aoki.cinpo:cinpo-runtime-jcardengine` | In-process Java Card engine runtime. Brings in `jCardEngine` and its dependencies (Byte Buddy, BouncyCastle, …). Needed only for `runtime: jcardengine` profiles. |
+| `app.aoki.cinpo:cinpo-runtime-pcsc` | PC/SC runtime. Uses the host's PC/SC stack via `javax.smartcardio`. No native dependencies. |
+
+A typical consumer declares the core plus the runtimes it actually needs:
+
+```groovy
+dependencies {
+    implementation 'app.aoki.cinpo:cinpo:0.5.0'
+    implementation 'app.aoki.cinpo:cinpo-runtime-jcresim:0.5.0'
+}
+```
+
+The three runtime modules depend on `cinpo` transitively, so declaring the core artifact is optional. The starter templates declare it explicitly along with all three runtimes, which works as well. The appliance JAR produced by `cinpoJar` contains only what your project puts on `runtimeClasspath`. To ship a smaller one, remove the runtimes you don't use from the template's `dependencies` block. If you declare only `cinpo-runtime-jcresim`, the appliance carries the simulator's class files and native libraries, but not PC/SC or jcardengine. For guidance on what changed from previous 0.x releases, see [migration-0.5.0](docs/migration-0.5.0.md).
+
 ## Philosophy
 
 CINPO defines a streamlined developer experience for Java Card applet development. It provides complete workflows and frameworks for building, provisioning, testing, and deploying in the wild, from creating the template project to packaging for production. It is designed just like "Spring Boot for Java Card."
@@ -42,7 +64,7 @@ The goal is to put the developer experience first and make applet development ea
 
 So applet development is a few simple steps: create a project from the template, write your applet, add annotations to your provisioning code, and run everything with one command. No entrypoint `Main` class, no build shell scripts, no ad-hoc Gradle tasks.
 
-And for production, everything ships as a single self-contained appliance JAR with minimal dependencies. That means a smaller attack surface, and the same artifact runs on an air-gapped network. Portability is a core design value.
+And for production, everything ships as a single self-contained appliance JAR. It carries only the runtime modules you declare, so a trimmed project has fewer dependencies and a smaller attack surface, and it runs the same on an air-gapped network. Portability is a core design value.
 
 ## Getting Started
 
@@ -81,7 +103,7 @@ my-project/
 
 ### 2. Prepare the vendor directory
 
-CINPO does not redistribute the Oracle JCDK; you must download it and place the Tools and Simulator archives in `my-project/vendor/` (see [docs/vendor.md](docs/vendor.md)). Without them, `cinpoRun` and `cinpoJar` fail.
+CINPO does not redistribute the Oracle JCDK; you must download it and place the Tools and Simulator archives in `my-project/vendor/` (see [docs/vendor.md](docs/vendor.md)). The Tools archive is required for every project. The Simulator archive is needed only while `cinpo-runtime-jcresim` is declared in `build.gradle`; the starter templates declare it, so a fresh project still needs the Simulator archive — remove the dependency if you don't use `jcresim`. Without the required archives, `cinpoRun` and `cinpoJar` fail.
 
 After placement, `my-project/vendor/` should look like this:
 
@@ -141,7 +163,7 @@ public final class SetupPins implements CardTask {
 }
 ```
 
-Any task kind can be declared with `@CardTaskDef("<kind>")`. `provision` is simply the default selected kind when no explicit task selector is provided.
+Any task kind can be declared with `@CardTaskDef("<kind>")`. `provision` is simply the default when you don't select one.
 
 ### 6. Simulate
 
@@ -174,13 +196,13 @@ The simulator is a starting point; the same commands work against a physical car
 
 #### Profiles
 
-The default is `jcdksim` (simulator, well-known test keys). For a physical card, create `profile/<name>.yaml` with `runtime: pcsc` and your own keys — see [docs/profiles.md](docs/profiles.md).
+The default is `jcdksim` (simulator, well-known test keys). For a physical card, create `profile/<name>.yaml` with `runtime: pcsc` and your own keys — see [docs/profiles.md](docs/profiles.md). Add `cinpo-runtime-pcsc` to your `dependencies` if you removed it; the starter templates already include it.
 
 ```bash
 ./gradlew cinpoRun --args='--profile mycard --test'
 ```
 
-Production machines typically run the appliance instead of Gradle. Build a self-contained fat JAR with the embedded simulator:
+Production machines typically run the appliance instead of Gradle. Build it with:
 
 ```bash
 ./gradlew cinpoJar
@@ -194,6 +216,8 @@ java -jar build/libs/cinpo-appliance.jar write --profile mycard --test
 java -jar build/libs/cinpo-appliance.jar write --profile mycard -- --record customer-42
 ```
 
+When you declare `jcresim`, the appliance also embeds the simulator binaries from `vendor/`. If you removed it, they aren't included — pass `--profile` with a profile that names your own runtime.
+
 ## Templates
 
 `scripts/bootstrap.sh` and `scripts/bootstrap.ps1` copy one of three starter templates into the destination directory. Select one with `--template` (`-Template` on PowerShell); the default is `basic`.
@@ -202,7 +226,7 @@ java -jar build/libs/cinpo-appliance.jar write --profile mycard -- --record cust
 |----------|------------------|
 | `basic` | The default starter: a Hello applet, one `provision` task that issues and writes a leaf certificate, and one `test` task that reads it back. |
 | `authenticated` | An SCP03 secure-messaging example: the applet handles GlobalPlatform security commands through a companion bundle, and the test proves that an unauthenticated command is refused and the authenticated one succeeds. |
-| `probe` | A read-only card probe: the `probe` task kind selects an application or the default application and reads `GET DATA` without writing to the card. |
+| `probe` | A read-only card probe: the `probe` task kind selects an application or the default one and reads `GET DATA` without writing to the card. |
 
 ## Writing Tasks
 

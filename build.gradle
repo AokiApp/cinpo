@@ -1,240 +1,40 @@
 plugins {
-    id 'java-library'
-    id 'groovy-gradle-plugin'
-    id 'maven-publish'
+    id 'base'
 }
 
-group = 'app.aoki.cinpo'
-version = '0.4.0'
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
+allprojects {
+    group = 'app.aoki.cinpo'
+    version = '0.5.0'
 }
 
-sourceSets {
-    main {
+subprojects {
+    plugins.withId('java') {
         java {
-            srcDirs = ['src/main/java', 'src/main/java-cli', 'src/main/java-gradle']
-        }
-        resources {
-            srcDirs = ['src/main/resources']
-        }
-    }
-}
-
-repositories {
-    maven {
-        name = 'javacardPro'
-        url = uri('https://mvn.javacard.pro/maven/')
-    }
-    maven {
-        name = 'javacardProSnapshots'
-        url = uri('https://mvn.javacard.pro/maven/SNAPSHOTS/')
-    }
-    mavenCentral()
-}
-
-
-apply from: layout.projectDirectory.file('src/main/groovy/app.aoki.cinpo.prepare-java-card-tools.gradle')
-
-def prepareJavaCardTools = tasks.named('prepareJavaCardTools')
-
-dependencies {
-    implementation 'org.yaml:snakeyaml:2.2'
-    implementation 'info.picocli:picocli:4.7.6'
-    implementation 'com.github.martinpaljak:jcardengine:26.06.05-SNAPSHOT'
-
-    // Oracle Java Card tool classes are intentionally compiled against directly.
-    // The Gradle plugin executes CAP generation in-process, without routing through
-    // converter/capgen CLI entry points, so these jars must be visible at framework
-    // compile time. The implementation also places CINPO-owned integration classes
-    // in selected com.sun.javacard.* packages to access package-private tool APIs
-    // without reflection; that makes compile-time type visibility non-negotiable.
-    compileOnly files(extractedJavaCardToolsJar).builtBy(prepareJavaCardTools)
-
-    // Oracle's socket terminal provider is also compiled against directly. It is
-    // intentionally not embedded in the framework artifact; end-user projects must
-    // provide their own EULA-covered copy on the runtime classpath.
-    compileOnly files(extractedJavaCardSocketProviderJar).builtBy(prepareJavaCardTools)
-
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
-    testRuntimeOnly files(extractedJavaCardToolsJar).builtBy(prepareJavaCardTools)
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
-}
-
-tasks.named('processResources') {
-    from('LICENSE.md') {
-        into 'META-INF/cinpo'
-        rename { 'CINPO-LICENSE.md' }
-    }
-    from('THIRD_PARTY_NOTICES.md') {
-        into 'META-INF/cinpo'
-    }
-    from('third-party/licenses') {
-        into 'META-INF/cinpo/third-party/globalplatformpro'
-    }
-}
-
-jar {
-    archiveBaseName = 'cinpo-framework'
-    archiveVersion = project.version
-    from sourceSets.main.output
-
-    // Oracle Java Card tools are deliberately not embedded in this published
-    // plugin artifact. Consumer projects supply their licensed tools.jar through
-    // vendor/, and the CAP build service adds that file to the live Gradle plugin
-    // classloader immediately before invoking the com.sun.javacard.cinpo bridge.
-}
-
-def runtimeJar = tasks.register('runtimeJar', Jar) {
-    group = 'build'
-    description = 'Builds the runtime-only CINPO artifact consumed by template applications.'
-    archiveBaseName = 'cinpo'
-    archiveVersion = project.version
-    from sourceSets.main.output
-
-    // Keep app.aoki.cinpo:cinpo focused on write/orchestrate runtime. Gradle task
-    // classes and Oracle converter glue belong only to the plugin/build-time
-    // artifact above; otherwise cinpoJar inherits them through runtimeClasspath.
-    exclude 'META-INF/gradle-plugins/**'
-    exclude 'AppAokiCinpo*Plugin.class'
-    exclude 'precompiled_AppAokiCinpo*.class'
-    exclude 'precompiled_AppAokiCinpo*$*.class'
-    exclude 'cp_precompiled_AppAokiCinpo*.class'
-    exclude 'cp_precompiled_AppAokiCinpo*$*.class'
-    exclude 'app/aoki/cinpo/gradle/**'
-    exclude 'com/sun/javacard/**'
-    exclude 'api_export_files_*/**'
-    exclude 'javacard/**'
-    exclude 'javacardx/**'
-    exclude 'com/oracle/javacard/**'
-}
-
-tasks.configureEach { task ->
-    if (task.name == 'generateMetadataFileForMavenJavaPublication') {
-        // mavenJava publishes a hand-built runtime artifact, not the Java component.
-        // Gradle module metadata for this custom publication otherwise keeps pointing
-        // at the component jar, which would make consumers resolve the build-time fat
-        // artifact instead of the runtime-only cinpo artifact.
-        task.enabled = false
-    }
-    if (task.name == 'publishMavenJavaPublicationToStagingRepository') {
-        task.doFirst {
-            delete fileTree(layout.buildDirectory.dir("staging-maven-repository/app/aoki/cinpo/cinpo/${project.version}")) {
-                include "cinpo-${project.version}.module"
-                include "cinpo-${project.version}.module.*"
+            toolchain {
+                languageVersion = JavaLanguageVersion.of(21)
             }
         }
     }
-}
 
-
-def generateVersionSource = tasks.register('generateVersionSource') {
-    group = 'code generation'
-    description = 'Creates or updates CinpoVersion.java from project.version'
-    def sourceFile = layout.projectDirectory.file('src/main/java/app/aoki/cinpo/cli/CinpoVersion.java')
-
-    inputs.property('version', project.version)
-    outputs.file(sourceFile)
-
-    doLast {
-        def targetFile = sourceFile.asFile
-        targetFile.parentFile.mkdirs()
-        targetFile.text = """\
-package app.aoki.cinpo.cli;
-
-/**
- * Single source of truth for the CINPO version string.
- * <p>
- * This file is generated by the {@code generateVersionSource} Gradle task and
- * must not be edited manually. The version value is read from
- * {@code project.version} in {@code build.gradle}.
- */
-public final class CinpoVersion {
-
-    /** CINPO version, sourced from {@code project.version} in Gradle. */
-    // BEGIN GENERATED — do not edit
-    public static final String VERSION = "${project.version}";
-    // END GENERATED
-
-    private CinpoVersion() {
-        throw new UnsupportedOperationException("utility class");
-    }
-}
-""".stripIndent()
-    }
-}
-
-compileJava.dependsOn generateVersionSource
-
-test {
-    useJUnitPlatform()
-}
-
-publishing {
-    publications {
-        pluginMaven(MavenPublication) {
-            artifactId = 'cinpo-gradle-plugin'
-        }
-        mavenJava(MavenPublication) {
-            artifact runtimeJar
-            artifactId = 'cinpo'
-            version = project.version
-            pom.withXml {
-                def dependenciesNode = asNode().appendNode('dependencies')
-                [
-                        ['org.yaml', 'snakeyaml', '2.2'],
-                        ['info.picocli', 'picocli', '4.7.6'],
-                        ['com.github.martinpaljak', 'jcardengine', '26.06.05-SNAPSHOT']
-                ].each { dependency ->
-                    def dependencyNode = dependenciesNode.appendNode('dependency')
-                    dependencyNode.appendNode('groupId', dependency[0])
-                    dependencyNode.appendNode('artifactId', dependency[1])
-                    dependencyNode.appendNode('version', dependency[2])
-                    dependencyNode.appendNode('scope', 'runtime')
-                }
-            }
-        }
-    }
-    publications.withType(MavenPublication).configureEach {
-        pom {
-            name = "CINPO ${artifactId}"
-            description = 'Source-available Java Card applet installation and provisioning framework.'
-            url = 'https://github.com/AokiApp/cinpo'
-            licenses {
-                license {
-                    name = 'AokiApp Normative Application License - Tight 1.0.1'
-                    url = 'https://github.com/AokiApp/cinpo/blob/main/LICENSE.md'
-                    distribution = 'manual'
-                    comments = 'Source-available license; this is not an OSI-approved open-source license.'
-                }
-            }
-            scm {
-                connection = 'scm:git:https://github.com/AokiApp/cinpo.git'
-                developerConnection = 'scm:git:ssh://git@github.com/AokiApp/cinpo.git'
-                url = 'https://github.com/AokiApp/cinpo'
-            }
-        }
-    }
     repositories {
         maven {
-            name = 'githubPackages'
-            url = uri('https://maven.pkg.github.com/AokiApp/cinpo')
-            credentials {
-                username = providers.gradleProperty('gpr.user')
-                        .orElse(providers.environmentVariable('GITHUB_ACTOR'))
-                        .orNull
-                password = providers.gradleProperty('gpr.key')
-                        .orElse(providers.environmentVariable('GITHUB_TOKEN'))
-                        .orNull
-            }
+            name = 'javacardPro'
+            url = uri('https://mvn.javacard.pro/maven/')
         }
         maven {
-            name = 'staging'
-            url = layout.buildDirectory.dir('staging-maven-repository')
+            name = 'javacardProSnapshots'
+            url = uri('https://mvn.javacard.pro/maven/SNAPSHOTS/')
+        }
+        mavenCentral()
+    }
+
+    plugins.withId('java') {
+        test {
+            useJUnitPlatform()
         }
     }
 }
+
+// Prepare the Oracle Java Card toolchain for the framework build itself. Vendor
+// archives are only needed for CAP generation and simulator testing.
+apply from: rootProject.file('cinpo-gradle-plugin/src/main/groovy/app.aoki.cinpo.prepare-java-card-tools.gradle')

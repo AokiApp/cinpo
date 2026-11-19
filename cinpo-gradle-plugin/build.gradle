@@ -1,0 +1,98 @@
+plugins {
+    id 'java-library'
+    id 'groovy-gradle-plugin'
+    id 'maven-publish'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java-gradle']
+        }
+        resources {
+            srcDirs = ['src/main/resources']
+        }
+    }
+}
+
+dependencies {
+    implementation project(':cinpo-core')
+
+    // Oracle Java Card tool classes are intentionally compiled against directly.
+    // The Gradle plugin executes CAP generation in-process, without routing through
+    // converter/capgen CLI entry points, so these jars must be visible at framework
+    // compile time. The implementation also places CINPO-owned integration classes
+    // in selected com.sun.javacard.* packages to access package-private tool APIs
+    // without reflection; that makes compile-time type visibility non-negotiable.
+    compileOnly files(rootProject.layout.buildDirectory.file('cinpo-cache/jcdk/tools/lib/tools.jar'))
+            .builtBy(rootProject.tasks.named('prepareJavaCardTools'))
+
+    // Oracle's socket terminal provider is also compiled against directly. It is
+    // intentionally not embedded in the framework artifact; end-user projects must
+    // provide their own EULA-covered copy on the runtime classpath.
+    compileOnly files(rootProject.layout.buildDirectory.file('cinpo-cache/jcdk/simulator/client/COMService/socketprovider.jar'))
+            .builtBy(rootProject.tasks.named('prepareJcresimSimulator'))
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+}
+
+tasks.named('processResources') {
+    from(rootProject.file('LICENSE.md')) {
+        into 'META-INF/cinpo'
+        rename { 'CINPO-LICENSE.md' }
+    }
+    from(rootProject.file('THIRD_PARTY_NOTICES.md')) {
+        into 'META-INF/cinpo'
+    }
+    from(rootProject.file('third-party/licenses')) {
+        into 'META-INF/cinpo/third-party/globalplatformpro'
+    }
+}
+
+publishing {
+    publications {
+        pluginMaven(MavenPublication) {
+            artifactId = 'cinpo-gradle-plugin'
+        }
+    }
+    repositories {
+        maven {
+            name = 'githubPackages'
+            url = uri('https://maven.pkg.github.com/AokiApp/cinpo')
+            credentials {
+                username = providers.gradleProperty('gpr.user')
+                        .orElse(providers.environmentVariable('GITHUB_ACTOR'))
+                        .orNull
+                password = providers.gradleProperty('gpr.key')
+                        .orElse(providers.environmentVariable('GITHUB_TOKEN'))
+                        .orNull
+            }
+        }
+        maven {
+            name = 'staging'
+            url = rootProject.layout.buildDirectory.dir('staging-maven-repository')
+        }
+    }
+    publications.withType(MavenPublication).configureEach {
+        pom {
+            name = "CINPO ${artifactId}"
+            description = 'Source-available Java Card applet installation and provisioning framework.'
+            url = 'https://github.com/AokiApp/cinpo'
+            licenses {
+                license {
+                    name = 'AokiApp Normative Application License - Tight 1.0.1'
+                    url = 'https://github.com/AokiApp/cinpo/blob/main/LICENSE.md'
+                    distribution = 'manual'
+                    comments = 'Source-available license; this is not an OSI-approved open-source license.'
+                }
+            }
+            scm {
+                connection = 'scm:git:https://github.com/AokiApp/cinpo.git'
+                developerConnection = 'scm:git:ssh://git@github.com/AokiApp/cinpo.git'
+                url = 'https://github.com/AokiApp/cinpo'
+            }
+        }
+    }
+}
