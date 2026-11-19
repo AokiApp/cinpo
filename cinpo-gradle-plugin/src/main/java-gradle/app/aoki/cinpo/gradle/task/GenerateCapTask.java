@@ -21,7 +21,6 @@ import org.gradle.api.tasks.TaskAction;
 import app.aoki.cinpo.config.AppletManifest;
 import app.aoki.cinpo.config.ManifestLoader;
 import app.aoki.cinpo.gradle.javacard.CapBuildRequest;
-import app.aoki.cinpo.gradle.javacard.CapBuildResult;
 import app.aoki.cinpo.gradle.javacard.CapResourceLayout;
 import app.aoki.cinpo.gradle.javacard.OracleClassicCapBuildService;
 
@@ -175,10 +174,10 @@ public abstract class GenerateCapTask extends DefaultTask {
             CapBuildRequest request = new CapBuildRequest(
                     manifest, companionExportDirectories, classRoot, toolLibrary, apiExportRoot,
                     workDirectory, layout);
-            CapBuildResult result = OracleClassicCapBuildService.build(request);
+            Path generatedCap = OracleClassicCapBuildService.build(request);
 
             getLogger().lifecycle("Generated Java Card CAP resource {} from {}",
-                    layout.resourcePath(), result.generatedCapFile());
+                    layout.resourcePath(), generatedCap);
         } catch (IOException e) {
             throw new GradleException("Failed to read Java Card manifest for CAP generation: " + manifestPath, e);
         } catch (RuntimeException e) {

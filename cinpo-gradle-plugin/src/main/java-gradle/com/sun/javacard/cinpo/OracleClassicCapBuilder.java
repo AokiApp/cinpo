@@ -2,7 +2,6 @@ package com.sun.javacard.cinpo;
 
 import app.aoki.cinpo.config.AppletManifest;
 import app.aoki.cinpo.gradle.javacard.CapBuildRequest;
-import app.aoki.cinpo.gradle.javacard.CapBuildResult;
 import app.aoki.cinpo.gradle.javacard.tools.JavaCardToolException;
 import com.sun.javacard.converter.CinpoConverterLogic;
 import com.sun.javacard.converter.ConversionProfile;
@@ -44,9 +43,9 @@ public final class OracleClassicCapBuilder {
      * CINPO runtime code.</p>
      *
      * @param request project and manifest inputs needed for CAP generation
-     * @return paths to both Oracle's generated CAP and CINPO's staged runtime resource
+     * @return Oracle's generated CAP before CINPO stages it as a runtime resource
      */
-    public static CapBuildResult build(CapBuildRequest request) throws Exception {
+    public static Path build(CapBuildRequest request) throws Exception {
         Files.createDirectories(request.workDirectory());
         Path stagedCapFile = request.layout().resourceFile();
         Files.createDirectories(stagedCapFile.getParent());
@@ -60,7 +59,6 @@ public final class OracleClassicCapBuilder {
                 request.companionExportDirectories(),
                 request.compiledClassesRoot(),
                 packageOutputRoot,
-                request.toolLibraryDirectory(),
                 request.apiExportRoot()
         );
 
@@ -74,7 +72,7 @@ public final class OracleClassicCapBuilder {
         Path generatedCap = CinpoCapgenLogic.generateCap(profile, converter, jcPackage);
 
         stage(generatedCap, stagedCapFile);
-        return new CapBuildResult(generatedCap, stagedCapFile);
+        return generatedCap;
     }
 
     /**

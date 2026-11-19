@@ -23,7 +23,6 @@ SourceSet appletSourceSet = sourceSets.create('applet') {
     java.srcDirs = ['applet']
     resources.srcDirs = []
 }
-appletSourceSet.java.destinationDirectory.convention(layout.buildDirectory.dir('classes/java/applet'))
 
 // Root for files the CINPO tasks generate for the runtime classpath. The task
 // that writes here owns the directory; processResources reaches it through the
@@ -214,7 +213,7 @@ afterEvaluate {
             bundledSimulatorDirectory.set(configuredJcslDir)
             runtimeClasspath.from(socketProviderJar)
             dependsOn prepareJcresimSimulator
-            from(socketProviderJar.collect { zipTree(it) }) {
+            from(providers.provider { socketProviderJar.collect { zipTree(it) } }) {
                 exclude 'META-INF/services/**'
             }
             from(configuredJcslDir) {

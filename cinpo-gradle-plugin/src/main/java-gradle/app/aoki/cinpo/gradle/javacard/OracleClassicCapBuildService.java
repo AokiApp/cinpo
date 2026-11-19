@@ -25,10 +25,10 @@ public final class OracleClassicCapBuildService {
      * Validates Gradle-facing inputs and runs the CAP builder.
      *
      * @param request runtime inputs collected by the Gradle task
-     * @return paths to the Oracle output and the staged runtime resource
+     * @return path to the CAP written inside the converter output tree
      * @throws Exception whatever the builder throws
      */
-    public static CapBuildResult build(CapBuildRequest request) throws Exception {
+    public static Path build(CapBuildRequest request) throws Exception {
         Objects.requireNonNull(request, "request");
         verifyInputs(request);
 

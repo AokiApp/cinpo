@@ -11,9 +11,9 @@ import org.gradle.api.file.DuplicatesStrategy;
 import org.gradle.api.file.FileTreeElement;
 import org.gradle.api.provider.Property;
 import org.gradle.api.specs.Spec;
-import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputDirectory;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.bundling.Jar;
 
@@ -72,14 +72,16 @@ public abstract class CinpoJarTask extends Jar {
     }
 
     /**
-     * Returns the resolved runtime classpath mirrored into the appliance.
+     * Returns the runtime classpath used to detect the jcresim module.
      *
-     * <p>It is also used to decide whether the jcresim runtime module is present,
-     * which requires the bundled simulator directory.</p>
+     * <p>This is a validation-only view. The entries copied into the appliance are
+     * declared with {@code from()} by the plugin, which is also what Gradle tracks
+     * as the task input. Marking this property {@code @Internal} keeps the same
+     * jars from being hashed twice.</p>
      *
-     * @return directories and archives that provide the runtime classpath
+     * @return runtime classpath mirrored into the appliance
      */
-    @Classpath
+    @Internal
     public ConfigurableFileCollection getRuntimeClasspath() {
         return runtimeClasspath;
     }

@@ -39,7 +39,6 @@ public final class CinpoConverterLogic {
             List<Path> companionExportDirectories,
             Path compiledClassesRoot,
             Path outputRoot,
-            Path toolLibraryDirectory,
             Path apiExportRoot
     ) throws IOException {
         Objects.requireNonNull(manifest, "manifest");

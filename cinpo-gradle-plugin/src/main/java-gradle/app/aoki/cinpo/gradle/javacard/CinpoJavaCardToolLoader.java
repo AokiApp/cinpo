@@ -26,8 +26,8 @@ import java.util.Objects;
  *
  * <p>This loader instead creates a child loader per build. It delegates everything
  * outside {@code com.sun.javacard.*} to the plugin classloader, including the
- * {@code app.aoki.*} request and result types, so the plugin can call the builder
- * through ordinary typed code while Oracle classes stay isolated.</p>
+ * {@code app.aoki.*} request type, so the plugin can call the builder through
+ * ordinary typed code while Oracle classes stay isolated.</p>
  */
 final class CinpoJavaCardToolLoader implements AutoCloseable {
 
@@ -84,15 +84,15 @@ final class CinpoJavaCardToolLoader implements AutoCloseable {
      * Runs one CAP build inside the isolated loader.
      *
      * @param request plugin-side request shared with the builder
-     * @return paths to the Oracle output and the staged runtime resource
+     * @return path to the CAP written inside the converter output tree
      * @throws Exception whatever the builder throws, unwrapped from reflection
      */
-    CapBuildResult build(CapBuildRequest request) throws Exception {
+    Path build(CapBuildRequest request) throws Exception {
         Objects.requireNonNull(request, "request");
         Class<?> builderClass = Class.forName(BUILDER_CLASS_NAME, true, loader);
         Method buildMethod = builderClass.getMethod(BUILD_METHOD_NAME, CapBuildRequest.class);
         try {
-            return (CapBuildResult) buildMethod.invoke(null, request);
+            return (Path) buildMethod.invoke(null, request);
         } catch (InvocationTargetException e) {
             Throwable cause = e.getCause();
             if (cause instanceof Exception exception) {
