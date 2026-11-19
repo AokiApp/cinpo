@@ -13,11 +13,17 @@ pluginManagement {
                     username = githubPackagesUser.get()
                     password = githubPackagesKey.get()
                 }
+                content {
+                    includeGroup 'app.aoki.cinpo'
+                }
             }
         }
         maven {
             name = 'githubPages'
             url = uri('https://AokiApp.github.io/cinpo')
+            content {
+                includeGroup 'app.aoki.cinpo'
+            }
         }
         maven {
             name = 'javacardPro'

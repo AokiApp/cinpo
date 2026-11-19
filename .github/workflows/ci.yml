@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  version:
+    name: Check version consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: ./scripts/check-version.sh
+
+  test:
+    name: Unit tests
+    # Fork pull requests do not receive the vendor secret. The version check
+    # still runs for them, and a maintainer runs the full build before merging.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+      - run: chmod +x ./gradlew ./scripts/extract_vendor.sh
+      - run: ./scripts/extract_vendor.sh
+        env:
+          VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
+      - run: ./gradlew test

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "simple",
+  "bootstrap-sha": "52fb2da83b68c5d19f2f27a709c2fea1311e32c9",
+  "bump-minor-pre-major": true,
+  "include-component-in-tag": false,
+  "skip-github-release": true,
+  "packages": {
+    ".": {
+      "package-name": "cinpo",
+      "changelog-path": "CHANGELOG.md",
+      "version-file": "version.txt",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "gradle/libs.versions.toml"
+        },
+        {
+          "type": "generic",
+          "path": "template/basic/gradle/libs.versions.toml"
+        },
+        {
+          "type": "generic",
+          "path": "template/authenticated/gradle/libs.versions.toml"
+        },
+        {
+          "type": "generic",
+          "path": "template/probe/gradle/libs.versions.toml"
+        }
+      ]
+    }
+  }
+}

@@ -2,9 +2,11 @@ plugins {
     id 'base'
 }
 
+def cinpoVersion = libs.versions.cinpo.get()
+
 allprojects {
     group = 'app.aoki.cinpo'
-    version = '0.5.0'
+    version = cinpoVersion
 }
 
 subprojects {
