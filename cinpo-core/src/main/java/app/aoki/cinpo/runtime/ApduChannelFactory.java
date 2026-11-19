@@ -26,6 +26,7 @@ public final class ApduChannelFactory {
      *
      * @param profile the resolved profile
      * @return a new channel
+     * @throws IllegalArgumentException when no adapter is registered for the runtime
      */
     public static ApduChannel create(Profile profile) {
         return adapterFor(profile).createChannel(profile);
@@ -36,6 +37,7 @@ public final class ApduChannelFactory {
      *
      * @param profile the resolved profile
      * @return the install phase for the runtime
+     * @throws IllegalArgumentException when no adapter is registered for the runtime
      */
     public static Phase createInstallPhase(Profile profile) {
         return adapterFor(profile).createInstallPhase(profile);
