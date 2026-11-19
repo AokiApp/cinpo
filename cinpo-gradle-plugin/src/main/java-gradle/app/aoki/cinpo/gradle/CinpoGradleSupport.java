@@ -1,10 +1,12 @@
 package app.aoki.cinpo.gradle;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -36,6 +38,28 @@ public final class CinpoGradleSupport {
      */
     public static String targetApiVersion(Project project) {
         return loadManifest(project, "target API resolution").targetApiVersion();
+    }
+
+    /**
+     * Reports whether a runtime classpath entry can be flattened into the appliance.
+     *
+     * <p>The appliance copies directories as they are and expands archives. An entry
+     * is accepted when it is a directory, or a file ending in {@code .jar} or
+     * {@code .zip} regardless of case. The case check matters on case-insensitive
+     * file systems and for dependencies that ship {@code .JAR} names.</p>
+     *
+     * @param file classpath entry
+     * @return {@code true} for directories and archive files
+     */
+    public static boolean isBundleableClasspathEntry(File file) {
+        if (file.isDirectory()) {
+            return true;
+        }
+        if (!file.isFile()) {
+            return false;
+        }
+        String name = file.getName().toLowerCase(Locale.ROOT);
+        return name.endsWith(".jar") || name.endsWith(".zip");
     }
 
     /**

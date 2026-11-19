@@ -56,9 +56,8 @@ public abstract class CinpoJarTask extends Jar {
         getDestinationDirectory().convention(getProject().getLayout().getBuildDirectory().dir("libs"));
         setPreserveFileTimestamps(false);
         setReproducibleFileOrder(true);
-        // Directory entries add nothing at runtime and Gradle's empty-directory
-        // inference would otherwise keep a bare java/ entry alive after its files
-        // were excluded.
+        // Drop empty directory entries. Excluding the java/ stubs leaves a bare
+        // java/ directory behind, and an empty entry has no use in the appliance.
         setIncludeEmptyDirs(false);
         // The runtime classpath is already ordered. Keeping the first occurrence
         // copies project classes and resources before dependency copies, like the

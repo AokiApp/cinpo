@@ -162,8 +162,8 @@ tasks.register('cinpoJar', CinpoJarTask) {
     }
     from(providers.provider {
         configurations.runtimeClasspath.files
-                .findAll { it.isFile() && (it.name.endsWith('.jar') || it.name.endsWith('.zip')) }
-                .collect { zipTree(it) }
+                .findAll { CinpoGradleSupport.isBundleableClasspathEntry(it) }
+                .collect { it.isDirectory() ? it : zipTree(it) }
     }) {
         exclude 'META-INF/services/**'
     }

@@ -1,5 +1,6 @@
 package app.aoki.cinpo.gradle.task;
 
+import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,9 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the service-file merge that feeds the appliance JAR.
@@ -110,6 +114,45 @@ class MergeCinpoServiceFilesTaskTest {
         assertEquals(false, Files.exists(outputDirectory.resolve("META-INF/services/stale.Service")));
     }
 
+    @Test
+    void rejectsServiceEntriesThatEscapeTheOutputDirectory() throws IOException {
+        Path dependency = tempDirectory.resolve("malicious.jar");
+        writeJar(dependency, "META-INF/services/../../../../../../build.gradle", "PWNED\n");
+
+        Path outputDirectory = tempDirectory.resolve("merged");
+        MergeCinpoServiceFilesTask task = newTask();
+        task.getClasspath().from(dependency.toFile());
+        task.getOutputDirectory().set(outputDirectory.toFile());
+
+        GradleException exception = assertThrows(GradleException.class, task::mergeServiceFiles);
+        assertTrue(exception.getMessage().contains("invalid name"));
+        assertFalse(Files.exists(tempDirectory.resolve("build.gradle")));
+    }
+
+    @Test
+    void rejectsBackslashServiceEntries() throws IOException {
+        Path dependency = tempDirectory.resolve("malicious-backslash.jar");
+        writeJar(dependency, "META-INF/services/..\\..\\..\\build.gradle", "PWNED\n");
+
+        MergeCinpoServiceFilesTask task = newTask();
+        task.getClasspath().from(dependency.toFile());
+        task.getOutputDirectory().set(tempDirectory.resolve("merged").toFile());
+
+        GradleException exception = assertThrows(GradleException.class, task::mergeServiceFiles);
+        assertTrue(exception.getMessage().contains("invalid name"));
+        assertFalse(Files.exists(tempDirectory.resolve("build.gradle")));
+    }
+
+    @Test
+    void acceptsDollarSignsInServiceNames() {
+        LinkedHashMap<String, LinkedHashSet<String>> merged = new LinkedHashMap<>();
+        MergeCinpoServiceFilesTask.collectServiceLines(merged,
+                "META-INF/services/com.example.Outer$Inner",
+                "com.example.Impl\n".getBytes(StandardCharsets.UTF_8));
+
+        assertTrue(merged.containsKey("com.example.Outer$Inner"));
+    }
+
     private MergeCinpoServiceFilesTask newTask() {
         Project project = ProjectBuilder.builder().withProjectDir(tempDirectory.toFile()).build();
         return project.getTasks().create("mergeCinpoServiceFiles", MergeCinpoServiceFilesTask.class);
@@ -118,5 +161,13 @@ class MergeCinpoServiceFilesTaskTest {
     private static void write(Path path, String content) throws IOException {
         Files.createDirectories(path.getParent());
         Files.writeString(path, content, StandardCharsets.UTF_8);
+    }
+
+    private static void writeJar(Path path, String entryName, String content) throws IOException {
+        try (JarOutputStream output = new JarOutputStream(Files.newOutputStream(path))) {
+            output.putNextEntry(new JarEntry(entryName));
+            output.write(content.getBytes(StandardCharsets.UTF_8));
+            output.closeEntry();
+        }
     }
 }

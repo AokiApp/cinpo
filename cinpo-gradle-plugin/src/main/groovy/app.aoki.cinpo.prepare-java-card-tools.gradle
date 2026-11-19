@@ -246,16 +246,26 @@ def verifyConfiguredJcsl = {
 // Extract the Oracle tool jar and API jars into a directory this task owns. Sync
 // removes stale files from previous runs; the vendor archive is a task input, so
 // replacing the archive re-runs the extraction.
+//
+// The archive is verified by a separate task. Gradle snapshots the zipTree input
+// before running the extraction action, so a missing archive would otherwise fail
+// with "Cannot expand ZIP ... as it does not exist" before any friendly message.
+def verifyJavaCardToolsArchive = tasks.register('verifyJavaCardToolsArchive') {
+    group = 'cinpo'
+    description = 'Checks that the vendor Java Card tools archive is present and unchanged.'
+    doLast {
+        verifyDownloadedToolsArchive()
+    }
+}
+
 def extractJavaCardTools = tasks.register('extractJavaCardTools', Sync) {
     group = 'cinpo'
+    dependsOn verifyJavaCardToolsArchive
     from(zipTree(javaCardToolsArchive.asFile)) {
         include 'lib/tools.jar'
         include 'lib/api_classic-*.jar'
     }
     into extractedJavaCardToolsDir.map { it.dir('tools') }
-    doFirst {
-        verifyDownloadedToolsArchive()
-    }
 }
 
 // tools.jar carries the API export trees as resources. The converter reads them
@@ -284,18 +294,25 @@ tasks.register('prepareJavaCardTools') {
 
 // Extract the simulator kit into a directory this task owns. The archive name is
 // resolved lazily: a project that never schedules this task never asks for an
-// archive its host OS does not have.
+// archive its host OS does not have. As with the tools archive, verification runs
+// before Gradle snapshots the extracted tree.
+def verifyJavaCardSimulatorArchive = tasks.register('verifyJavaCardSimulatorArchive') {
+    group = 'cinpo'
+    description = 'Checks that the vendor Java Card simulator archive is present and unchanged.'
+    doLast {
+        verifyDownloadedSimulatorArchive()
+    }
+}
+
 def extractJavaCardSimulator = tasks.register('extractJavaCardSimulator', Sync) {
     group = 'cinpo'
+    dependsOn verifyJavaCardSimulatorArchive
     from(providers.provider { simulatorArchiveTree() }) {
         include 'client/COMService/socketprovider.jar'
         include 'runtime/bin/**'
         include 'tools/Configurator.jar'
     }
     into extractedJavaCardToolsDir.map { it.dir('simulator') }
-    doFirst {
-        verifyDownloadedSimulatorArchive()
-    }
     doLast {
         verifyExtractedSimulatorFiles()
     }

@@ -20,6 +20,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.tasks.Classpath;
@@ -124,6 +125,7 @@ public abstract class MergeCinpoServiceFilesTask extends DefaultTask {
     static void collectServiceLines(LinkedHashMap<String, LinkedHashSet<String>> mergedServices,
             String entryName, byte[] content) {
         String serviceName = entryName.substring(SERVICE_ENTRY_PREFIX.length());
+        validateServiceName(serviceName, entryName);
         LinkedHashSet<String> lines = mergedServices.computeIfAbsent(serviceName, key -> new LinkedHashSet<>());
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(new ByteArrayInputStream(content), StandardCharsets.UTF_8))) {
@@ -136,10 +138,37 @@ public abstract class MergeCinpoServiceFilesTask extends DefaultTask {
         }
     }
 
+    /**
+     * Rejects service entry names that are not a Java binary name.
+     *
+     * <p>{@code ServiceLoader} treats the file name below {@code META-INF/services/}
+     * as a class name. A JAR can still carry an entry such as
+     * {@code META-INF/services/../../build.gradle}. Turning that into an output path
+     * would let a dependency write outside the task's output directory.</p>
+     */
+    private static void validateServiceName(String serviceName, String entryName) {
+        if (serviceName.isEmpty()
+                || serviceName.equals(".")
+                || serviceName.equals("..")
+                || serviceName.indexOf('/') >= 0
+                || serviceName.indexOf('\\') >= 0
+                || serviceName.indexOf(':') >= 0
+                || serviceName.indexOf('\0') >= 0) {
+            throw new GradleException("Refusing service entry with an invalid name: " + entryName);
+        }
+    }
+
     private static void writeMergedServices(
             Path outputDirectory, LinkedHashMap<String, LinkedHashSet<String>> mergedServices) throws IOException {
+        Path outputRoot = outputDirectory.toAbsolutePath().normalize();
         for (Map.Entry<String, LinkedHashSet<String>> entry : mergedServices.entrySet()) {
-            Path target = outputDirectory.resolve(SERVICE_ENTRY_PREFIX + entry.getKey());
+            Path target = outputRoot.resolve(SERVICE_ENTRY_PREFIX + entry.getKey()).normalize();
+            if (!target.startsWith(outputRoot)) {
+                // The name was validated above; this keeps a future refactor from
+                // reintroducing a write outside the declared output directory.
+                throw new GradleException(
+                        "Refusing to write service file outside the output directory: " + entry.getKey());
+            }
             Files.createDirectories(target.getParent());
             String content = String.join("\n", entry.getValue());
             Files.writeString(target, content, StandardCharsets.UTF_8);
