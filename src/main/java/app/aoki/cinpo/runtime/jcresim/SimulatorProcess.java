@@ -85,10 +85,8 @@ final class SimulatorProcess implements AutoCloseable {
             port = allocateEphemeralPort();
         }
 
-        if (process == null || !process.isAlive()) {
-            process = startSimulatorProcess();
-            ownsProcess = true;
-        }
+        process = startSimulatorProcess();
+        ownsProcess = true;
 
         try {
             waitForSimulatorReady();
