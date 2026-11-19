@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -261,7 +262,7 @@ public abstract class CinpoJarTask extends DefaultTask {
         }
         for (Map.Entry<String, LinkedHashSet<String>> entry : mergedServices.entrySet()) {
             String targetName = SERVICE_ENTRY_PREFIX + entry.getKey();
-            byte[] content = String.join("\n", entry.getValue()).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            byte[] content = String.join("\n", entry.getValue()).getBytes(StandardCharsets.UTF_8);
             JarEntry targetEntry = new JarEntry(targetName);
             targetEntry.setTime(writeServicesTime());
             output.putNextEntry(targetEntry);
@@ -295,7 +296,7 @@ public abstract class CinpoJarTask extends DefaultTask {
         String serviceName = entryName.substring(SERVICE_ENTRY_PREFIX.length());
         LinkedHashSet<String> lines = mergedServices.computeIfAbsent(serviceName, key -> new LinkedHashSet<>());
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(new ByteArrayInputStream(content), java.nio.charset.StandardCharsets.UTF_8))) {
+                new InputStreamReader(new ByteArrayInputStream(content), StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 lines.add(line);

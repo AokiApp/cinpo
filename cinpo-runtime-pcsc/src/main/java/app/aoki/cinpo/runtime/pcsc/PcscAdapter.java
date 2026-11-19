@@ -11,6 +11,7 @@ import javax.smartcardio.CardChannel;
 import javax.smartcardio.CardException;
 import javax.smartcardio.CardTerminal;
 import javax.smartcardio.CommandAPDU;
+import javax.smartcardio.ResponseAPDU;
 import javax.smartcardio.TerminalFactory;
 
 /**
@@ -56,7 +57,7 @@ public final class PcscAdapter {
             synchronized (monitor) {
                 try {
                     CardChannel channel = ensureBasicChannel();
-                    javax.smartcardio.ResponseAPDU rapdu = channel.transmit(new CommandAPDU(capdu.toBytes()));
+                    ResponseAPDU rapdu = channel.transmit(new CommandAPDU(capdu.toBytes()));
                     return ResponseApdu.fromBytes(rapdu.getBytes());
                 } catch (CardException e) {
                     invalidateConnection();

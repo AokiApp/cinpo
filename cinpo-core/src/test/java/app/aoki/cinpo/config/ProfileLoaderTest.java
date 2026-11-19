@@ -9,7 +9,9 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProfileLoaderTest {
 
@@ -33,8 +35,8 @@ class ProfileLoaderTest {
 
         IOException exception = assertThrows(IOException.class, () -> ProfileLoader.load("card1", projectDir));
 
-        org.junit.jupiter.api.Assertions.assertTrue(exception.getMessage().contains(projectDir.resolve("profile/card1.yaml").toAbsolutePath().normalize().toString()));
-        org.junit.jupiter.api.Assertions.assertFalse(exception.getMessage().contains(projectDir.resolve("project/profile/card1.yaml").toAbsolutePath().normalize().toString()));
+        assertTrue(exception.getMessage().contains(projectDir.resolve("profile/card1.yaml").toAbsolutePath().normalize().toString()));
+        assertFalse(exception.getMessage().contains(projectDir.resolve("project/profile/card1.yaml").toAbsolutePath().normalize().toString()));
     }
 
     @Test
@@ -72,9 +74,9 @@ class ProfileLoaderTest {
         IOException exception = assertThrows(IOException.class, () -> ProfileLoader.load("missing", projectDir));
 
         String message = exception.getMessage();
-        org.junit.jupiter.api.Assertions.assertTrue(message.contains(projectDir.resolve("profile/missing.yaml").toAbsolutePath().normalize().toString()));
-        org.junit.jupiter.api.Assertions.assertFalse(message.contains(projectDir.resolve("project/profile/missing.yaml").toAbsolutePath().normalize().toString()));
-        org.junit.jupiter.api.Assertions.assertTrue(message.contains("classpath:profile/missing.yaml"));
+        assertTrue(message.contains(projectDir.resolve("profile/missing.yaml").toAbsolutePath().normalize().toString()));
+        assertFalse(message.contains(projectDir.resolve("project/profile/missing.yaml").toAbsolutePath().normalize().toString()));
+        assertTrue(message.contains("classpath:profile/missing.yaml"));
     }
 
     private static void writeProfile(Path path, String name, String runtime) throws IOException {

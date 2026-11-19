@@ -12,6 +12,7 @@ import com.sun.javacard.jcasm.cap.CinpoCapgenLogic;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 /**
  * High-level wrapperless builder for classic Java Card CAP files.
@@ -83,6 +84,6 @@ public final class OracleClassicCapBuilder {
             throw new JavaCardToolException("Generated CAP file not found: " + generatedCap);
         }
         Files.createDirectories(stagedCap.getParent());
-        Files.copy(generatedCap, stagedCap, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(generatedCap, stagedCap, StandardCopyOption.REPLACE_EXISTING);
     }
 }

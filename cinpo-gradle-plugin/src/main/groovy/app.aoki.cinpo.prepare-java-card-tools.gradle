@@ -2,6 +2,7 @@ import org.gradle.api.GradleException
 
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
 import java.util.Locale
 import java.util.regex.Matcher
 import java.util.regex.Pattern
@@ -167,7 +168,7 @@ def filterToolsJarToTargetApi = {
 }
 
 def computeSHA256 = { File file ->
-    def digest = java.security.MessageDigest.getInstance('SHA-256')
+    def digest = MessageDigest.getInstance('SHA-256')
     file.withInputStream { input ->
         byte[] buffer = new byte[8192]
         int read

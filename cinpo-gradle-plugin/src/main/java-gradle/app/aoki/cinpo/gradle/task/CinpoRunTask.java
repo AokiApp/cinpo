@@ -15,6 +15,7 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.api.tasks.options.Option;
 import org.gradle.process.ExecOperations;
 
 public abstract class CinpoRunTask extends DefaultTask {
@@ -59,7 +60,7 @@ public abstract class CinpoRunTask extends DefaultTask {
         return argsString;
     }
 
-    @org.gradle.api.tasks.options.Option(option = "args", description = "CINPO CLI arguments. The write subcommand is prepended when omitted.")
+    @Option(option = "args", description = "CINPO CLI arguments. The write subcommand is prepended when omitted.")
     public void setArgsString(String argsString) {
         getArgsString().set(argsString);
         getArgs().set(normalizeArgs(tokenizeArgs(argsString)));
