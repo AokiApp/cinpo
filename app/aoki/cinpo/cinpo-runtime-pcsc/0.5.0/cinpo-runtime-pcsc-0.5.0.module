@@ -1,0 +1,78 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "app.aoki.cinpo",
+    "module": "cinpo-runtime-pcsc",
+    "version": "0.5.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.3.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "app.aoki.cinpo",
+          "module": "cinpo",
+          "version": {
+            "requires": "0.5.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "cinpo-runtime-pcsc-0.5.0.jar",
+          "url": "cinpo-runtime-pcsc-0.5.0.jar",
+          "size": 5880,
+          "sha512": "811a65ef4de9d58c25fbd5f6fba4e7219ecae7ae63d14884b42628dafbb9f13539c617503666e06de6814944e1a6f8bd4fc41efcafba642d7d17324e44067c0a",
+          "sha256": "d88d56a26f03e6b076efb0e609f53246b7839879d67fa149a33e50e24c944502",
+          "sha1": "00b35360dd5d57e946dee766aabc1bce39405768",
+          "md5": "0faf4c9b6b11eea19987668426f34244"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "app.aoki.cinpo",
+          "module": "cinpo",
+          "version": {
+            "requires": "0.5.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "cinpo-runtime-pcsc-0.5.0.jar",
+          "url": "cinpo-runtime-pcsc-0.5.0.jar",
+          "size": 5880,
+          "sha512": "811a65ef4de9d58c25fbd5f6fba4e7219ecae7ae63d14884b42628dafbb9f13539c617503666e06de6814944e1a6f8bd4fc41efcafba642d7d17324e44067c0a",
+          "sha256": "d88d56a26f03e6b076efb0e609f53246b7839879d67fa149a33e50e24c944502",
+          "sha1": "00b35360dd5d57e946dee766aabc1bce39405768",
+          "md5": "0faf4c9b6b11eea19987668426f34244"
+        }
+      ]
+    }
+  ]
+}

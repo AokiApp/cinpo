@@ -1,0 +1,76 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "app.aoki.cinpo",
+    "module": "cinpo",
+    "version": "0.5.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.3.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "cinpo-0.5.0.jar",
+          "url": "cinpo-0.5.0.jar",
+          "size": 132288,
+          "sha512": "b445055bb4f3dc01daba5de774148db7240c7f63a3a5bf5d702d689bf0a28bd6f671f1c1a7a8e87e2787c3eb705d713b2f153f4d18f4f1563acd89907ece692d",
+          "sha256": "d2db4a7c99c5449f3eddf2c68789cc4b723731c65ac850592c820e06842df58b",
+          "sha1": "6f707422a26099663a32af9691f9ef84d09971dd",
+          "md5": "c6f93e598aec450d61d728af69ddb6c7"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.yaml",
+          "module": "snakeyaml",
+          "version": {
+            "requires": "2.2"
+          }
+        },
+        {
+          "group": "info.picocli",
+          "module": "picocli",
+          "version": {
+            "requires": "4.7.6"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "cinpo-0.5.0.jar",
+          "url": "cinpo-0.5.0.jar",
+          "size": 132288,
+          "sha512": "b445055bb4f3dc01daba5de774148db7240c7f63a3a5bf5d702d689bf0a28bd6f671f1c1a7a8e87e2787c3eb705d713b2f153f4d18f4f1563acd89907ece692d",
+          "sha256": "d2db4a7c99c5449f3eddf2c68789cc4b723731c65ac850592c820e06842df58b",
+          "sha1": "6f707422a26099663a32af9691f9ef84d09971dd",
+          "md5": "c6f93e598aec450d61d728af69ddb6c7"
+        }
+      ]
+    }
+  ]
+}
