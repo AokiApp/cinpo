@@ -1,19 +1,27 @@
-name: Publish Maven packages and Pages
+# Legacy publish workflow. Automatic publishing is disabled until the release
+# workflow replaces it. A manual run requires typing "publish" as the confirm
+# input.
+name: Legacy publish (manual only)
 
 on:
   workflow_dispatch:
-  push:
+    inputs:
+      confirm:
+        description: 'Type publish to run the legacy publish workflow'
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: publish-maven-${{ github.ref }}
+  group: legacy-publish
   cancel-in-progress: false
 
 jobs:
   publish:
     name: Publish to GitHub Packages and stage GitHub Pages
+    if: ${{ inputs.confirm == 'publish' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
