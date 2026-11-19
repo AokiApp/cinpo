@@ -43,7 +43,7 @@ public final class JCardEngineAdapter {
      * JCardEngine-specific install phase before host-side tasks run, using
      * class name plus instance AID as the authoritative CLASS-BOOTSTRAP inputs.
      */
-    public static final class JCardEngineChannel implements ApduChannel {
+    static final class JCardEngineChannel implements ApduChannel {
 
         private final Object monitor = new Object();
         private final JavaCardEngine engine;
@@ -53,7 +53,7 @@ public final class JCardEngineAdapter {
             this.engine = Objects.requireNonNull(engine);
         }
 
-        public void install(AppletManifest manifest) {
+        void install(AppletManifest manifest) {
             Objects.requireNonNull(manifest);
 
             synchronized (monitor) {
