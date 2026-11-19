@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly GITHUB_PACKAGES_REPOSITORY_URL="${GITHUB_PACKAGES_REPOSITORY_URL:-https://maven.pkg.github.com/AokiApp/cinpo}"
-readonly PROJECT_VERSION="${PROJECT_VERSION:-$(./gradlew -q properties | sed -n 's/^version: //p' | tail -n 1)}"
+readonly PROJECT_VERSION="${PROJECT_VERSION:-$(tr -d '[:space:]' < version.txt)}"
 
 if [[ -z "${GITHUB_ACTOR:-}" ]]; then
     echo "GITHUB_ACTOR must be set." >&2
@@ -108,15 +108,15 @@ for entry in "${MVN_ARTIFACTS[@]}"; do
 done
 
 run_publish_task \
-    publishPluginMarkerPublicationToGithubPackagesRepository \
-    "app/aoki/cinpo/app.aoki.cinpo.gradle.plugin/maven-metadata.xml" \
-    "app/aoki/cinpo/app.aoki.cinpo.gradle.plugin/${PROJECT_VERSION}/app.aoki.cinpo.gradle.plugin-${PROJECT_VERSION}.pom"
-
-run_publish_task \
     publishPluginMavenPublicationToGithubPackagesRepository \
     "app/aoki/cinpo/cinpo-gradle-plugin/maven-metadata.xml" \
     "app/aoki/cinpo/cinpo-gradle-plugin/${PROJECT_VERSION}/cinpo-gradle-plugin-${PROJECT_VERSION}.pom" \
     "app/aoki/cinpo/cinpo-gradle-plugin/${PROJECT_VERSION}/cinpo-gradle-plugin-${PROJECT_VERSION}.jar" \
     "app/aoki/cinpo/cinpo-gradle-plugin/${PROJECT_VERSION}/cinpo-gradle-plugin-${PROJECT_VERSION}.module"
+
+run_publish_task \
+    publishPluginMarkerPublicationToGithubPackagesRepository \
+    "app/aoki/cinpo/app.aoki.cinpo.gradle.plugin/maven-metadata.xml" \
+    "app/aoki/cinpo/app.aoki.cinpo.gradle.plugin/${PROJECT_VERSION}/app.aoki.cinpo.gradle.plugin-${PROJECT_VERSION}.pom"
 
 echo "GitHub Packages publish workflow completed."

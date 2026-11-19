@@ -21,7 +21,7 @@ updates a release pull request containing:
 - the matching entry in `CHANGELOG.md`
 
 The configuration and the action input both set `skip-github-release: true`, so
-Release Please does not create a tag or a GitHub Release. The publish workflow
+Release Please does not create a tag or a GitHub Release. The release workflow
 tags the verified commit instead. This keeps tagging behind the build and
 template checks.
 
@@ -49,23 +49,35 @@ Use a suffix such as `-rc.1` for a release candidate.
 
 ## Publishing
 
-The publish workflow is not part of this change yet. It will run for one
-explicit version, and it will:
+Run the Release workflow after the release pull request is merged:
 
-1. verify that `version.txt`, the tag, and the checked-out commit agree
+```bash
+gh workflow run release.yml -f version=0.5.1
+```
+
+The workflow runs on `main` and performs these steps in one job:
+
+1. verify `version.txt`, the `main` branch, and the tag if it already exists
 2. run `./gradlew clean check`
-3. build a local Maven repository with
-   `./gradlew publishAllPublicationsToStagingRepository`
-4. verify the `basic` template against that local repository
-5. create the annotated tag after the checks pass
-6. publish the six artifacts to GitHub Packages in one Gradle run
+3. build `build/staging-maven-repository` and `build/checksums.txt`
+4. build the `basic` template against that local repository
+5. create the annotated tag `v0.5.1`
+6. publish the six artifacts to GitHub Packages
 7. compare the published checksums with the staged files
-8. copy the same files to `gh-pages` without removing older versions
-9. create the GitHub Release with the changelog and checksums
+8. copy the staged files to `gh-pages` without removing older versions
+9. create the GitHub Release
+
+The `deploy-pages` job deploys the `gh-pages` branch. `gh-pages` is the
+cumulative repository and was seeded with 0.5.0. Every version directory is
+kept, but `maven-metadata.xml` is copied from the latest release. CINPO pins
+exact versions, so version ranges are not supported.
 
 A failed release is retried with the same version before anything is published.
 After publication, a fix goes into a new patch version; an existing version is
 never republished with different bytes.
+
+The templates accept `-PcinpoRepository=<uri>` so the release workflow can
+verify against the local staging repository instead of the public one.
 
 ## Template distribution
 

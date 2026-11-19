@@ -38,3 +38,7 @@ vendor/
 # Test outputs
 test-results/
 test-reports/
+
+# Python
+__pycache__/
+*.pyc

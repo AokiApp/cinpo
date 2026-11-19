@@ -1,0 +1,214 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, for example 0.5.1'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Stage, verify, tag, and publish
+    runs-on: ubuntu-latest
+    environment: release
+    timeout-minutes: 45
+    env:
+      GIT_AUTHOR_NAME: cinpo-release
+      GIT_AUTHOR_EMAIL: cinpo-release@users.noreply.github.com
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Verify release request
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          test "$(tr -d '[:space:]' < version.txt)" = "$VERSION"
+          test -f CHANGELOG.md
+          grep -Fq "## [$VERSION]" CHANGELOG.md
+          git fetch origin main --tags
+          git merge-base --is-ancestor HEAD origin/main
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            test "$(git rev-list -n 1 "v$VERSION")" = "$(git rev-parse HEAD)"
+          fi
+
+      - name: Make scripts executable
+        run: chmod +x ./gradlew ./scripts/*.sh ./.github/scripts/*.sh
+
+      - name: Extract vendor archives
+        run: ./scripts/extract_vendor.sh
+        env:
+          VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
+
+      - name: Build and stage
+        run: ./gradlew --no-daemon clean check publishAllPublicationsToStagingRepository
+
+      - name: Write checksums
+        run: |
+          set -euo pipefail
+          cd build/staging-maven-repository
+          find . -type f \( -name '*.pom' -o -name '*.module' -o -name '*.jar' \) -printf '%P\0' \
+            | sort -z \
+            | xargs -0 sha256sum > ../checksums.txt
+
+      - name: Upload the staged repository
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-staging
+          path: |
+            build/staging-maven-repository
+            build/checksums.txt
+
+      - name: Verify the basic template
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          work_dir="$(mktemp -d)"
+          trap 'rm -rf "$work_dir"' EXIT
+          ./scripts/bootstrap.sh "$work_dir/project"
+          template_version="$(sed -n 's/^cinpo = "\([^"]*\)".*/\1/p' "$work_dir/project/gradle/libs.versions.toml")"
+          test "$template_version" = "$VERSION"
+          cp -a vendor "$work_dir/project/vendor"
+          cd "$work_dir/project"
+          repository_uri="file://$GITHUB_WORKSPACE/build/staging-maven-repository"
+          ./gradlew --no-daemon -PcinpoRepository="$repository_uri" \
+            cinpoRun --args='--debug --test'
+          ./gradlew --no-daemon -PcinpoRepository="$repository_uri" cinpoJar
+          java -jar build/libs/cinpo-appliance.jar write --test
+          java -p build/libs/cinpo-appliance.jar \
+            -m app.aoki.cinpo/app.aoki.cinpo.cli.CinpoCli --help
+
+      - name: Create the release tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          tag="v$VERSION"
+          git fetch --tags origin
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            test "$(git rev-list -n 1 "$tag")" = "$(git rev-parse HEAD)"
+          else
+            git tag -a "$tag" -m "CINPO $VERSION"
+            git push origin "$tag"
+          fi
+
+      - name: Publish to GitHub Packages
+        run: ./.github/scripts/publish-github-packages.sh
+        env:
+          PROJECT_VERSION: ${{ inputs.version }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify published checksums
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          repository_url="https://maven.pkg.github.com/AokiApp/cinpo"
+          while read -r expected path; do
+            actual="$(curl \
+              --silent \
+              --show-error \
+              --fail \
+              --location \
+              --user "${GITHUB_ACTOR}:${GITHUB_TOKEN}" \
+              "${repository_url}/${path}" \
+              | sha256sum \
+              | awk '{print $1}')"
+            if [[ "$actual" != "$expected" ]]; then
+              echo "mismatch: ${path}" >&2
+              exit 1
+            fi
+          done < build/checksums.txt
+          echo "published checksums match"
+
+      - name: Promote the staged repository to gh-pages
+        run: ./.github/scripts/promote-gh-pages.sh "${{ inputs.version }}" "$PWD/build/staging-maven-repository" "$PWD/build/checksums.txt"
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          tag="v$VERSION"
+          notes_file="$(mktemp)"
+          trap 'rm -f "$notes_file"' EXIT
+          if [[ -f CHANGELOG.md ]]; then
+            awk -v ver="$VERSION" '
+              index($0, "## [" ver "]") == 1 { found = 1; next }
+              found && index($0, "## [") == 1 { exit }
+              found { print }
+            ' CHANGELOG.md > "$notes_file"
+          fi
+          if [[ ! -s "$notes_file" ]]; then
+            printf 'CINPO %s\n' "$VERSION" > "$notes_file"
+          fi
+          extra_args=()
+          if [[ "$VERSION" == *-* ]]; then
+            extra_args+=(--prerelease)
+          fi
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" --notes-file "$notes_file" "${extra_args[@]}"
+          else
+            gh release create "$tag" \
+              --title "CINPO $VERSION" \
+              --notes-file "$notes_file" \
+              --verify-tag \
+              "${extra_args[@]}"
+          fi
+          gh release upload "$tag" build/checksums.txt --clobber
+
+  deploy-pages:
+    name: Deploy the cumulative Maven repository
+    needs: release
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          path: pages
+
+      - name: Remove git metadata before deployment
+        run: rm -rf pages/.git
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: pages
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
