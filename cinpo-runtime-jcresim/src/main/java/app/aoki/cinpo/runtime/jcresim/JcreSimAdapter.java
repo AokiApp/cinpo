@@ -45,6 +45,8 @@ public final class JcreSimAdapter {
      * <p>
      * Discovery order:
      * <ol>
+     *   <li>the {@code cinpo.simulator.path} system property</li>
+     *   <li>a simulator runtime bundled on the classpath, staged to a temporary directory</li>
      *   <li>build/cinpo-cache/jcsl/&lt;os&gt;-&lt;arch&gt;/jcsl</li>
      *   <li>build/cinpo-cache/jcdk/simulator/runtime/bin/jcsl</li>
      * </ol>
@@ -165,7 +167,7 @@ public final class JcreSimAdapter {
     /**
      * Find the simulator executable in the build cache using OS and architecture detection.
      *
-     * @return path to the simulator executable in build cache, or null if not found
+     * @return path to the simulator executable in the build cache; existence is checked by the caller
      */
     private static Path findJcslInBuildCache() {
         String os = JcreSimPlatform.detectOS();
@@ -209,9 +211,10 @@ public final class JcreSimAdapter {
                     invalidateConnection();
                     throw new IllegalStateException(
                             "Oracle JCRE simulator transport failed during APDU exchange. " +
-                            "If the simulator log contains 'Binary is not configured with initial SCP keys', " +
-                            "configure a project-local copied jcsl binary with Oracle Configurator using keys " +
-                            "matching the jcdksim profile. CINPO does not modify the original JCDK binary.", e);
+                            "A common cause is the simulator binary lacking configured SCP keys: when its log " +
+                            "contains 'Binary is not configured with initial SCP keys', configure a project-local " +
+                            "copied jcsl binary with Oracle Configurator using keys matching the jcdksim profile. " +
+                            "CINPO does not modify the original JCDK binary.", e);
                 }
             }
         }

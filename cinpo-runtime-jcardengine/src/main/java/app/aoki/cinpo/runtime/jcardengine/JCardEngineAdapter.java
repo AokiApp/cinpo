@@ -28,13 +28,16 @@ public final class JCardEngineAdapter {
         return new JCardEngineChannel(createEngine());
     }
 
-    private static JavaCardEngine createEngine() {
+    // The engine and applet classes are resolved through the thread-context ClassLoader
+    // when one is set; fall back to this module's own loader otherwise.
+    private static ClassLoader effectiveClassLoader() {
         ClassLoader contextLoader = Thread.currentThread().getContextClassLoader();
-        ClassLoader effectiveLoader = contextLoader != null
-                ? contextLoader
-                : JCardEngineAdapter.class.getClassLoader();
+        return contextLoader != null ? contextLoader : JCardEngineAdapter.class.getClassLoader();
+    }
+
+    private static JavaCardEngine createEngine() {
         return new JavaCardEngine.Builder()
-                .withClassLoader(effectiveLoader)
+                .withClassLoader(effectiveClassLoader())
                 .build();
     }
 
@@ -115,10 +118,7 @@ public final class JCardEngineAdapter {
         }
 
         private static Class<? extends Applet> resolveAppletClass(String className) {
-            ClassLoader contextLoader = Thread.currentThread().getContextClassLoader();
-            ClassLoader effectiveLoader = contextLoader != null
-                    ? contextLoader
-                    : JCardEngineChannel.class.getClassLoader();
+            ClassLoader effectiveLoader = effectiveClassLoader();
             try {
                 Class<?> rawClass = Class.forName(className, true, effectiveLoader);
                 return rawClass.asSubclass(Applet.class);
