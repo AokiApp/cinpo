@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'app.aoki.cinpo' version '0.5.0'
+    alias(libs.plugins.cinpo)
 }
 
 java {
@@ -24,21 +24,27 @@ repositories {
                 username = githubPackagesUser.get()
                 password = githubPackagesKey.get()
             }
+            content {
+                includeGroup 'app.aoki.cinpo'
+            }
         }
     }
     maven {
         name = 'githubPages'
         url = uri('https://AokiApp.github.io/cinpo')
+        content {
+            includeGroup 'app.aoki.cinpo'
+        }
     }
     mavenCentral()
 }
 
 dependencies {
-    implementation 'app.aoki.cinpo:cinpo:0.5.0'
-    implementation 'app.aoki.cinpo:cinpo-runtime-jcresim:0.5.0'
-    implementation 'app.aoki.cinpo:cinpo-runtime-jcardengine:0.5.0'
-    implementation 'app.aoki.cinpo:cinpo-runtime-pcsc:0.5.0'
-    implementation 'org.yaml:snakeyaml:2.2'
+    implementation libs.cinpo.core
+    implementation libs.cinpo.runtime.jcresim
+    implementation libs.cinpo.runtime.jcardengine
+    implementation libs.cinpo.runtime.pcsc
+    implementation libs.snakeyaml
 }
 
 sourceSets {
