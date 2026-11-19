@@ -1,4 +1,3 @@
-import app.aoki.cinpo.cli.CinpoVersion
 import app.aoki.cinpo.gradle.CinpoGradleSupport
 import app.aoki.cinpo.gradle.task.CinpoJarTask
 import app.aoki.cinpo.gradle.task.CinpoRunTask
@@ -28,17 +27,23 @@ repositories {
 }
 
 def prepareJavaCardTools = tasks.named('prepareJavaCardTools')
-// The annotation processor lives in the app.aoki.cinpo framework artifact (app.aoki.cinpo.task.CardTaskProcessor).
-// Resolve it by coordinate so the consumer's annotationProcessor path is the
-// matrix of the framework's own module, not this plugin's jar.
-def cinpoCoreDependency = "app.aoki.cinpo:cinpo:${CinpoVersion.VERSION}"
+// The annotation processor lives in the app.aoki.cinpo framework artifact
+// (app.aoki.cinpo.task.CardTaskProcessor), which the plugin jar does not contain
+// after the module split. The consumer's own implementation declaration already
+// pins the framework version, so the processor is wired from that declaration.
 def companionBundleExportDirectories = providers.provider { CinpoGradleSupport.companionBundleExportDirectories(project) }
 
-dependencies {
-    // Reuse the framework's own app.aoki.cinpo artifact as the annotation processor.
-    // The plugin jar alone does not contain CardTaskProcessor after the module split.
-    annotationProcessor cinpoCoreDependency
+afterEvaluate {
+    // The consumer's build script has run by now, so the declared core version is
+    // visible. Adding the framework's own artifact as the annotation processor at
+    // exactly that version keeps the processor on the same framework the host code
+    // compiles against, even when the plugin itself is newer.
+    dependencies {
+        annotationProcessor "app.aoki.cinpo:cinpo:${CinpoGradleSupport.declaredCinpoCoreVersion(project)}"
+    }
+}
 
+dependencies {
     // JCardEngine installs applets from compiled classes instead of CAP files.
     // Do not put Oracle's api_classic jar on runtimeClasspath: JCardEngine ships
     // its own javacard.* runtime classes, and Oracle's native stubs would shadow

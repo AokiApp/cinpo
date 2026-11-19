@@ -9,6 +9,7 @@ import java.util.logging.LogManager;
 import java.util.logging.Logger;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 /**
  * Main CLI entry point for CINPO framework.
@@ -17,9 +18,7 @@ import picocli.CommandLine.Command;
 @Command(
     name = "cinpo",
     description = "CINPO - Card Installation and Provision Orchestrator (use --debug for verbose logging)",
-    subcommands = {WriteCommand.class},
-    mixinStandardHelpOptions = true,
-    version = CinpoVersion.VERSION
+    subcommands = {WriteCommand.class}
 )
 public class CinpoCli {
  
@@ -29,6 +28,9 @@ public class CinpoCli {
  
     private final List<String> taskArguments;
     private final boolean debugEnabled;
+
+    @Option(names = {"-h", "--help"}, usageHelp = true, description = "Show this help message and exit.")
+    private boolean helpRequested;
 
     public CinpoCli() {
         this(List.of(), false);

@@ -8,7 +8,6 @@ Usage: scripts/bump-version.sh [new-version]
 Updates the CINPO version in:
   - build.gradle (the root project version)
   - every template/*/build.gradle file (the plugin, cinpo, and cinpo-runtime-* dependency versions)
-  - cinpo-core/src/main/java/app/aoki/cinpo/cli/CinpoVersion.java (the tracked generated constant)
 
 If new-version is omitted, increments the current root project patch version.
 After updating files, runs git add, git commit, and git push.
@@ -84,14 +83,6 @@ updates = {
             1,
         ),
     ],
-    Path("cinpo-core/src/main/java/app/aoki/cinpo/cli/CinpoVersion.java"): [
-        (
-            re.compile(r'(?m)^(    public static final String VERSION = ")[^"]+(";)$'),
-            rf"\g<1>{new_version}\g<2>",
-            "tracked CinpoVersion constant",
-            1,
-        ),
-    ],
 }
 
 for template_build in sorted(Path("template").glob("*/build.gradle")):
@@ -128,7 +119,7 @@ print(match.group(1))
 PY
 )"
 
-git add -- build.gradle template/*/build.gradle cinpo-core/src/main/java/app/aoki/cinpo/cli/CinpoVersion.java
+git add -- build.gradle template/*/build.gradle
 
 if git diff --cached --quiet; then
     echo "no version changes to commit"

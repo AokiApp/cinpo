@@ -2,6 +2,7 @@ package app.aoki.cinpo.gradle.task;
 
 import app.aoki.cinpo.config.AppletManifest;
 import app.aoki.cinpo.config.ManifestLoader;
+import app.aoki.cinpo.gradle.CinpoGradleSupport;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -59,6 +60,7 @@ public abstract class CinpoJarTask extends DefaultTask {
     private static final Attributes.Name AUTOMATIC_MODULE_NAME_ATTRIBUTE =
             new Attributes.Name("Automatic-Module-Name");
     private static final String AUTOMATIC_MODULE_NAME = "app.aoki.cinpo";
+    private static final Attributes.Name CINPO_VERSION_ATTRIBUTE = new Attributes.Name("Cinpo-Version");
     private static final String MANIFEST_ENTRY = "META-INF/MANIFEST.MF";
     private static final String BUNDLED_SIMULATOR_ENTRY_PREFIX = "cinpo-simulator";
     private static final String API_EXPORT_ENTRY_PREFIX = "api_export_files_";
@@ -306,15 +308,18 @@ public abstract class CinpoJarTask extends DefaultTask {
     /**
      * Creates the appliance manifest used by {@code java -jar}.
      *
-     * @return manifest declaring the CINPO CLI main class
+     * @return manifest declaring the CINPO CLI main class and the bundled framework version
      */
-    private static Manifest manifest() {
+    private Manifest manifest() {
         Manifest manifest = new Manifest();
         Attributes attributes = manifest.getMainAttributes();
         attributes.put(Attributes.Name.MANIFEST_VERSION, "1.0");
         attributes.put(Attributes.Name.MAIN_CLASS, MAIN_CLASS);
         // Fixed module name so the automatic module does not depend on the JAR file name.
         attributes.put(AUTOMATIC_MODULE_NAME_ATTRIBUTE, AUTOMATIC_MODULE_NAME);
+        // The appliance is the consumer's artifact, so this records which CINPO framework
+        // is bundled rather than claiming a version of the appliance itself.
+        attributes.put(CINPO_VERSION_ATTRIBUTE, CinpoGradleSupport.declaredCinpoCoreVersion(getProject()));
         return manifest;
     }
 
