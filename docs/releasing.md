@@ -20,15 +20,22 @@ updates a release pull request containing:
 - the next version in `version.txt` and the four `gradle/libs.versions.toml` files
 - the matching entry in `CHANGELOG.md`
 
-The configuration sets `skip-github-release: true`, so Release Please does not
-create a tag or a GitHub Release. The publish workflow tags the verified commit
-instead. This keeps tagging behind the build and template checks.
+The configuration and the action input both set `skip-github-release: true`, so
+Release Please does not create a tag or a GitHub Release. The publish workflow
+tags the verified commit instead. This keeps tagging behind the build and
+template checks.
 
-The workflow uses `RELEASE_PLEASE_TOKEN` when it is configured and falls back to
-`GITHUB_TOKEN` otherwise. Configure a fine-grained personal access token with
-Contents and Pull requests write access. Without it, Release Please still opens
-the release pull request, but GitHub does not start CI for pull requests created
-with `GITHUB_TOKEN`, so the release pull request would not run the checks.
+The workflow uses `GITHUB_TOKEN`. GitHub does not start CI for pull requests
+created with `GITHUB_TOKEN`, so run the CI workflow manually for the release
+branch:
+
+```bash
+gh workflow run ci.yml --ref release-please--branches--main--components--cinpo
+```
+
+The branch name is shown on the release pull request. A fine-grained personal
+access token with Contents and Pull requests write access can replace
+`GITHUB_TOKEN` later if automatic checks are wanted.
 
 ## Version rules
 
