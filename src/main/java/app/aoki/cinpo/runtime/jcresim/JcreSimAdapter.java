@@ -212,9 +212,10 @@ public final class JcreSimAdapter {
                     invalidateConnection();
                     throw new IllegalStateException(
                             "Oracle JCRE simulator transport failed during APDU exchange. " +
-                            "If the simulator log contains 'Binary is not configured with initial SCP keys', " +
-                            "configure a project-local copied jcsl binary with Oracle Configurator using keys " +
-                            "matching the jcdksim profile. CINPO does not modify the original JCDK binary.", e);
+                            "A common cause is the simulator binary lacking configured SCP keys: when its log " +
+                            "contains 'Binary is not configured with initial SCP keys', configure a project-local " +
+                            "copied jcsl binary with Oracle Configurator using keys matching the jcdksim profile. " +
+                            "CINPO does not modify the original JCDK binary.", e);
                 }
             }
         }
