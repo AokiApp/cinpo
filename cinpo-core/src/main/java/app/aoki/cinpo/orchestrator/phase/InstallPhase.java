@@ -9,6 +9,7 @@ import app.aoki.cinpo.gp.cap.CapLoader;
 import app.aoki.cinpo.gp.cap.CapPackage;
 import app.aoki.cinpo.gp.scp.SecureChannelProfile;
 import app.aoki.cinpo.gp.scp.SecureChannelSession;
+import app.aoki.cinpo.layout.CinpoLayout;
 import app.aoki.cinpo.orchestrator.Orchestrator;
 import app.aoki.cinpo.orchestrator.Phase;
 import java.io.IOException;
@@ -63,7 +64,7 @@ public final class InstallPhase implements Phase {
         AppletManifest manifest = orchestrator.getManifest();
         Profile profile = orchestrator.getProfile();
 
-        String capResourcePath = "cap/" + manifest.packageName() + ".cap";
+        String capResourcePath = CinpoLayout.capResourcePath(manifest.packageName());
         LOG.fine(() -> "Loading CAP from classpath: " + capResourcePath);
         CapPackage cap = CapLoader.readFromClasspath(capResourcePath);
  

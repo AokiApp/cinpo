@@ -3,24 +3,13 @@ plugins {
     id 'maven-publish'
 }
 
-sourceSets {
-    main {
-        java {
-            srcDirs = ['src/main/java', 'src/main/java-cli']
-        }
-        resources {
-            srcDirs = ['src/main/resources']
-        }
-    }
-}
-
 dependencies {
-    implementation 'org.yaml:snakeyaml:2.2'
-    implementation 'info.picocli:picocli:4.7.6'
+    implementation libs.snakeyaml
+    implementation libs.picocli
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+    testImplementation libs.junit.jupiter.api
+    testImplementation libs.junit.jupiter.engine
+    testRuntimeOnly libs.junit.platform.launcher
 
     testImplementation project(':cinpo-runtime-jcardengine')
     testImplementation project(':cinpo-runtime-jcresim')

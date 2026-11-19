@@ -3,6 +3,7 @@ package app.aoki.cinpo.gradle.task;
 import app.aoki.cinpo.config.AppletManifest;
 import app.aoki.cinpo.config.ManifestLoader;
 import app.aoki.cinpo.gradle.CinpoGradleSupport;
+import app.aoki.cinpo.layout.CinpoLayout;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -63,7 +64,6 @@ public abstract class CinpoJarTask extends DefaultTask {
     private static final String AUTOMATIC_MODULE_NAME = "app.aoki.cinpo";
     private static final Attributes.Name CINPO_VERSION_ATTRIBUTE = new Attributes.Name("Cinpo-Version");
     private static final String MANIFEST_ENTRY = "META-INF/MANIFEST.MF";
-    private static final String BUNDLED_SIMULATOR_ENTRY_PREFIX = "cinpo-simulator";
     private static final String API_EXPORT_ENTRY_PREFIX = "api_export_files_";
     private static final String SERVICE_ENTRY_PREFIX = "META-INF/services/";
 
@@ -214,7 +214,8 @@ public abstract class CinpoJarTask extends DefaultTask {
         // The runtime side intentionally does not know about Gradle's build directory; it only looks
         // for classpath resources below cinpo-simulator/<os>-<arch>. Keep this mapping explicit here.
         String platform = simulatorPlatform(simulatorDirectory);
-        writeDirectory(output, writtenEntries, simulatorDirectory, BUNDLED_SIMULATOR_ENTRY_PREFIX + "/" + platform, null, mergedServices);
+        // writeDirectory appends "/" + relativeName, so the prefix passed here must not end with a slash.
+        writeDirectory(output, writtenEntries, simulatorDirectory, CinpoLayout.SIMULATOR_DIRECTORY + "/" + platform, null, mergedServices);
     }
 
     /**

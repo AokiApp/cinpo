@@ -309,6 +309,8 @@ def verifyConfiguredJcsl = {
 // (tools.jar) and the Java Card API the applet compiles against (api_classic jar
 // and export files), filtered to the manifest's targetApiVersion.
 tasks.register('prepareJavaCardTools') {
+    inputs.file(javaCardToolsArchive)
+    inputs.property('targetApiVersion', providers.provider { targetApiVersionFromManifest() })
     outputs.dir extractedJavaCardToolsDir.map { it.dir('tools') }
 
     doLast {
@@ -351,6 +353,7 @@ tasks.register('prepareJavaCardTools') {
 // Only builds that depend on the jcresim runtime module run this task, so projects
 // that never simulate do not need the simulator vendor archive at all.
 tasks.register('prepareJcresimSimulator') {
+    inputs.file(javaCardSimulatorArchive)
     outputs.dir extractedJavaCardToolsDir.map { it.dir('simulator') }
     outputs.dir configuredJcslDir
 

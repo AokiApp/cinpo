@@ -3,6 +3,7 @@ package app.aoki.cinpo.runtime.jcresim;
 import app.aoki.cinpo.apdu.ApduChannel;
 import app.aoki.cinpo.apdu.CommandApdu;
 import app.aoki.cinpo.apdu.ResponseApdu;
+import app.aoki.cinpo.layout.CinpoLayout;
 import com.oracle.smartcardio.socket.SocketCardTerminalProvider;
 import java.io.IOException;
 import java.io.InputStream;
@@ -93,7 +94,7 @@ public final class JcreSimAdapter {
         String os = JcreSimPlatform.detectOS();
         String arch = JcreSimPlatform.detectArch();
         String executableName = JcreSimPlatform.simulatorExecutableName();
-        String resourcePrefix = "cinpo-simulator/" + os + "-" + arch + "/";
+        String resourcePrefix = CinpoLayout.simulatorResourcePrefix(os + "-" + arch);
         String markerResource = resourcePrefix + executableName;
         ClassLoader loader = JcreSimAdapter.class.getClassLoader();
         if (loader.getResource(markerResource) == null) {

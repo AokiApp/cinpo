@@ -1,0 +1,14 @@
+[versions]
+snakeyaml = "2.2"
+picocli = "4.7.6"
+junit = "5.10.2"
+junitPlatform = "1.10.2"
+jcardengine = "26.06.05-SNAPSHOT"
+
+[libraries]
+snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
+picocli = { module = "info.picocli:picocli", version.ref = "picocli" }
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junitPlatform" }
+jcardengine = { module = "com.github.martinpaljak:jcardengine", version.ref = "jcardengine" }

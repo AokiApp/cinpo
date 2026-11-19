@@ -13,7 +13,13 @@ plugins {
 
 SourceSetContainer sourceSets = extensions.getByType(SourceSetContainer)
 SourceSet mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME)
-mainSourceSet.resources.srcDir(layout.buildDirectory.dir('generated/cinpo/resources/main'))
+def generatedResources = layout.buildDirectory.dir('generated/cinpo/resources/main')
+
+// Applet bytecode lives in its own source set. The Java plugin then owns the
+// compileAppletJava task and the classes/java/applet destination, so host code
+// and card code cannot accidentally share a compiler invocation.
+def applet = sourceSets.create('applet')
+applet.java.setSrcDirs(['applet'])
 
 repositories {
     maven {
@@ -32,6 +38,16 @@ def prepareJavaCardTools = tasks.named('prepareJavaCardTools')
 // after the module split. The consumer's own implementation declaration already
 // pins the framework version, so the processor is wired from that declaration.
 def companionBundleExportDirectories = providers.provider { CinpoGradleSupport.companionBundleExportDirectories(project) }
+
+// Oracle's converter only accepts Java 8 class files, so the applet source set
+// keeps the release and encoding the hand-written compile task used.
+tasks.named(applet.compileJavaTaskName, JavaCompile) {
+    group = 'cinpo'
+    description = 'Compiles Java Card applet sources with converter-compatible bytecode.'
+    options.release = 8
+    options.encoding = 'UTF-8'
+    dependsOn prepareJavaCardTools
+}
 
 afterEvaluate {
     // The consumer's build script has run by now, so the declared core version is
@@ -52,23 +68,19 @@ dependencies {
     runtimeOnly files(
             providers.provider { CinpoGradleSupport.companionBundleJars(project) }
     )
-}
 
-tasks.register('compileAppletJava', JavaCompile) {
-    group = 'cinpo'
-    description = 'Compiles Java Card applet sources with converter-compatible bytecode.'
-    source = fileTree('applet') {
-        include '**/*.java'
-    }
-    destinationDirectory = layout.buildDirectory.dir('classes/java/applet')
-    classpath = files(
-            providers.provider { CinpoGradleSupport.targetApiJar(project) },
-            layout.buildDirectory.file('cinpo-cache/jcdk/tools/lib/tools.jar'),
+    // The applet source set compiles against the same inputs the hand-written
+    // compileAppletJava task used: the manifest's target Java Card API jar,
+    // Oracle's tools.jar, and any companion bundle stub jars.
+    appletCompileOnly files(
+            providers.provider { CinpoGradleSupport.targetApiJar(project) }
+    )
+    appletCompileOnly files(
+            layout.buildDirectory.file('cinpo-cache/jcdk/tools/lib/tools.jar')
+    )
+    appletCompileOnly files(
             providers.provider { CinpoGradleSupport.companionBundleJars(project) }
     )
-    options.release = 8
-    options.encoding = 'UTF-8'
-    dependsOn prepareJavaCardTools
 }
 
 tasks.register('generateCap', GenerateCapTask) {
@@ -76,11 +88,12 @@ tasks.register('generateCap', GenerateCapTask) {
     description = 'Builds the Java Card CAP file and stages it at cap/<packageName>.cap.'
     manifestFile = layout.projectDirectory.file('manifest.yaml')
     companionExportDirectories.from(companionBundleExportDirectories)
-    appletClassesDirectory = layout.buildDirectory.dir('classes/java/applet')
+    appletClasses.from(applet.output.classesDirs)
     toolLibraryDirectory = layout.buildDirectory.dir('cinpo-cache/jcdk/tools/lib')
-    generatedResourcesDirectory = layout.buildDirectory.dir('generated/cinpo/resources/main')
+    generatedResourcesDirectory = generatedResources
+    workDirectory = layout.buildDirectory.dir('generated/cinpo/cap-work')
     dependsOn prepareJavaCardTools
-    dependsOn tasks.named('compileAppletJava')
+    dependsOn applet.classesTaskName
 }
 
 tasks.named('processResources') {
@@ -91,12 +104,17 @@ tasks.named('processResources') {
     from(layout.projectDirectory.dir('profile')) {
         into 'profile'
     }
-    from(layout.buildDirectory.dir('generated/cinpo/resources/main'))
+    // Copy the CAP staging directory explicitly. Consumer builds commonly assign
+    // main resources srcDirs wholesale (the templates use `srcDirs = ['host']`), so
+    // registering the directory on the main source set is not reliable. This single
+    // from(...) keeps cap/<packageName>.cap on the runtime classpath for every consumer.
+    from(generatedResources)
 }
 
 tasks.register('cinpoRun', CinpoRunTask) {
     classpath.from(mainSourceSet.runtimeClasspath)
-    classpath.from(layout.buildDirectory.dir('classes/java/applet'))
+    classpath.from(applet.output)
+    dependsOn applet.classesTaskName
     dependsOn tasks.named('classes')
     dependsOn prepareJavaCardTools
 }
@@ -106,7 +124,8 @@ tasks.register('cinpoRun', CinpoRunTask) {
 def cinpoTest = tasks.register('cinpoTest', CinpoRunTask) {
     description = 'Runs the CINPO test flow against this project.'
     classpath.from(mainSourceSet.runtimeClasspath)
-    classpath.from(layout.buildDirectory.dir('classes/java/applet'))
+    classpath.from(applet.output)
+    dependsOn applet.classesTaskName
     args = ['write', '--test']
     dependsOn tasks.named('classes')
     dependsOn prepareJavaCardTools
@@ -121,7 +140,8 @@ tasks.named('test') {
 // prepareJcresimSimulator contributes the configured simulator runtime bundled by CinpoJarTask.
 tasks.register('cinpoJar', CinpoJarTask) {
     classpath.from(mainSourceSet.runtimeClasspath)
-    classpath.from(layout.buildDirectory.dir('classes/java/applet'))
+    classpath.from(applet.output)
+    dependsOn applet.classesTaskName
     dependsOn tasks.named('classes')
     dependsOn prepareJavaCardTools
 }

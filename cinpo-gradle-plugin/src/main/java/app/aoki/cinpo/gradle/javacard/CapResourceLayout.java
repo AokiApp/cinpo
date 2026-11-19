@@ -1,6 +1,7 @@
 package app.aoki.cinpo.gradle.javacard;
 
 import app.aoki.cinpo.config.AppletManifest;
+import app.aoki.cinpo.layout.CinpoLayout;
 
 import java.nio.file.Path;
 import java.util.Objects;
@@ -37,7 +38,8 @@ public record CapResourceLayout(String resourcePath, Path resourceFile) {
         Objects.requireNonNull(manifest, "manifest");
         Objects.requireNonNull(generatedResourcesRoot, "generatedResourcesRoot");
 
-        String resourcePath = "cap/" + manifest.packageName() + ".cap";
-        return new CapResourceLayout(resourcePath, generatedResourcesRoot.resolve("cap").resolve(manifest.packageName() + ".cap"));
+        String resourcePath = CinpoLayout.capResourcePath(manifest.packageName());
+        return new CapResourceLayout(resourcePath,
+                generatedResourcesRoot.resolve(CinpoLayout.CAP_DIRECTORY).resolve(manifest.packageName() + ".cap"));
     }
 }

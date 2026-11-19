@@ -38,7 +38,7 @@ public final class OracleClassicCapBuildService {
         verifyInputs(request);
         addVendorToolsToPluginClasspath(request.toolLibraryDirectory().resolve("tools.jar"));
 
-        Path workDirectory = request.generatedResourcesRoot().getParent().resolve("cap-work");
+        Path workDirectory = request.workDirectory();
         Files.createDirectories(workDirectory);
         Files.createDirectories(request.layout().resourceFile().getParent());
 

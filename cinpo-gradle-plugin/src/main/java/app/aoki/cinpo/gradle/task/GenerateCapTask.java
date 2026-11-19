@@ -4,10 +4,13 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 
+import javax.inject.Inject;
+
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.FileSystemOperations;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.InputFile;
@@ -74,20 +77,20 @@ public abstract class GenerateCapTask extends DefaultTask {
     public abstract ConfigurableFileCollection getCompanionExportDirectories();
 
     /**
-     * Directory containing Java Card-compatible applet class files.
+     * Java Card-compatible applet class files consumed by the converter.
      *
      * <p>
-     * This is the output of {@code compileAppletJava}, not Gradle's regular
-     * {@code compileJava}. Host-side Java may target the project toolchain, but
-     * CAP conversion consumes only the separately compiled applet bytecode.</p>
+     * These come from the {@code applet} source set's class output. Host-side
+     * Java may target the project toolchain, but CAP conversion consumes only the
+     * separately compiled applet bytecode.</p>
      *
      * <p>
      * Standard value expected from the CINPO plugin wiring:
      * {@code build/classes/java/applet}.</p>
      */
-    @InputDirectory
+    @InputFiles
     @PathSensitive(PathSensitivity.RELATIVE)
-    public abstract DirectoryProperty getAppletClassesDirectory();
+    public abstract ConfigurableFileCollection getAppletClasses();
 
     /**
      * Template-local Oracle Java Card tool library directory.
@@ -115,6 +118,29 @@ public abstract class GenerateCapTask extends DefaultTask {
     public abstract DirectoryProperty getGeneratedResourcesDirectory();
 
     /**
+     * Scratch directory for the Oracle converter and CAP writer.
+     *
+     * <p>
+     * The service treats this as owned scratch space; GenerateCapTask clears it
+     * before every run so intermediate files from an earlier manifest or applet
+     * never leak into the next CAP file.</p>
+     *
+     * <p>
+     * Standard value expected from the CINPO plugin wiring:
+     * {@code build/generated/cinpo/cap-work}.</p>
+     */
+    @OutputDirectory
+    public abstract DirectoryProperty getWorkDirectory();
+
+    /**
+     * File operations used to clear this task's output directories.
+     *
+     * @return the injected Gradle file operations service
+     */
+    @Inject
+    protected abstract FileSystemOperations getFileSystemOperations();
+
+    /**
      * Executes the CAP build as a Gradle task action.
      *
      * <p>
@@ -126,13 +152,21 @@ public abstract class GenerateCapTask extends DefaultTask {
      */
     @TaskAction
     public void generateCap() {
+        // Both directories are this task's outputs. Clearing them first keeps stale
+        // CAP resources and stale converter scratch files out of the new build.
+        getFileSystemOperations().delete(spec -> {
+            spec.delete(getGeneratedResourcesDirectory().get().getAsFile());
+            spec.delete(getWorkDirectory().get().getAsFile());
+        });
+
         Path manifestPath = getManifestFile().get().getAsFile().toPath();
         List<Path> companionExportDirectories = getCompanionExportDirectories().getFiles().stream()
                 .map(file -> file.toPath())
                 .toList();
-        Path classRoot = getAppletClassesDirectory().get().getAsFile().toPath();
+        Path classRoot = getAppletClasses().getSingleFile().toPath();
         Path toolLibrary = getToolLibraryDirectory().get().getAsFile().toPath();
         Path generatedResources = getGeneratedResourcesDirectory().get().getAsFile().toPath();
+        Path workDirectory = getWorkDirectory().get().getAsFile().toPath();
 
         try {
             // Manifest loading is kept in the Gradle task layer because manifest.yaml
@@ -142,7 +176,7 @@ public abstract class GenerateCapTask extends DefaultTask {
             // This layout is the contract with InstallPhase: the generated resource
             // must be loadable later as cap/<manifest.packageName>.cap.
             CapResourceLayout layout = CapResourceLayout.forManifest(manifest, generatedResources);
-            CapBuildRequest request = new CapBuildRequest(manifest, companionExportDirectories, classRoot, toolLibrary, generatedResources, layout);
+            CapBuildRequest request = new CapBuildRequest(manifest, companionExportDirectories, classRoot, toolLibrary, workDirectory, layout);
             OracleClassicCapResult result = OracleClassicCapBuildService.build(request);
 
             getLogger().lifecycle("Generated Java Card CAP resource {} from {}", layout.resourcePath(), result.capFile());

@@ -11,14 +11,14 @@ import java.util.Objects;
  *
  * <p>This DTO deliberately stays free of Oracle converter classes. It captures
  * only project concepts: manifest, compiled classes, template-local tool jars,
- * generated resources, and the target resource layout.</p>
+ * a converter work directory, and the target resource layout.</p>
  */
 public record CapBuildRequest(
         AppletManifest manifest,
         List<Path> companionExportDirectories,
         Path compiledClassesRoot,
         Path toolLibraryDirectory,
-        Path generatedResourcesRoot,
+        Path workDirectory,
         CapResourceLayout layout
 ) {
     public CapBuildRequest {
@@ -26,7 +26,7 @@ public record CapBuildRequest(
         Objects.requireNonNull(companionExportDirectories, "companionExportDirectories");
         Objects.requireNonNull(compiledClassesRoot, "compiledClassesRoot");
         Objects.requireNonNull(toolLibraryDirectory, "toolLibraryDirectory");
-        Objects.requireNonNull(generatedResourcesRoot, "generatedResourcesRoot");
+        Objects.requireNonNull(workDirectory, "workDirectory");
         Objects.requireNonNull(layout, "layout");
         companionExportDirectories = List.copyOf(companionExportDirectories);
     }
