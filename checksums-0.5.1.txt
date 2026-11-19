@@ -1,0 +1,16 @@
+0b5c7df775ec707da80bdf339dacf6743361917275ecb38d415bfc43a46ce573  app/aoki/cinpo/app.aoki.cinpo.gradle.plugin/0.5.1/app.aoki.cinpo.gradle.plugin-0.5.1.pom
+00141180d6bd0c0c8aba988e7b919588dafbd3f3029911a74bb0eef03261d1a6  app/aoki/cinpo/cinpo-gradle-plugin/0.5.1/cinpo-gradle-plugin-0.5.1.jar
+58f351ed03d885e68ac3e38a81fa815fc06713f8bf8d06c30b9fb65b2e02079a  app/aoki/cinpo/cinpo-gradle-plugin/0.5.1/cinpo-gradle-plugin-0.5.1.module
+8b0c3078c7b58fdb828a95e441981a42eec3ce35ad72705b28ce226fcfa4eda8  app/aoki/cinpo/cinpo-gradle-plugin/0.5.1/cinpo-gradle-plugin-0.5.1.pom
+6384a94efc41280b44faec7ae63b5dfc3c7dbbf9960d39613a2ae2b091357492  app/aoki/cinpo/cinpo-runtime-jcardengine/0.5.1/cinpo-runtime-jcardengine-0.5.1.jar
+06aba103abf0c175db3146eb62fb1e5f4c4115142f88f7c32b6d5578432ac771  app/aoki/cinpo/cinpo-runtime-jcardengine/0.5.1/cinpo-runtime-jcardengine-0.5.1.module
+481ba111bf1e3db3560f73e55af9873384dea4adddec4812cd4e9964fa337a6b  app/aoki/cinpo/cinpo-runtime-jcardengine/0.5.1/cinpo-runtime-jcardengine-0.5.1.pom
+972369dc1ff1caf28e35d5edbed1845d68a9ca88594b347c268dbb29b94f0e80  app/aoki/cinpo/cinpo-runtime-jcresim/0.5.1/cinpo-runtime-jcresim-0.5.1.jar
+e529550031cc5935ba77dd484998541f3b501136aa22b4827600f8bdb6485103  app/aoki/cinpo/cinpo-runtime-jcresim/0.5.1/cinpo-runtime-jcresim-0.5.1.module
+fc510af544328b888936ba51aaa9e0ab30bead95f22f05aea1c0ab75ea1cfb11  app/aoki/cinpo/cinpo-runtime-jcresim/0.5.1/cinpo-runtime-jcresim-0.5.1.pom
+d88d56a26f03e6b076efb0e609f53246b7839879d67fa149a33e50e24c944502  app/aoki/cinpo/cinpo-runtime-pcsc/0.5.1/cinpo-runtime-pcsc-0.5.1.jar
+07d454d1f337c4ba35e5d4454b3df56d1efcdea69c678925536bbbac95794fbb  app/aoki/cinpo/cinpo-runtime-pcsc/0.5.1/cinpo-runtime-pcsc-0.5.1.module
+d7d9febcd8361c9a75143911b63413a5d2c2e4f899abda2ce0c622aab18e08ee  app/aoki/cinpo/cinpo-runtime-pcsc/0.5.1/cinpo-runtime-pcsc-0.5.1.pom
+d2db4a7c99c5449f3eddf2c68789cc4b723731c65ac850592c820e06842df58b  app/aoki/cinpo/cinpo/0.5.1/cinpo-0.5.1.jar
+4bdbc25771f6695abd540109ca89bf2d5e688859096c06b672a390a139c5123a  app/aoki/cinpo/cinpo/0.5.1/cinpo-0.5.1.module
+5ccf779ff12e38b7e69a441e97b7ffbd3752c77da63ce118f20cf06e26558710  app/aoki/cinpo/cinpo/0.5.1/cinpo-0.5.1.pom

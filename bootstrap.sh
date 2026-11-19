@@ -319,7 +319,7 @@ if [[ -n "${script_path}" ]]; then
 fi
 
 default_repo="https://github.com/AokiApp/cinpo"
-default_ref="main"
+default_ref="v0.5.1"
 
 if [[ -z "${CINPO_TEMPLATE_REPO:-}" || -z "${CINPO_TEMPLATE_REF:-}" ]]; then
   detect_checkout_source "${script_dir}" || true

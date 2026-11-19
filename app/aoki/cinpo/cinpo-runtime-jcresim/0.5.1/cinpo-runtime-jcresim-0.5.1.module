@@ -1,0 +1,78 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "app.aoki.cinpo",
+    "module": "cinpo-runtime-jcresim",
+    "version": "0.5.1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.3.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "app.aoki.cinpo",
+          "module": "cinpo",
+          "version": {
+            "requires": "0.5.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "cinpo-runtime-jcresim-0.5.1.jar",
+          "url": "cinpo-runtime-jcresim-0.5.1.jar",
+          "size": 14675,
+          "sha512": "7471e22f6a69ad06e2aa2d5195acbb5855ae37e28a9cd47eb6aa43ce0314d0a8a565e938065069121d15ea127d6fa17d90c7031cf902cead58188edddc7830b7",
+          "sha256": "972369dc1ff1caf28e35d5edbed1845d68a9ca88594b347c268dbb29b94f0e80",
+          "sha1": "7d1014f25b5456a5a3b50b26205fd98d06eb0848",
+          "md5": "2c38b34972d630969e67f551aa714a11"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "app.aoki.cinpo",
+          "module": "cinpo",
+          "version": {
+            "requires": "0.5.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "cinpo-runtime-jcresim-0.5.1.jar",
+          "url": "cinpo-runtime-jcresim-0.5.1.jar",
+          "size": 14675,
+          "sha512": "7471e22f6a69ad06e2aa2d5195acbb5855ae37e28a9cd47eb6aa43ce0314d0a8a565e938065069121d15ea127d6fa17d90c7031cf902cead58188edddc7830b7",
+          "sha256": "972369dc1ff1caf28e35d5edbed1845d68a9ca88594b347c268dbb29b94f0e80",
+          "sha1": "7d1014f25b5456a5a3b50b26205fd98d06eb0848",
+          "md5": "2c38b34972d630969e67f551aa714a11"
+        }
+      ]
+    }
+  ]
+}

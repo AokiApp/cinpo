@@ -39,7 +39,7 @@ $ErrorActionPreference = 'Stop'
 $GradleVersion = '9.3.1'
 $GradleRepo = 'https://github.com/gradle/gradle'
 $DefaultRepo = 'https://github.com/AokiApp/cinpo'
-$DefaultRef = 'main'
+$DefaultRef = 'v0.5.1'
 $TemplateProjectNameLine = "rootProject.name = 'cinpo-template'"
 
 # --------------------------------------------------------------------------
