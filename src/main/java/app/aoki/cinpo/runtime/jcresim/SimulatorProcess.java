@@ -36,8 +36,8 @@ final class SimulatorProcess implements AutoCloseable {
     private Process process;
     private boolean ownsProcess;
     private Integer port;
-    private final ByteArrayOutputStream stderrCapture = new ByteArrayOutputStream();
-    private Thread stderrDrainer;
+    private final ByteArrayOutputStream outputCapture = new ByteArrayOutputStream();
+    private Thread outputDrainer;
 
     /**
      * Create a simulator process manager.
@@ -119,8 +119,8 @@ final class SimulatorProcess implements AutoCloseable {
 
         try {
             Process proc = processBuilder.start();
-            stderrCapture.reset();
-            stderrDrainer = drainAsync(proc.getInputStream(), stderrCapture);
+            outputCapture.reset();
+            outputDrainer = drainAsync(proc.getInputStream(), outputCapture);
             return proc;
         } catch (IOException e) {
             throw new IllegalStateException(
@@ -169,23 +169,23 @@ final class SimulatorProcess implements AutoCloseable {
                 return;
             }
             if (process != null && !process.isAlive()) {
-                awaitStderrDrainer();
+                awaitOutputDrainer();
                 int exitCode = process.exitValue();
-                String stderr = stderrCapture.toString(StandardCharsets.UTF_8).strip();
+                String output = outputCapture.toString(StandardCharsets.UTF_8).strip();
                 String diagnostic = "Oracle JCRE simulator terminated with exit code " + exitCode
                         + " before becoming ready.";
-                if (!stderr.isEmpty()) {
-                    diagnostic += "\nstderr:\n" + stderr;
+                if (!output.isEmpty()) {
+                    diagnostic += "\noutput:\n" + output;
                 }
                 throw new IllegalStateException(diagnostic);
             }
             sleepQuietly(100L);
         }
 
-        String stderr = stderrCapture.toString(StandardCharsets.UTF_8).strip();
+        String output = outputCapture.toString(StandardCharsets.UTF_8).strip();
         String msg = "Oracle JCRE simulator did not become ready within " + startupTimeoutMillis + " ms.";
-        if (!stderr.isEmpty()) {
-            msg += "\nstderr (so far):\n" + stderr;
+        if (!output.isEmpty()) {
+            msg += "\noutput (so far):\n" + output;
         }
         throw new IllegalStateException(msg);
     }
@@ -208,7 +208,7 @@ final class SimulatorProcess implements AutoCloseable {
             process = null;
             port = null;
             ownsProcess = false;
-            stderrDrainer = null;
+            outputDrainer = null;
             return;
         }
 
@@ -225,7 +225,7 @@ final class SimulatorProcess implements AutoCloseable {
             process = null;
             port = null;
             ownsProcess = false;
-            stderrDrainer = null;
+            outputDrainer = null;
         }
     }
 
@@ -237,12 +237,12 @@ final class SimulatorProcess implements AutoCloseable {
         }
     }
 
-    private void awaitStderrDrainer() {
-        if (stderrDrainer == null) {
+    private void awaitOutputDrainer() {
+        if (outputDrainer == null) {
             return;
         }
         try {
-            stderrDrainer.join(500);
+            outputDrainer.join(500);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -255,7 +255,7 @@ final class SimulatorProcess implements AutoCloseable {
             } catch (IOException ignored) {
                 // Stream closed when process terminates
             }
-        }, "jcsl-stderr-drainer");
+        }, "simulator-output-drainer");
         t.setDaemon(true);
         t.start();
         return t;
