@@ -1,0 +1,134 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, for example 0.5.1'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Stage, verify, tag, and publish
+    runs-on: ubuntu-latest
+    environment: release
+    timeout-minutes: 45
+    env:
+      GIT_AUTHOR_NAME: cinpo-release
+      GIT_AUTHOR_EMAIL: cinpo-release@users.noreply.github.com
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Verify release request
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          test "$(tr -d '[:space:]' < version.txt)" = "$VERSION"
+          test -f CHANGELOG.md
+          grep -Fq "## [$VERSION]" CHANGELOG.md
+          git fetch origin main --tags
+          git merge-base --is-ancestor HEAD origin/main
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            test "$(git rev-list -n 1 "v$VERSION")" = "$(git rev-parse HEAD)"
+          fi
+
+      - name: Make scripts executable
+        run: chmod +x ./gradlew ./scripts/*.sh ./.github/scripts/publish-github-packages.sh
+
+      - name: Extract vendor archives
+        run: ./scripts/extract_vendor.sh
+        env:
+          VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
+
+      - name: Build and stage
+        run: ./gradlew --no-daemon clean check publishAllPublicationsToStagingRepository
+
+      - name: Write checksums
+        run: ./scripts/write-checksums.sh build/staging-maven-repository > build/checksums.txt
+
+      - name: Upload the staged repository
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-staging
+          path: |
+            build/staging-maven-repository
+            build/checksums.txt
+
+      - name: Verify the basic template against the staged repository
+        run: ./scripts/verify-release-template.sh "${{ inputs.version }}" "$PWD/build/staging-maven-repository"
+
+      - name: Create the release tag
+        run: ./scripts/create-release-tag.sh "${{ inputs.version }}"
+
+      - name: Publish to GitHub Packages
+        run: ./.github/scripts/publish-github-packages.sh
+        env:
+          PROJECT_VERSION: ${{ inputs.version }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify published checksums
+        run: ./scripts/verify-published-checksums.sh build/checksums.txt
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote the staged repository to gh-pages
+        run: ./scripts/promote-gh-pages.sh "${{ inputs.version }}" "$PWD/build/staging-maven-repository" "$PWD/build/checksums.txt"
+
+      - name: Create the GitHub Release
+        run: ./scripts/create-github-release.sh "${{ inputs.version }}" "$PWD/build/checksums.txt"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-pages:
+    name: Deploy the cumulative Maven repository
+    needs: release
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          path: pages
+
+      - name: Remove git metadata before deployment
+        run: rm -rf pages/.git
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: pages
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

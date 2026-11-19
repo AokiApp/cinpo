@@ -1,5 +1,16 @@
 pluginManagement {
     repositories {
+        def cinpoRepository = providers.gradleProperty('cinpoRepository').orNull
+        if (cinpoRepository) {
+            maven {
+                name = 'cinpoLocal'
+                url = uri(cinpoRepository)
+                content {
+                    includeGroup 'app.aoki.cinpo'
+                }
+            }
+        }
+
         def githubPackagesUser = providers.gradleProperty('gpr.user')
                 .orElse(providers.environmentVariable('GITHUB_ACTOR'))
         def githubPackagesKey = providers.gradleProperty('gpr.key')

@@ -1,5 +1,5 @@
 # Release Please maintains the version and changelog. It does not create tags
-# or GitHub Releases; the publish workflow tags the verified commit instead.
+# or GitHub Releases; the release workflow tags the verified commit instead.
 name: Release Please
 
 on:
