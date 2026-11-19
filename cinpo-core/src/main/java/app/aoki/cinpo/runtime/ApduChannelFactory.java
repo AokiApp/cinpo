@@ -65,8 +65,9 @@ public final class ApduChannelFactory {
             // preferable to silently running with a partial registry.
             throw new IllegalStateException("Failed to discover runtime adapters", e);
         }
+        String availableList = available.isEmpty() ? "none on the classpath" : String.join(", ", available);
         throw new IllegalArgumentException("Unsupported runtime: " + profile.runtime()
-                + " (available: " + String.join(", ", available) + ")."
+                + " (available: " + availableList + ")."
                 + " Add the matching app.aoki.cinpo:cinpo-runtime-* dependency to your build.");
     }
 }
