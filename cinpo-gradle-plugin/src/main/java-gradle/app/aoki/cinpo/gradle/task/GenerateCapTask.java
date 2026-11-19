@@ -103,6 +103,19 @@ public abstract class GenerateCapTask extends DefaultTask {
     public abstract DirectoryProperty getToolLibraryDirectory();
 
     /**
+     * Root of the Java Card API export trees extracted from {@code tools.jar}.
+     *
+     * <p>
+     * Standard value expected from the CINPO plugin wiring:
+     * {@code build/cinpo-cache/jcdk/api-exports}. A manifest targeting API
+     * {@code 3.0.4} makes the converter read
+     * {@code build/cinpo-cache/jcdk/api-exports/api_export_files_3.0.4/}.</p>
+     */
+    @InputDirectory
+    @PathSensitive(PathSensitivity.RELATIVE)
+    public abstract DirectoryProperty getApiExportDirectory();
+
+    /**
      * Generated resources root that becomes part of the main runtime classpath.
      *
      * <p>
@@ -147,6 +160,7 @@ public abstract class GenerateCapTask extends DefaultTask {
                 .toList();
         Path classRoot = getAppletClassesDirectory().get().getAsFile().toPath();
         Path toolLibrary = getToolLibraryDirectory().get().getAsFile().toPath();
+        Path apiExportRoot = getApiExportDirectory().get().getAsFile().toPath();
         Path workDirectory = getWorkDirectory().get().getAsFile().toPath();
         Path generatedResources = getGeneratedResourcesDirectory().get().getAsFile().toPath();
 
@@ -159,7 +173,8 @@ public abstract class GenerateCapTask extends DefaultTask {
             // must be loadable later as cap/<manifest.packageName>.cap.
             CapResourceLayout layout = CapResourceLayout.forManifest(manifest, generatedResources);
             CapBuildRequest request = new CapBuildRequest(
-                    manifest, companionExportDirectories, classRoot, toolLibrary, workDirectory, layout);
+                    manifest, companionExportDirectories, classRoot, toolLibrary, apiExportRoot,
+                    workDirectory, layout);
             CapBuildResult result = OracleClassicCapBuildService.build(request);
 
             getLogger().lifecycle("Generated Java Card CAP resource {} from {}",

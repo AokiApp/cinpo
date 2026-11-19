@@ -60,7 +60,8 @@ public final class OracleClassicCapBuilder {
                 request.companionExportDirectories(),
                 request.compiledClassesRoot(),
                 packageOutputRoot,
-                request.toolLibraryDirectory()
+                request.toolLibraryDirectory(),
+                request.apiExportRoot()
         );
 
         // This is the bytecode-equivalent compact converter path:

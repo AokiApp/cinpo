@@ -51,6 +51,7 @@ ext.javaCardSimulatorExecutableName = SIMULATOR_EXECUTABLES[detectCinpoOs()] ?: 
 
 ext.javaCardToolsArchive = layout.projectDirectory.file('vendor/java_card_devkit_tools-bin-v26.0-b_705-04-MAY-2026.zip')
 ext.extractedJavaCardToolsDir = layout.buildDirectory.dir('cinpo-cache/jcdk')
+ext.extractedJavaCardApiExportDir = layout.buildDirectory.dir('cinpo-cache/jcdk/api-exports')
 ext.configuredJcslDir = layout.buildDirectory.dir("cinpo-cache/jcsl/${detectCinpoOs()}-${detectCinpoArch()}")
 ext.extractedJavaCardToolsJar = extractedJavaCardToolsDir.map { it.file('tools/lib/tools.jar') }
 ext.extractedJavaCardSocketProviderJar = extractedJavaCardToolsDir.map { it.file('simulator/client/COMService/socketprovider.jar') }
@@ -97,11 +98,6 @@ def targetApiVersionFromManifest = {
         }
     }
     throw new GradleException("manifest.yaml must declare targetApiVersion before Java Card tools can be prepared.")
-}
-
-def targetApiClassicJarName = {
-    String targetApiVersion = targetApiVersionFromManifest()
-    return targetApiVersion == null ? 'api_classic-*.jar' : "api_classic-${targetApiVersion}.jar"
 }
 
 def computeSHA256 = { File file ->
@@ -170,6 +166,11 @@ def verifyExtractedToolsFiles = {
         File targetApiJar = extractedJavaCardToolsDir.get().file("tools/lib/api_classic-${targetApiVersion}.jar").asFile
         if (!targetApiJar.exists()) {
             throw new GradleException("Expected Java Card API jar for targetApiVersion ${targetApiVersion} was not found: ${targetApiJar}")
+        }
+        File targetApiExports = extractedJavaCardApiExportDir.get()
+                .dir("api_export_files_${targetApiVersion}").asFile
+        if (!targetApiExports.isDirectory()) {
+            throw new GradleException("Expected Java Card API export files for targetApiVersion ${targetApiVersion} were not found: ${targetApiExports}")
         }
     }
 }
@@ -242,72 +243,76 @@ def verifyConfiguredJcsl = {
     }
 }
 
-// Prepares the Oracle Java Card tools every project needs: the CAP converter
-// (tools.jar) and the Java Card API the applet compiles against (api_classic jar
-// and export files), selected by the manifest's targetApiVersion.
-//
-// The vendor archive and manifest.yaml are declared inputs. Without them the task
-// stayed UP-TO-DATE after targetApiVersion changed, so the converter kept reading
-// the previous API's export files. tools.jar is extracted unchanged; the previous
-// version rewrote it in place to drop other API versions, so the extracted file no
-// longer matched the jar inside the vendor archive.
-tasks.register('prepareJavaCardTools') {
-    inputs.file(javaCardToolsArchive)
-            .withPropertyName('vendorToolsArchive')
-    inputs.files(layout.projectDirectory.file('manifest.yaml'))
-            .optional()
-            .withPropertyName('manifest')
-    inputs.property('targetApiVersion', providers.provider { targetApiVersionFromManifest() ?: '' })
-    outputs.dir extractedJavaCardToolsDir.map { it.dir('tools') }
-
-    doLast {
+// Extract the Oracle tool jar and API jars into a directory this task owns. Sync
+// removes stale files from previous runs; the vendor archive is a task input, so
+// replacing the archive re-runs the extraction.
+def extractJavaCardTools = tasks.register('extractJavaCardTools', Sync) {
+    group = 'cinpo'
+    from(zipTree(javaCardToolsArchive.asFile)) {
+        include 'lib/tools.jar'
+        include 'lib/api_classic-*.jar'
+    }
+    into extractedJavaCardToolsDir.map { it.dir('tools') }
+    doFirst {
         verifyDownloadedToolsArchive()
+    }
+}
 
-        delete extractedJavaCardToolsDir.get().dir('tools').asFile
-        String apiClassicJarName = targetApiClassicJarName()
-        copy {
-            from(zipTree(javaCardToolsArchive.asFile)) {
-                include 'lib/tools.jar'
-                include "lib/${apiClassicJarName}"
-                into 'tools'
-            }
-            into extractedJavaCardToolsDir
-        }
-
-        // Keep Oracle-owned API export files in the consumer project's vendor
-        // cache. They used to be found only because tools.jar was flattened into
-        // the published CINPO plugin jar. Once tools.jar is loaded externally,
-        // provide the converter with the same exports as ordinary filesystem
-        // inputs without copying them into any Maven publication.
-        String targetApiVersion = targetApiVersionFromManifest()
-        if (targetApiVersion != null) {
-            copy {
-                from(zipTree(extractedJavaCardToolsJar.get().asFile)) {
-                    include "api_export_files_${targetApiVersion}/**"
-                }
-                into extractedJavaCardToolsDir.get().dir('tools/lib')
-            }
-        }
-
+// tools.jar carries the API export trees as resources. The converter reads them
+// from ordinary files, so extract every version once; the converter selects the
+// manifest's version through its export search path. Keeping all of them makes
+// this task independent of manifest.yaml.
+def extractJavaCardApiExports = tasks.register('extractJavaCardApiExports', Sync) {
+    group = 'cinpo'
+    dependsOn extractJavaCardTools
+    from(zipTree(extractedJavaCardToolsJar.get().asFile)) {
+        include 'api_export_files_*/**'
+    }
+    into extractedJavaCardApiExportDir
+    doLast {
         verifyExtractedToolsFiles()
     }
 }
 
-// Prepares the Oracle JCDK simulator that the jcresim runtime drives: the socket
-// terminal provider, the simulator executable, and the Configurator-rekeyed jcsl.
-// Only builds that depend on the jcresim runtime module run this task, so projects
-// that never simulate do not need the simulator vendor archive at all.
-//
-// The archive, host platform and Java launcher all affect the produced executable,
-// so they are declared inputs. The archive name is resolved lazily; a project that
-// never schedules this task never asks for an archive its host does not have.
+// Compatibility task: the framework build and the runtime modules depend on this
+// name to bring both extraction tasks onto their classpaths.
+tasks.register('prepareJavaCardTools') {
+    group = 'cinpo'
+    description = 'Extracts the Java Card tools and API export files used by CINPO.'
+    dependsOn extractJavaCardTools, extractJavaCardApiExports
+}
+
+// Extract the simulator kit into a directory this task owns. The archive name is
+// resolved lazily: a project that never schedules this task never asks for an
+// archive its host OS does not have.
+def extractJavaCardSimulator = tasks.register('extractJavaCardSimulator', Sync) {
+    group = 'cinpo'
+    from(providers.provider { simulatorArchiveTree() }) {
+        include 'client/COMService/socketprovider.jar'
+        include 'runtime/bin/**'
+        include 'tools/Configurator.jar'
+    }
+    into extractedJavaCardToolsDir.map { it.dir('simulator') }
+    doFirst {
+        verifyDownloadedSimulatorArchive()
+    }
+    doLast {
+        verifyExtractedSimulatorFiles()
+    }
+}
+
+// Copy the extracted runtime to a project-owned directory and rekey it with
+// Oracle's Configurator. The copy stays explicit because Configurator modifies
+// the binary in place, and the raw vendor extraction must stay unmodified.
 tasks.register('prepareJcresimSimulator') {
-    inputs.file(javaCardSimulatorArchive)
-            .withPropertyName('vendorSimulatorArchive')
+    group = 'cinpo'
+    description = 'Extracts and configures the Oracle JCDK simulator used by the jcresim runtime.'
+    dependsOn extractJavaCardSimulator
+    inputs.dir extractedJavaCardToolsDir.map { it.dir('simulator/runtime/bin') }
+    inputs.file extractedJavaCardConfiguratorJar
     inputs.property('hostOs', providers.provider { detectCinpoOs() })
     inputs.property('hostArch', providers.provider { detectCinpoArch() })
     inputs.property('javaHome', providers.provider { System.getProperty('java.home') })
-    outputs.dir extractedJavaCardToolsDir.map { it.dir('simulator') }
     outputs.dir configuredJcslDir
 
     // Hand the platform-specific jcsl directory to consumers of this task (for
@@ -316,21 +321,7 @@ tasks.register('prepareJcresimSimulator') {
     ext.configuredJcslDir = configuredJcslDir
 
     doLast {
-        verifyDownloadedSimulatorArchive()
-
-        delete extractedJavaCardToolsDir.get().dir('simulator').asFile
         delete configuredJcslDir
-        copy {
-            from(simulatorArchiveTree()) {
-                include 'client/COMService/socketprovider.jar'
-                include 'runtime/bin/**'
-                include 'tools/Configurator.jar'
-                into 'simulator'
-            }
-            into extractedJavaCardToolsDir
-        }
-
-        verifyExtractedSimulatorFiles()
         configureJcslForJcdkSim()
         verifyConfiguredJcsl()
     }

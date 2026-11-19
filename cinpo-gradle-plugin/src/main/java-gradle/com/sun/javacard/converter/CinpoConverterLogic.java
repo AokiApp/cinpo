@@ -39,7 +39,8 @@ public final class CinpoConverterLogic {
             List<Path> companionExportDirectories,
             Path compiledClassesRoot,
             Path outputRoot,
-            Path toolLibraryDirectory
+            Path toolLibraryDirectory,
+            Path apiExportRoot
     ) throws IOException {
         Objects.requireNonNull(manifest, "manifest");
         Objects.requireNonNull(companionExportDirectories, "companionExportDirectories");
@@ -75,7 +76,7 @@ public final class CinpoConverterLogic {
         profile.output = ConversionProfile.OUTPUT_CAP_FILE
                 | ConversionProfile.OUTPUT_EXP_FILE
                 | ConversionProfile.OUTPUT_JCA_FILE;
-        profile.export_path = exportPaths(manifest, companionExportDirectories, toolLibraryDirectory);
+        profile.export_path = exportPaths(manifest, companionExportDirectories, apiExportRoot);
         profile.class_root = compiledClassesRoot;
         profile.classes = classFiles(compiledClassesRoot, manifest.packageName()).stream()
                 .map(Path::toFile)
@@ -123,10 +124,10 @@ public final class CinpoConverterLogic {
         return converter;
     }
 
-    private static Path[] exportPaths(AppletManifest manifest, List<Path> companionExportDirectories, Path toolLibraryDirectory) {
+    private static Path[] exportPaths(AppletManifest manifest, List<Path> companionExportDirectories, Path apiExportRoot) {
         List<Path> exportPaths = new ArrayList<>();
 
-        Path apiExports = toolLibraryDirectory.resolve("api_export_files_" + manifest.targetApiVersion());
+        Path apiExports = apiExportRoot.resolve("api_export_files_" + manifest.targetApiVersion());
         if (Files.isDirectory(apiExports)) {
             exportPaths.add(apiExports);
         }
@@ -135,7 +136,7 @@ public final class CinpoConverterLogic {
 
         // tools.jar embeds API exports and ExportFileManager can resolve standard API
         // packages internally. Keep export_path empty rather than inventing a wrong
-        // filesystem path when the unpacked export tree is absent.
+        // filesystem path when the extracted export tree is absent.
         return exportPaths.toArray(Path[]::new);
     }
 

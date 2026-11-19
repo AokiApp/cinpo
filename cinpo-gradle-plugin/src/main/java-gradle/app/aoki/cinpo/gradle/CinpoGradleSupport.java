@@ -32,6 +32,13 @@ public final class CinpoGradleSupport {
     }
 
     /**
+     * Returns the Java Card API version declared by the applet manifest.
+     */
+    public static String targetApiVersion(Project project) {
+        return loadManifest(project, "target API resolution").targetApiVersion();
+    }
+
+    /**
      * Resolves companion bundle stub jars declared in the manifest.
      */
     public static List<Path> companionBundleJars(Project project) {
