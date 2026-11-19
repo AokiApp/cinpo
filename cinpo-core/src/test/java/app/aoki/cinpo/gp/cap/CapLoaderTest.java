@@ -4,8 +4,11 @@ import app.aoki.cinpo.util.Util;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -164,7 +167,7 @@ class CapLoaderTest {
 
     private Path writeCapFile(String filename, Map<String, byte[]> components, List<String> zipEntryOrder) throws IOException {
         Path capFile = tempDir.resolve(filename);
-        try (ZipOutputStream output = new ZipOutputStream(java.nio.file.Files.newOutputStream(capFile))) {
+        try (ZipOutputStream output = new ZipOutputStream(Files.newOutputStream(capFile))) {
             for (String componentName : zipEntryOrder) {
                 byte[] data = components.get(componentName);
                 if (data == null) {
@@ -195,7 +198,7 @@ class CapLoaderTest {
     }
 
     private static byte[] concatenateInCanonicalOrder(Map<String, byte[]> components) throws IOException {
-        java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
         for (String componentName : COMPONENT_ORDER) {
             byte[] data = components.get(componentName);
             if (data != null) {
@@ -206,7 +209,7 @@ class CapLoaderTest {
     }
 
     private static byte[] withC4Wrapper(byte[] value) throws IOException {
-        java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
         output.write(0xC4);
         if (value.length <= 0x7F) {
             output.write(value.length);
@@ -223,7 +226,7 @@ class CapLoaderTest {
     }
 
     private static byte[] slice(byte[] data, int fromInclusive, int toExclusive) {
-        return java.util.Arrays.copyOfRange(data, fromInclusive, toExclusive);
+        return Arrays.copyOfRange(data, fromInclusive, toExclusive);
     }
 
     private static byte[] hex(String value) {

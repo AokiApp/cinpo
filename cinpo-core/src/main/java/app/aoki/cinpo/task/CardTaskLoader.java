@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -64,7 +65,7 @@ public final class CardTaskLoader {
 
         Set<String> fqcns = new LinkedHashSet<>();
         try {
-            Enumeration<java.net.URL> resources = loader.getResources(resourceName);
+            Enumeration<URL> resources = loader.getResources(resourceName);
             while (resources.hasMoreElements()) {
                 try (InputStream in = resources.nextElement().openStream()) {
                     readIndexLines(in, fqcns);

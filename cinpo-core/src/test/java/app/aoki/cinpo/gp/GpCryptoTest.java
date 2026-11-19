@@ -4,6 +4,7 @@ import app.aoki.cinpo.util.Util;
 import org.junit.jupiter.api.Test;
 
 import java.security.GeneralSecurityException;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -734,7 +735,7 @@ class GpCryptoTest {
 
         assertEquals(16, ciphertext.length,
                 "AES-CBC should produce same-length output");
-        assertFalse(java.util.Arrays.equals(plaintext, ciphertext),
+        assertFalse(Arrays.equals(plaintext, ciphertext),
                 "Ciphertext should differ from plaintext");
     }
 
@@ -769,7 +770,7 @@ class GpCryptoTest {
         byte[] icv = GpCrypto.aesCbcEncryptSingleBlock(key, block);
 
         assertEquals(16, icv.length, "ICV should be 16 bytes");
-        assertFalse(java.util.Arrays.equals(block, icv),
+        assertFalse(Arrays.equals(block, icv),
                 "ICV should differ from input block");
     }
 }

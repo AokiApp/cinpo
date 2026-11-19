@@ -113,7 +113,7 @@ class ManifestLoaderTest {
 
         IOException exception = assertThrows(IOException.class, () -> ManifestLoader.load(missing));
 
-        org.junit.jupiter.api.Assertions.assertTrue(exception.getMessage().contains(missing.toAbsolutePath().toString()));
+        assertTrue(exception.getMessage().contains(missing.toAbsolutePath().toString()));
     }
 
     private Path writeManifest(String schema) throws IOException {
