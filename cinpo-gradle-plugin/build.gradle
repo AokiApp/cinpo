@@ -4,6 +4,13 @@ plugins {
     id 'maven-publish'
 }
 
+// The jar exposes app.aoki.cinpo (public) and
+// app.aoki.cinpo.prepare-java-card-tools (internal). Only the public ID gets a
+// marker; the helper is applied from this jar's classpath.
+gradlePlugin {
+    automatedPublishing = false
+}
+
 sourceSets {
     main {
         java {
@@ -55,6 +62,19 @@ publishing {
     publications {
         pluginMaven(MavenPublication) {
             artifactId = 'cinpo-gradle-plugin'
+            from components.java
+        }
+
+        pluginMarker(MavenPublication) {
+            groupId = 'app.aoki.cinpo'
+            artifactId = 'app.aoki.cinpo.gradle.plugin'
+            pom.packaging = 'pom'
+            pom.withXml {
+                def dependencyNode = asNode().appendNode('dependencies').appendNode('dependency')
+                dependencyNode.appendNode('groupId', 'app.aoki.cinpo')
+                dependencyNode.appendNode('artifactId', 'cinpo-gradle-plugin')
+                dependencyNode.appendNode('version', project.version.toString())
+            }
         }
     }
     repositories {

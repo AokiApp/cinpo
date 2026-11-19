@@ -108,14 +108,9 @@ for entry in "${MVN_ARTIFACTS[@]}"; do
 done
 
 run_publish_task \
-    publishApp.aoki.cinpo.gradlePluginMarkerMavenPublicationToGithubPackagesRepository \
-    "app/aoki/cinpo/gradle/app.aoki.cinpo.gradle.gradle.plugin/maven-metadata.xml" \
-    "app/aoki/cinpo/gradle/app.aoki.cinpo.gradle.gradle.plugin/${PROJECT_VERSION}/app.aoki.cinpo.gradle.gradle.plugin-${PROJECT_VERSION}.pom"
-
-run_publish_task \
-    publishApp.aoki.cinpo.prepare-java-card-toolsPluginMarkerMavenPublicationToGithubPackagesRepository \
-    "app/aoki/cinpo/prepare-java-card-tools/app.aoki.cinpo.prepare-java-card-tools.gradle.plugin/maven-metadata.xml" \
-    "app/aoki/cinpo/prepare-java-card-tools/app.aoki.cinpo.prepare-java-card-tools.gradle.plugin/${PROJECT_VERSION}/app.aoki.cinpo.prepare-java-card-tools.gradle.plugin-${PROJECT_VERSION}.pom"
+    publishPluginMarkerPublicationToGithubPackagesRepository \
+    "app/aoki/cinpo/app.aoki.cinpo.gradle.plugin/maven-metadata.xml" \
+    "app/aoki/cinpo/app.aoki.cinpo.gradle.plugin/${PROJECT_VERSION}/app.aoki.cinpo.gradle.plugin-${PROJECT_VERSION}.pom"
 
 run_publish_task \
     publishPluginMavenPublicationToGithubPackagesRepository \

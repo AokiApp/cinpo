@@ -11,7 +11,7 @@ CINPO 0.5.0 splits the framework artifact into several Maven modules so that you
 | `app.aoki.cinpo:cinpo-runtime-jcardengine:0.5.0` | In-process Java Card engine runtime. |
 | `app.aoki.cinpo:cinpo-runtime-pcsc:0.5.0` | PC/SC runtime (no native dependencies). |
 
-All four artifacts use `groupId=app.aoki.cinpo` and version `0.5.0`. The Gradle plugin uses the same version (`app.aoki.cinpo:cinpo-gradle-plugin:0.5.0`).
+All four artifacts use `groupId=app.aoki.cinpo` and version `0.5.0`. The Gradle plugin uses the same version (`app.aoki.cinpo:cinpo-gradle-plugin:0.5.0`). Its plugin ID is `app.aoki.cinpo`, and its marker is `app.aoki.cinpo:app.aoki.cinpo.gradle.plugin:0.5.0`.
 
 ## Consumer impact
 
@@ -21,7 +21,7 @@ What changed is the *dependency declaration*. Upgrading only the `cinpo` version
 
 ```groovy
 plugins {
-    id 'app.aoki.cinpo.gradle' version '0.5.0'
+    id 'app.aoki.cinpo' version '0.5.0'
 }
 
 dependencies {
