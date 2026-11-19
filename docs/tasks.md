@@ -419,4 +419,4 @@ Run it with:
 
 - Compilable examples in the templates: `template/basic/host/provision/HelloProvision.java`, `template/basic/host/test/HelloTest.java`, `template/probe/host/probe/ProbeTask.java`.
 - [Profiles](profiles.md) — `jcresim` (simulator), `jcardengine` (in-process engine), and `pcsc` (real card reader), `scp02` vs `scp03`.
-- Framework changes are verified end-to-end by `.github/workflows/verify-template.yml` (bootstrap a template project into a temp directory, install the applet, run `--test`).
+- Framework changes are verified before publication by the `Release` workflow, which builds the `basic` template against the staged repository. The manual `Verify template builds (manual)` workflow checks the published artifacts on Linux and Windows (bootstrap a template project into a temp directory, install the applet, run `--test`).
