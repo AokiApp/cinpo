@@ -80,10 +80,6 @@ tasks.named('processResources') {
     }
 }
 
-tasks.named('test') {
-    useJUnitPlatform()
-}
-
 publishing {
     publications {
         mavenJava(MavenPublication) {
