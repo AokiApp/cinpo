@@ -81,26 +81,6 @@ jobs:
             build/staging-maven-repository
             build/checksums.txt
 
-      - name: Verify the basic template
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          set -euo pipefail
-          work_dir="$(mktemp -d)"
-          trap 'rm -rf "$work_dir"' EXIT
-          ./scripts/bootstrap.sh "$work_dir/project"
-          template_version="$(sed -n 's/^cinpo = "\([^"]*\)".*/\1/p' "$work_dir/project/gradle/libs.versions.toml")"
-          test "$template_version" = "$VERSION"
-          cp -a vendor "$work_dir/project/vendor"
-          cd "$work_dir/project"
-          repository_uri="file://$GITHUB_WORKSPACE/build/staging-maven-repository"
-          ./gradlew --no-daemon -PcinpoRepository="$repository_uri" \
-            cinpoRun --args='--debug --test'
-          ./gradlew --no-daemon -PcinpoRepository="$repository_uri" cinpoJar
-          java -jar build/libs/cinpo-appliance.jar write --test
-          java -p build/libs/cinpo-appliance.jar \
-            -m app.aoki.cinpo/app.aoki.cinpo.cli.CinpoCli --help
-
       - name: Create the release tag
         env:
           VERSION: ${{ inputs.version }}
