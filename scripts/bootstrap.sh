@@ -132,27 +132,30 @@ run_step() {
 # ---------------------------------------------------------------------------
 
 usage() {
-  printf >&2 '\n%s%sUsage:%s  ./scripts/bootstrap.sh [--template <name>] [--name <name>] <destination>\n\n' \
+  printf >&2 '\n%s%sUsage:%s  ./scripts/bootstrap.sh [--template <name>] [--template-dir <path> | --version <version>] [--name <name>] <destination>\n\n' \
     "${_BOLD}" "${_CYAN}" "${_RESET}"
-  printf >&2 'Fetches the CINPO template with git into a temporary sparse checkout, copies\n'
-  printf >&2 './template/<template-name> into a new project directory, and prepares it as a\n'
-  printf >&2 'standalone starter project.\n\n'
+  printf >&2 'Creates a standalone starter project from a released template archive, or from\n'
+  printf >&2 'a local template directory.\n\n'
   printf >&2 '%sOptions:%s\n' "${_BOLD}" "${_RESET}"
-  printf >&2 '  %s--template%s <name>   Template to use (default: %sbasic%s)\n' \
+  printf >&2 '  %s--template%s <name>      Template to use (default: %sbasic%s)\n' \
     "${_CYAN}" "${_RESET}" "${_BOLD}" "${_RESET}"
-  printf >&2 '  %s--name%s <name>       Project name (default: destination directory basename)\n' \
+  printf >&2 '  %s--template-dir%s <path>  Local template directory (development use)\n' \
     "${_CYAN}" "${_RESET}"
-  printf >&2 '  %s-h, --help%s          Show this help\n\n' "${_CYAN}" "${_RESET}"
+  printf >&2 '  %s--version%s <x.y.z>      Release version to download\n' \
+    "${_CYAN}" "${_RESET}"
+  printf >&2 '  %s--name%s <name>          Project name (default: destination directory basename)\n' \
+    "${_CYAN}" "${_RESET}"
+  printf >&2 '  %s-h, --help%s             Show this help\n\n' "${_CYAN}" "${_RESET}"
   printf >&2 '%sSource detection:%s\n' "${_BOLD}" "${_RESET}"
-  printf >&2 '  When run from a CINPO Git checkout, the script fetches the template from the\n'
-  printf >&2 '  current origin/HEAD commit so the generated project matches that checked-out\n'
-  printf >&2 '  revision. Otherwise it defaults to:\n'
-  printf >&2 '    repo: https://github.com/AokiApp/cinpo\n'
-  printf >&2 '    ref:  main\n\n'
-  printf >&2 '%sEnvironment overrides:%s\n' "${_BOLD}" "${_RESET}"
-  printf >&2 '  %sCINPO_TEMPLATE_REPO%s  Git repository URL used when auto-detection is unavailable.\n' \
+  printf >&2 '  Without --template-dir or --version, a local template is used when the\n'
+  printf >&2 '  script runs from a CINPO checkout. A release-pinned copy uses the version\n'
+  printf >&2 '  written into default_version.\n\n'
+  printf >&2 '%sEnvironment:%s\n' "${_BOLD}" "${_RESET}"
+  printf >&2 '  %sCINPO_TEMPLATE_DIR%s         Local template directory.\n' \
     "${_CYAN}" "${_RESET}"
-  printf >&2 '  %sCINPO_TEMPLATE_REF%s   Git ref used when auto-detection is unavailable.\n\n' \
+  printf >&2 '  %sCINPO_TEMPLATE_VERSION%s     Release version to download.\n' \
+    "${_CYAN}" "${_RESET}"
+  printf >&2 '  %sCINPO_TEMPLATE_BASE_URL%s    Base URL for template archives (default: https://AokiApp.github.io/cinpo).\n\n' \
     "${_CYAN}" "${_RESET}"
 }
 
@@ -168,68 +171,12 @@ require_command() {
 }
 
 # ---------------------------------------------------------------------------
-# Git source detection
-# ---------------------------------------------------------------------------
-
-detected_repo=""
-detected_ref=""
-
-detect_checkout_source() {
-  local candidate_dir="$1"
-  local repo_url=""
-  local ref=""
-
-  if [[ -z "${candidate_dir}" ]]; then
-    return 1
-  fi
-
-  if ! git -C "${candidate_dir}" rev-parse --show-toplevel >/dev/null 2>&1; then
-    return 1
-  fi
-
-  repo_url="$(git -C "${candidate_dir}" remote get-url origin 2>/dev/null || true)"
-  ref="$(git -C "${candidate_dir}" rev-parse HEAD 2>/dev/null || true)"
-
-  if [[ -z "${repo_url}" || -z "${ref}" ]]; then
-    return 1
-  fi
-
-  detected_repo="${repo_url}"
-  detected_ref="${ref}"
-}
-
-# ---------------------------------------------------------------------------
-# Sparse checkout helper
-# ---------------------------------------------------------------------------
-
-checkout_sparse_paths() {
-  local repo_url="$1"
-  local ref="$2"
-  local checkout_dir="$3"
-  shift 3
-
-  git init -q "${checkout_dir}"
-  git -C "${checkout_dir}" remote add origin "${repo_url}"
-  git -C "${checkout_dir}" config advice.detachedHead false
-  git -C "${checkout_dir}" config core.sparseCheckout true
-
-  mkdir -p -- "${checkout_dir}/.git/info"
-  : > "${checkout_dir}/.git/info/sparse-checkout"
-
-  local sparse_path=""
-  for sparse_path in "$@"; do
-    printf '%s\n' "${sparse_path}" >> "${checkout_dir}/.git/info/sparse-checkout"
-  done
-
-  git -C "${checkout_dir}" fetch --depth 1 origin "${ref}"
-  git -C "${checkout_dir}" checkout --detach -q FETCH_HEAD
-}
-
-# ---------------------------------------------------------------------------
 # Parse arguments
 # ---------------------------------------------------------------------------
 
-selected_template="basic"
+template_arg=""
+template_dir_arg=""
+version_arg=""
 project_name=""
 destination_input=""
 
@@ -244,13 +191,41 @@ while [[ "$#" -gt 0 ]]; do
       if [[ "$#" -lt 2 || -z "${2:-}" ]]; then
         die "Missing value for --template"
       fi
-      selected_template="$2"
+      template_arg="$2"
       shift 2
       ;;
     --template=*)
-      selected_template="${1#--template=}"
-      if [[ -z "${selected_template}" ]]; then
+      template_arg="${1#--template=}"
+      if [[ -z "${template_arg}" ]]; then
         die "Missing value for --template"
+      fi
+      shift
+      ;;
+    --template-dir)
+      if [[ "$#" -lt 2 || -z "${2:-}" ]]; then
+        die "Missing value for --template-dir"
+      fi
+      template_dir_arg="$2"
+      shift 2
+      ;;
+    --template-dir=*)
+      template_dir_arg="${1#--template-dir=}"
+      if [[ -z "${template_dir_arg}" ]]; then
+        die "Missing value for --template-dir"
+      fi
+      shift
+      ;;
+    --version)
+      if [[ "$#" -lt 2 || -z "${2:-}" ]]; then
+        die "Missing value for --version"
+      fi
+      version_arg="$2"
+      shift 2
+      ;;
+    --version=*)
+      version_arg="${1#--version=}"
+      if [[ -z "${version_arg}" ]]; then
+        die "Missing value for --version"
       fi
       shift
       ;;
@@ -299,18 +274,37 @@ if [[ -z "${destination_input}" ]]; then
   exit 1
 fi
 
+selected_template="${template_arg:-basic}"
+
 if [[ "${selected_template}" = /* || "${selected_template}" == *"/"* || \
       "${selected_template}" == "." || "${selected_template}" == ".." ]]; then
   die "Invalid template name: ${selected_template}"
 fi
 
+if [[ -n "${template_dir_arg}" && -n "${version_arg}" ]]; then
+  die "Choose one of --template-dir or --version"
+fi
+if [[ -n "${template_dir_arg}" && -n "${template_arg}" ]]; then
+  die "--template-dir and --template cannot be used together"
+fi
+
 # ---------------------------------------------------------------------------
-# Resolve repo / ref / paths
+# Resolve the template source
 # ---------------------------------------------------------------------------
 
 require_command git
+require_command curl
+require_command tar
 require_command awk
 require_command mktemp
+
+default_version=""
+template_base_url="${CINPO_TEMPLATE_BASE_URL:-https://AokiApp.github.io/cinpo}"
+while [[ "${template_base_url}" == */ ]]; do
+  template_base_url="${template_base_url%/}"
+done
+
+version_pattern='^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z][0-9A-Za-z.-]*)?$'
 
 script_dir=""
 script_path="${BASH_SOURCE[0]:-}"
@@ -318,15 +312,50 @@ if [[ -n "${script_path}" ]]; then
   script_dir="$(cd -- "$(dirname -- "${script_path}")" >/dev/null 2>&1 && pwd || true)"
 fi
 
-default_repo="https://github.com/AokiApp/cinpo"
-default_ref="main"
-
-if [[ -z "${CINPO_TEMPLATE_REPO:-}" || -z "${CINPO_TEMPLATE_REF:-}" ]]; then
-  detect_checkout_source "${script_dir}" || true
+detected_local_template=""
+if [[ -n "${script_dir}" && -d "${script_dir}/../template/${selected_template}" ]]; then
+  detected_local_template="$(cd -- "${script_dir}/../template/${selected_template}" && pwd)"
 fi
 
-template_repo="${CINPO_TEMPLATE_REPO:-${detected_repo:-${default_repo}}}"
-template_ref="${CINPO_TEMPLATE_REF:-${detected_ref:-${default_ref}}}"
+source_mode=""
+local_template_dir=""
+template_version=""
+
+if [[ -n "${template_dir_arg}" ]]; then
+  source_mode="local"
+  local_template_dir="${template_dir_arg}"
+elif [[ -n "${version_arg}" ]]; then
+  source_mode="download"
+  template_version="${version_arg}"
+elif [[ -n "${CINPO_TEMPLATE_DIR:-}" ]]; then
+  source_mode="local"
+  local_template_dir="${CINPO_TEMPLATE_DIR}"
+elif [[ -n "${CINPO_TEMPLATE_VERSION:-}" ]]; then
+  source_mode="download"
+  template_version="${CINPO_TEMPLATE_VERSION}"
+elif [[ -n "${detected_local_template}" ]]; then
+  source_mode="local"
+  local_template_dir="${detected_local_template}"
+elif [[ -n "${default_version}" ]]; then
+  source_mode="download"
+  template_version="${default_version}"
+else
+  die "No template source: pass --template-dir <path> or --version <x.y.z>"
+fi
+
+if [[ "${source_mode}" == "local" ]]; then
+  if [[ ! -d "${local_template_dir}" ]]; then
+    die "Template directory not found: ${local_template_dir}"
+  fi
+  local_template_dir="$(cd -- "${local_template_dir}" && pwd)"
+  if [[ -z "${template_arg}" ]]; then
+    selected_template="$(basename -- "${local_template_dir}")"
+  fi
+else
+  if [[ ! "${template_version}" =~ ${version_pattern} ]]; then
+    die "Invalid version: ${template_version} (expected x.y.z)"
+  fi
+fi
 
 if [[ "${destination_input}" = /* ]]; then
   destination_dir="${destination_input}"
@@ -342,6 +371,12 @@ if [[ -z "${project_name}" ]]; then
   project_name="$(basename -- "${destination_dir}")"
 fi
 
+template_url=""
+template_archive=""
+if [[ "${source_mode}" == "download" ]]; then
+  template_url="${template_base_url}/templates/${template_version}/${selected_template}/template.tar.gz"
+fi
+
 # ---------------------------------------------------------------------------
 # Banner + configuration panel
 # ---------------------------------------------------------------------------
@@ -352,34 +387,67 @@ print_section "Configuration"
 print_info "Template"     "${selected_template}"
 print_info "Project name" "${project_name}"
 print_info "Destination"  "${destination_dir}"
-print_info "Source"       "${template_repo} @ ${template_ref}"
+if [[ "${source_mode}" == "local" ]]; then
+  print_info "Source" "local: ${local_template_dir}"
+else
+  print_info "Source" "${template_url}"
+fi
+
+if [[ "${source_mode}" == "local" ]]; then
+  print_warn "Using a local template (development): ${local_template_dir}"
+fi
 
 # ---------------------------------------------------------------------------
 # Work directory + cleanup trap
 # ---------------------------------------------------------------------------
 
 work_dir="$(mktemp -d)"
+destination_created=0
+completed=0
+
 cleanup() {
+  if [[ "${completed}" -ne 1 && "${destination_created}" -eq 1 ]]; then
+    rm -rf -- "${destination_dir}"
+  fi
   rm -rf -- "${work_dir}"
 }
 trap cleanup EXIT
 
 # ---------------------------------------------------------------------------
-# Phase 1 — fetch template
+# Phase 1 — acquire the template
 # ---------------------------------------------------------------------------
 
-template_checkout_dir="${work_dir}/cinpo-source"
+_phase_fetch_template() {
+  local http_code=""
+  if ! http_code="$(curl -sS -L --retry 3 -o "${template_archive}" -w '%{http_code}' "${template_url}")"; then
+    echo "failed to download ${template_url}" >&2
+    return 1
+  fi
 
-run_step 1 4 "Fetching template" -- \
-  checkout_sparse_paths \
-    "${template_repo}" "${template_ref}" "${template_checkout_dir}" \
-    "template/${selected_template}/"
+  case "${http_code}" in
+    200)
+      ;;
+    404)
+      echo "template '${selected_template}' is not published for version ${template_version}" >&2
+      echo "    ${template_url}" >&2
+      return 1
+      ;;
+    *)
+      echo "failed to download ${template_url} (HTTP ${http_code})" >&2
+      return 1
+      ;;
+  esac
+}
 
-template_dir="${template_checkout_dir}/template/${selected_template}"
-if [[ ! -d "${template_dir}" ]]; then
-  printf >&2 '%s[x] Error:%s template not found: %s\n' "${_RED}" "${_RESET}" "${selected_template}"
-  printf >&2 '    Template source: %s @ %s\n' "${template_repo}" "${template_ref}"
-  exit 1
+_phase_prepare_local_template() {
+  [[ -d "${local_template_dir}" ]]
+}
+
+if [[ "${source_mode}" == "download" ]]; then
+  template_archive="${work_dir}/template.tar.gz"
+  run_step 1 3 "Fetching template (${selected_template} ${template_version})" -- _phase_fetch_template
+else
+  run_step 1 3 "Preparing local template (${selected_template})" -- _phase_prepare_local_template
 fi
 
 # ---------------------------------------------------------------------------
@@ -387,8 +455,22 @@ fi
 # ---------------------------------------------------------------------------
 
 _phase_copy_and_configure() {
+  destination_created=1
+
   mkdir -p -- "$(dirname -- "${destination_dir}")"
-  cp -a -- "${template_dir}/." "${destination_dir}"
+
+  if [[ "${source_mode}" == "download" ]]; then
+    mkdir -p -- "${destination_dir}"
+    if ! tar -xzf "${template_archive}" -C "${destination_dir}"; then
+      echo "failed to extract ${template_archive}" >&2
+      return 1
+    fi
+  else
+    if ! cp -a -- "${local_template_dir}/." "${destination_dir}"; then
+      echo "failed to copy ${local_template_dir}" >&2
+      return 1
+    fi
+  fi
 
   rm -rf -- \
     "${destination_dir}/.gradle" \
@@ -423,66 +505,25 @@ END { if (!replaced) { exit 1 } }
   mv -- "${temp_settings_file}" "${settings_file}"
 }
 
-run_step 2 4 "Copying files & configuring project" -- _phase_copy_and_configure
+run_step 2 3 "Copying files & configuring project" -- _phase_copy_and_configure
 
 # ---------------------------------------------------------------------------
-# Phase 3 — Gradle wrapper
-# ---------------------------------------------------------------------------
-
-gradle_version="9.3.1"
-gradle_repo="https://github.com/gradle/gradle"
-gradle_ref="v${gradle_version}"
-wrapper_dir="${destination_dir}/gradle/wrapper"
-
-_phase_gradle_wrapper() {
-  mkdir -p -- "${wrapper_dir}"
-
-  local gradle_checkout_dir="${work_dir}/gradle-source"
-  checkout_sparse_paths \
-    "${gradle_repo}" \
-    "${gradle_ref}" \
-    "${gradle_checkout_dir}" \
-    "gradle/wrapper/gradle-wrapper.jar" \
-    "gradlew" \
-    "gradlew.bat"
-
-  if [[ ! -f "${gradle_checkout_dir}/gradle/wrapper/gradle-wrapper.jar" ]]; then
-    echo "gradle-wrapper.jar not found in fetched Gradle source: ${gradle_repo} @ ${gradle_ref}" >&2
-    return 1
-  fi
-
-  cp -a -- "${gradle_checkout_dir}/gradle/wrapper/gradle-wrapper.jar" "${wrapper_dir}/gradle-wrapper.jar"
-  cp -a -- "${gradle_checkout_dir}/gradlew" "${destination_dir}/gradlew"
-  cp -a -- "${gradle_checkout_dir}/gradlew.bat" "${destination_dir}/gradlew.bat"
-  chmod +x "${destination_dir}/gradlew"
-
-  cat > "${wrapper_dir}/gradle-wrapper.properties" <<PROPS
-distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-${gradle_version}-all.zip
-networkTimeout=10000
-validateDistributionUrl=true
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists
-PROPS
-}
-
-run_step 3 4 "Fetching Gradle wrapper (${gradle_version})" -- _phase_gradle_wrapper
-
-# ---------------------------------------------------------------------------
-# Phase 4 — git init
+# Phase 3 — git init
 # ---------------------------------------------------------------------------
 
 _phase_git_init() {
   git -C "${destination_dir}" init -q
   git -C "${destination_dir}" add -A
+  git -C "${destination_dir}" update-index --chmod=+x gradlew
   git -C "${destination_dir}" \
     -c user.name="CINPO Template" \
     -c user.email="cinpo-template@example.invalid" \
     commit -q -m "Initial commit"
 }
 
-run_step 4 4 "Initializing git repository" -- _phase_git_init
+run_step 3 3 "Initializing git repository" -- _phase_git_init
+
+completed=1
 
 # ---------------------------------------------------------------------------
 # Success panel  (decorative chrome -> STDERR, summary -> STDOUT)
@@ -506,7 +547,12 @@ printf >&2 '%sNext steps%s\n' "${_BOLD}" "${_RESET}"
 printf >&2 '    %s1.%s cd %s\n' "${_CYAN}" "${_RESET}" "${destination_dir}"
 printf >&2 '    %s2.%s ./gradlew cinpoRun\n' "${_CYAN}" "${_RESET}"
 
-# Machine-readable summary on STDOUT (suitable for piping / capture)
+if [[ "${source_mode}" == "local" ]]; then
+  source_line="  local: ${local_template_dir}"
+else
+  source_line="  ${template_url} @ ${template_version}"
+fi
+
 cat <<EOF
 Created project from template:
   ${destination_dir}
@@ -518,5 +564,5 @@ Project name:
   ${project_name}
 
 Template source:
-  ${template_repo} @ ${template_ref}
+${source_line}
 EOF

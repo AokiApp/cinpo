@@ -80,13 +80,13 @@ fi
 install -m 755 "$repo_root/scripts/bootstrap.sh" "$pages_dir/bootstrap.sh"
 install -m 644 "$repo_root/scripts/bootstrap.ps1" "$pages_dir/bootstrap.ps1"
 
-sed -i "s|^default_ref=\"main\"$|default_ref=\"v${version}\"|" "$pages_dir/bootstrap.sh"
-grep -q "^default_ref=\"v${version}\"$" "$pages_dir/bootstrap.sh" || \
-    fail "failed to pin bootstrap.sh to v${version}"
+sed -i "s|^default_version=\"\"$|default_version=\"${version}\"|" "$pages_dir/bootstrap.sh"
+grep -q "^default_version=\"${version}\"$" "$pages_dir/bootstrap.sh" || \
+    fail "failed to pin bootstrap.sh to ${version}"
 
-sed -i "s|^\\\$DefaultRef = 'main'$|\$DefaultRef = 'v${version}'|" "$pages_dir/bootstrap.ps1"
-grep -q "^\\\$DefaultRef = 'v${version}'$" "$pages_dir/bootstrap.ps1" || \
-    fail "failed to pin bootstrap.ps1 to v${version}"
+sed -i "s|^\\\$DefaultVersion = ''$|\$DefaultVersion = '${version}'|" "$pages_dir/bootstrap.ps1"
+grep -q "^\\\$DefaultVersion = '${version}'$" "$pages_dir/bootstrap.ps1" || \
+    fail "failed to pin bootstrap.ps1 to ${version}"
 
 cp "$checksums_file" "$pages_dir/checksums.txt"
 cp "$checksums_file" "$pages_dir/checksums-${version}.txt"
