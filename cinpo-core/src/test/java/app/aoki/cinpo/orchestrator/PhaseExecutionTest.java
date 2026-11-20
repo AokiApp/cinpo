@@ -51,7 +51,7 @@ class PhaseExecutionTest {
                 new byte[]{0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F}
         );
 
-        testProfile = new Profile("test-profile", "jcresim", scpConfig);
+        testProfile = new Profile("test-profile", "jcdksim", scpConfig);
 
         AppletEntry appletEntry = new AppletEntry(
                 "test-applet",
@@ -256,7 +256,7 @@ class PhaseExecutionTest {
     @Test
     void cliPhaseConstruction_DefaultBehavior() {
         // Given: CLI default behavior
-        List<Phase> phases = buildPhasesLikeCli("jcresim", false, List.of(), false);
+        List<Phase> phases = buildPhasesLikeCli("jcdksim", false, List.of(), false);
 
         // Then: verify correct phase types and order
         assertEquals(3, phases.size());
@@ -268,7 +268,7 @@ class PhaseExecutionTest {
     @Test
     void cliPhaseConstruction_WithTestFlag() {
         // Given: CLI with --test flag
-        List<Phase> phases = buildPhasesLikeCli("jcresim", true, List.of(), false);
+        List<Phase> phases = buildPhasesLikeCli("jcdksim", true, List.of(), false);
 
         // Then: verify provision and test phases
         assertEquals(4, phases.size());
@@ -281,7 +281,7 @@ class PhaseExecutionTest {
     @Test
     void cliPhaseConstruction_WithCustomTaskKinds() {
         // Given: CLI with --task=foo --task=bar
-        List<Phase> phases = buildPhasesLikeCli("jcresim", false, List.of("foo", "bar"), false);
+        List<Phase> phases = buildPhasesLikeCli("jcdksim", false, List.of("foo", "bar"), false);
 
         // Then: verify custom task phases
         assertEquals(4, phases.size());
@@ -294,7 +294,7 @@ class PhaseExecutionTest {
     @Test
     void cliPhaseConstruction_WithSkipInstall() {
         // Given: CLI with --skip-install
-        List<Phase> phases = buildPhasesLikeCli("jcresim", false, List.of("provision"), true);
+        List<Phase> phases = buildPhasesLikeCli("jcdksim", false, List.of("provision"), true);
 
         // Then: verify install phase is skipped
         assertEquals(2, phases.size());

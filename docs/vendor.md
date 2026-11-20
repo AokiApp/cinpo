@@ -1,13 +1,13 @@
 # Preparing the `vendor/` directory
 
-CINPO does not redistribute Oracle's proprietary toolkit and does not download it for you. The Tools archive below is required for every project; the Simulator archive is needed only while `cinpo-runtime-jcresim` is declared in `build.gradle`. The starter templates declare it, so a fresh project still needs the Simulator archive — remove the dependency if you don't use `jcresim`. Both come from [Oracle's Java Card downloads page](https://www.oracle.com/java/technologies/javacard-downloads.html) (linked from [Java Card](https://www.oracle.com/java/java-card/) as "Java Card Downloads"):
+CINPO does not redistribute Oracle's proprietary toolkit and does not download it for you. The Tools archive below is required for every project; the Simulator archive is needed only while `cinpo-runtime-jcdksim` is declared in `build.gradle`. The starter templates declare it, so a fresh project still needs the Simulator archive — remove the dependency if you don't use the `jcdksim` runtime. Both come from [Oracle's Java Card downloads page](https://www.oracle.com/java/technologies/javacard-downloads.html) (linked from [Java Card](https://www.oracle.com/java/java-card/) as "Java Card Downloads"):
 
 1. **JCDK Tools 26.0**: click `java_card_devkit_tools-bin-v26.0-b_705-04-MAY-2026.zip` and accept the license (a license lightbox is shown). This is the JCDK Tools 26.0 archive.
-2. **JCDK Simulator 26.0** for your OS, accepted the same way — only while `cinpo-runtime-jcresim` is declared in `build.gradle`:
+2. **JCDK Simulator 26.0** for your OS, accepted the same way — only while `cinpo-runtime-jcdksim` is declared in `build.gradle`:
    - Linux: `java_card_devkit_simulator-linux-bin-v26.0-b_788-05-MAY-2026.tar.gz`
    - Windows: `java_card_devkit_simulator-win-bin-v26.0-b_788-05-MAY-2026.zip`
 
-Copy the Tools archive into your project's `vendor/` directory, and the Simulator archive too when `cinpo-runtime-jcresim` is declared. For a jcresim project:
+Copy the Tools archive into your project's `vendor/` directory, and the Simulator archive too when `cinpo-runtime-jcdksim` is declared. For a project that uses the `jcdksim` runtime:
 
 ```bash
 mkdir -p vendor
@@ -24,15 +24,15 @@ vendor/
     (or java_card_devkit_simulator-win-bin-v26.0-b_788-05-MAY-2026.zip)   # Windows
 ```
 
-Without `cinpo-runtime-jcresim`, you keep only the Tools archive in `vendor/`.
+Without `cinpo-runtime-jcdksim`, you keep only the Tools archive in `vendor/`.
 
-The Tools archive is always required. The Simulator archive is needed only while `cinpo-runtime-jcresim` is declared (the default `jcdksim` profile does); take the one matching the OS you build on. Their versions must match the `toolSdkVersion` in your `manifest.yaml` (26.0 today).
+The Tools archive is always required. The Simulator archive is needed only while `cinpo-runtime-jcdksim` is declared (the default `jcdksim` profile does); take the one matching the OS you build on. Their versions must match the `toolSdkVersion` in your `manifest.yaml` (26.0 today).
 
 Notes:
 
 - `vendor/` is gitignored. The archives are proprietary; do not commit them.
 - Checksums for the expected files are pinned in `scripts/extract_vendor.sh` if you want to verify integrity.
-- Without the required archives, `cinpoRun` and `cinpoJar` fail. If you still declare `cinpo-runtime-jcresim`, the build asks for the Simulator archive even when your active profile uses another runtime; drop it if you don't use `jcresim`.
+- Without the required archives, `cinpoRun` and `cinpoJar` fail. If you still declare `cinpo-runtime-jcdksim`, the build asks for the Simulator archive even when your active profile uses another runtime; drop it if you don't use the `jcdksim` runtime.
 
 ## Companion bundles
 

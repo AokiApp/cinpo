@@ -86,7 +86,7 @@ run_publish_task() {
 MVN_ARTIFACTS=(
     cinpo:cinpo-core
     cinpo-runtime-jcardengine:cinpo-runtime-jcardengine
-    cinpo-runtime-jcresim:cinpo-runtime-jcresim
+    cinpo-runtime-jcdksim:cinpo-runtime-jcdksim
     cinpo-runtime-pcsc:cinpo-runtime-pcsc
 )
 

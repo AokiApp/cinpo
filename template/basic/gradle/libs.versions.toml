@@ -5,7 +5,7 @@ bouncycastle = "1.78.1"
 
 [libraries]
 cinpo-core = { module = "app.aoki.cinpo:cinpo", version.ref = "cinpo" }
-cinpo-runtime-jcresim = { module = "app.aoki.cinpo:cinpo-runtime-jcresim", version.ref = "cinpo" }
+cinpo-runtime-jcdksim = { module = "app.aoki.cinpo:cinpo-runtime-jcdksim", version.ref = "cinpo" }
 cinpo-runtime-jcardengine = { module = "app.aoki.cinpo:cinpo-runtime-jcardengine", version.ref = "cinpo" }
 cinpo-runtime-pcsc = { module = "app.aoki.cinpo:cinpo-runtime-pcsc", version.ref = "cinpo" }
 snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }

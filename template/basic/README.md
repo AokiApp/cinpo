@@ -11,7 +11,7 @@ This template shows one flow: the host issues an X.509 leaf certificate, writes 
 - `applet/HelloApplet.java` — `ECHO`, `HELLO`, and certificate storage (up to 2048 bytes).
 - `host/provision/` — the default `provision` task issues and writes a leaf certificate in 220-byte chunks.
 - `host/test/` — the `test` task reads the certificate back and parses it as X.509.
-- `profile/jcdksim.yaml` — simulator profile with development-only keys.
+- `profile/jcdksim.yaml` — Oracle JCDK simulator profile with development-only keys.
 
 ## Requirements
 

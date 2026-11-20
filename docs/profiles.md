@@ -4,12 +4,12 @@ A profile tells CINPO two things: **where APDUs go** (the simulator or a physica
 
 ## The default profile: `jcdksim`
 
-`jcdksim` is just a profile YAML file, shipped in `profile/jcdksim.yaml` by the starter templates. It targets the Oracle JCDK simulator (`jcresim`) with SCP03 and **well-known test keys** — no extra configuration is needed:
+`jcdksim` is a profile YAML file, shipped in `profile/jcdksim.yaml` by the starter templates. The profile uses the `jcdksim` runtime (the Oracle JCDK simulator) with SCP03 and **well-known test keys** — no extra configuration is needed:
 
 ```yaml
 schema: cinpo.profile.v1
 name: jcdksim
-runtime: jcresim
+runtime: jcdksim
 secureChannel:
   protocol: scp03
   isdAid: A000000151000000         # default JCDK simulator ISD AID
@@ -94,9 +94,11 @@ Real SCP keys are not test keys. Keep them out of git and do not reuse `profile/
 
 | `runtime` value | Transport |
 |----------------|-----------|
-| `jcresim` | Oracle JCDK simulator (auto-managed). Requires the Oracle JCDK vendor archives in `vendor/`. |
+| `jcdksim` | Oracle JCDK simulator (auto-managed). Requires the Oracle JCDK vendor archives in `vendor/`. |
 | `jcardengine` | In-process Java Card engine. No native simulator; runs the applet as compiled `classes`. |
 | `pcsc` | PC/SC card reader (javax.smartcardio) |
+
+See [migration-0.5](migration-0.5.md#simulator-runtime-jcdksim) for the runtime name and the module layout.
 
 ## Supported protocols
 

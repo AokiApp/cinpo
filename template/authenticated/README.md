@@ -11,7 +11,7 @@ This template shows SCP03 secure messaging: the applet handles GlobalPlatform se
 - `applet/HelloApplet.java` — `ECHO`, `HELLO`, `SHLO`, plus the GlobalPlatform security-command path.
 - `host/provision/` — `provision` selects the applet and checks `HELLO`.
 - `host/test/` — `test` rejects unauthenticated `SHLO`, authenticates SCP03, then checks `ECHO` and `SHLO`.
-- `profile/jcdksim.yaml` — simulator profile with public SCP03 test keys.
+- `profile/jcdksim.yaml` — Oracle JCDK simulator profile with public SCP03 test keys.
 
 ## Requirements
 

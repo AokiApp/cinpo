@@ -21,7 +21,7 @@ class AdapterDiscoveryTest {
                 instanceof InstallPhase);
 
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
-                () -> ApduChannelFactory.createInstallPhase(profile("jcresim")));
+                () -> ApduChannelFactory.createInstallPhase(profile("jcdksim")));
         assertTrue(e.getMessage().contains("(available: pcsc)"));
     }
 

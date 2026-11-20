@@ -23,7 +23,7 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
 
     testImplementation project(':cinpo-runtime-jcardengine')
-    testImplementation project(':cinpo-runtime-jcresim')
+    testImplementation project(':cinpo-runtime-jcdksim')
     testImplementation project(':cinpo-runtime-pcsc')
 }
 

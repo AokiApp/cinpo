@@ -76,7 +76,7 @@ public abstract class CinpoJarTask extends Jar {
     }
 
     /**
-     * Returns the runtime classpath used to detect the jcresim module.
+     * Returns the runtime classpath used to detect the jcdksim module.
      *
      * <p>This is a validation-only view. The entries copied into the appliance are
      * declared with {@code from()} by the plugin, which is also what Gradle tracks
@@ -103,7 +103,7 @@ public abstract class CinpoJarTask extends Jar {
      * Returns the configured simulator runtime directory to embed as classpath resources.
      *
      * @return the {@code build/cinpo-cache/jcsl/<os>-<arch>} directory produced by
-     *         {@code prepareJcresimSimulator}, unset when the build never prepared a
+     *         {@code prepareJcdksimSimulator}, unset when the build never prepared a
      *         simulator
      */
     @InputDirectory
@@ -116,9 +116,9 @@ public abstract class CinpoJarTask extends Jar {
      */
     @Override
     protected void copy() {
-        if (jcresimRuntimeOnClasspath() && !getBundledSimulatorDirectory().isPresent()) {
-            throw new IllegalStateException("The jcresim runtime module is on the classpath but this build did not "
-                    + "prepare a simulator. Declare app.aoki.cinpo:cinpo-runtime-jcresim directly in the main "
+        if (jcdksimRuntimeOnClasspath() && !getBundledSimulatorDirectory().isPresent()) {
+            throw new IllegalStateException("The jcdksim runtime module is on the classpath but this build did not "
+                    + "prepare a simulator. Declare app.aoki.cinpo:cinpo-runtime-jcdksim directly in the main "
                     + "runtime scope (api, implementation, or runtimeOnly) so the Gradle plugin can prepare it; "
                     + "a dependency that only brings it in transitively is not enough.");
         }
@@ -136,13 +136,13 @@ public abstract class CinpoJarTask extends Jar {
     }
 
     /**
-     * Reports whether the jcresim runtime module contributes to the appliance.
+     * Reports whether the jcdksim runtime module contributes to the appliance.
      *
-     * @return {@code true} when a {@code cinpo-runtime-jcresim} entry is present
+     * @return {@code true} when a {@code cinpo-runtime-jcdksim} entry is present
      */
-    private boolean jcresimRuntimeOnClasspath() {
+    private boolean jcdksimRuntimeOnClasspath() {
         for (File file : getRuntimeClasspath().getFiles()) {
-            if (file.getName().startsWith("cinpo-runtime-jcresim")) {
+            if (file.getName().startsWith("cinpo-runtime-jcdksim")) {
                 return true;
             }
         }
