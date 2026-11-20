@@ -165,6 +165,11 @@ public abstract class CinpoJarTask extends Jar {
      * @return {@code true} when the entry is appliance-owned metadata or invalid after merging
      */
     private static boolean shouldSkipEntry(String entryName, String targetApiVersion) {
+        // A service file name is a class name, so it can legitimately end in .SF,
+        // .DSA or .RSA. Signature metadata only lives directly under META-INF/.
+        if (entryName.startsWith("META-INF/services/")) {
+            return false;
+        }
         // The appliance owns its manifest, and merged signed JAR metadata would make java -jar fail
         // with invalid signature errors because entries no longer match their original digests.
         // Module descriptors belong to the dependency that ships them; the appliance is not a

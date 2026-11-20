@@ -85,6 +85,25 @@ class CinpoJarTaskTest {
     }
 
     @Test
+    void keepsServiceEntriesWhoseNameLooksLikeASignatureFile() throws Exception {
+        Path projectDirectory = tempDirectory.resolve("project");
+        Path dependency = projectDirectory.resolve("dependency");
+        write(dependency.resolve("META-INF/services/com.example.SF"), "com.example.Impl");
+        write(dependency.resolve("META-INF/services/com.example.DSA"), "com.example.Impl");
+        write(dependency.resolve("META-INF/EXAMPLE.SF"), "signature");
+
+        CinpoJarTask task = newTask(projectDirectory);
+        task.from(dependency.toFile());
+        copy(task);
+
+        try (JarFile jar = new JarFile(task.getArchiveFile().get().getAsFile())) {
+            assertTrue(jar.getEntry("META-INF/services/com.example.SF") != null);
+            assertTrue(jar.getEntry("META-INF/services/com.example.DSA") != null);
+            assertNull(jar.getEntry("META-INF/EXAMPLE.SF"));
+        }
+    }
+
+    @Test
     void failsWhenJcresimIsOnTheClasspathWithoutASimulator() throws IOException {
         Path projectDirectory = tempDirectory.resolve("project");
         Path runtimeJar = projectDirectory.resolve("cinpo-runtime-jcresim-0.5.1.jar");

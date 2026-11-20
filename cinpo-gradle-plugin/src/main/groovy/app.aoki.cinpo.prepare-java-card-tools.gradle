@@ -3,8 +3,6 @@ import org.gradle.api.GradleException
 import java.nio.file.Files
 import java.security.MessageDigest
 import java.util.Locale
-import java.util.regex.Matcher
-import java.util.regex.Pattern
 
 def detectCinpoOs = {
     String osName = System.getProperty('os.name').toLowerCase(Locale.ROOT)
@@ -77,41 +75,6 @@ ext.javaCardSimulatorArchive = providers.provider {
     layout.projectDirectory.file("vendor/${javaCardSimulatorArchiveName.get()}")
 }
 
-def targetApiVersionFromManifest = {
-    File manifestFile = layout.projectDirectory.file('manifest.yaml').asFile
-    if (!manifestFile.isFile()) {
-        return null
-    }
-
-    // Keep this precompiled Gradle plugin independent from SnakeYAML. The manifest
-    // schema keeps targetApiVersion as a top-level scalar, so a narrow line-oriented
-    // parser is sufficient for deciding which Java Card API artifacts to stage.
-    Pattern pattern = Pattern.compile(/^\s*targetApiVersion\s*:\s*["']?([^"'#]+)["']?\s*(?:#.*)?$/)
-    for (String line : manifestFile.readLines('UTF-8')) {
-        Matcher matcher = pattern.matcher(line)
-        if (matcher.matches()) {
-            String targetApiVersion = matcher.group(1).trim()
-            if (targetApiVersion.isBlank()) {
-                break
-            }
-            return targetApiVersion
-        }
-    }
-    throw new GradleException("manifest.yaml must declare targetApiVersion before Java Card tools can be prepared.")
-}
-
-def computeSHA256 = { File file ->
-    def digest = MessageDigest.getInstance('SHA-256')
-    file.withInputStream { input ->
-        byte[] buffer = new byte[8192]
-        int read
-        while ((read = input.read(buffer)) != -1) {
-            digest.update(buffer, 0, read)
-        }
-    }
-    digest.digest().collect { String.format('%02x', it & 0xff) }.join()
-}
-
 // Checksums for the expected vendor files, pinned so a corrupted or rebundled
 // Oracle archive fails loudly instead of producing a broken tools cache.
 def TOOLS_CHECKSUM = '86443cb1b64c006456e524d91082ba25d5ebb0ee5506c6e4d7088350ce251d9d'
@@ -120,71 +83,24 @@ def SIMULATOR_CHECKSUMS = [
         'java_card_devkit_simulator-win-bin-v26.0-b_788-05-MAY-2026.zip'     : '5ab2efc69486989bcd73d0ed235f4f8348e82df262448fbc781dabd1bcb9b9c5'
 ]
 
-// The Tools archive is required by every project: it feeds the CAP converter and the
-// Java Card API the applet compiles against.
-def verifyDownloadedToolsArchive = {
-    File toolsFile = javaCardToolsArchive.asFile
-    if (!toolsFile.exists()) {
-        throw new GradleException("Required vendor file '${toolsFile.name}' is missing. Please download it from the Oracle Java Card website and place it in the 'vendor' directory.")
-    }
-    if (computeSHA256(toolsFile) != TOOLS_CHECKSUM) {
-        throw new GradleException("Checksum verification failed for '${toolsFile.name}'. Expected: ${TOOLS_CHECKSUM}, Actual: ${computeSHA256(toolsFile)}. Please re-download the file and ensure it is not corrupted.")
-    }
-}
+// Capture the values the verify tasks need so their actions do not read script
+// properties at execution time. This keeps the vendor checks compatible with the
+// configuration cache even though the rest of the preparation script is not.
+def toolsArchiveFile = javaCardToolsArchive.asFile
+def toolsChecksum = TOOLS_CHECKSUM
+def toolsMissingHint = "Please download it from the Oracle Java Card website and place it in the 'vendor' directory."
 
-// The Simulator archive is required only by projects that prepare a simulator, which
-// the consumer wiring limits to builds that depend on the jcresim runtime module.
-def verifyDownloadedSimulatorArchive = {
-    File simulatorFile = javaCardSimulatorArchive.get().asFile
-    if (!simulatorFile.exists()) {
-        throw new GradleException(
-                "Required vendor file '${simulatorFile.name}' is missing. Please download it from the Oracle Java Card website and place it in the 'vendor' directory. " +
-                        "If you do not use the jcresim runtime, remove the cinpo-runtime-jcresim dependency from build.gradle instead.")
-    }
-    String expectedChecksum = SIMULATOR_CHECKSUMS[simulatorFile.name]
-    if (expectedChecksum == null) {
-        throw new GradleException("No pinned checksum is known for vendor file '${simulatorFile.name}'.")
-    }
-    String actualChecksum = computeSHA256(simulatorFile)
-    if (actualChecksum != expectedChecksum) {
-        throw new GradleException("Checksum verification failed for '${simulatorFile.name}'. Expected: ${expectedChecksum}, Actual: ${actualChecksum}. Please re-download the file and ensure it is not corrupted.")
-    }
-}
+def simulatorOs = detectCinpoOs()
+def simulatorVendorDir = layout.projectDirectory.dir('vendor').asFile
+def simulatorArchives = SIMULATOR_ARCHIVES
+def simulatorChecksums = SIMULATOR_CHECKSUMS
+def simulatorMissingHint = "Please download it from the Oracle Java Card website and place it in the 'vendor' directory. " +
+        "If you do not use the jcresim runtime, remove the cinpo-runtime-jcresim dependency from build.gradle instead."
 
 def simulatorArchiveTree = {
     File archive = javaCardSimulatorArchive.get().asFile
     // The Linux kit is a gzipped tarball, the Windows kit a plain zip.
     return archive.name.endsWith('.zip') ? zipTree(archive) : tarTree(resources.gzip(archive))
-}
-
-def verifyExtractedToolsFiles = {
-    String targetApiVersion = targetApiVersionFromManifest()
-    if (!extractedJavaCardToolsJar.get().asFile.exists()) {
-        throw new GradleException("Expected Java Card tools jar was not found after extracting '${javaCardToolsArchive.asFile.name}' to '${extractedJavaCardToolsDir.get().asFile}'.")
-    }
-    if (targetApiVersion != null) {
-        File targetApiJar = extractedJavaCardToolsDir.get().file("tools/lib/api_classic-${targetApiVersion}.jar").asFile
-        if (!targetApiJar.exists()) {
-            throw new GradleException("Expected Java Card API jar for targetApiVersion ${targetApiVersion} was not found: ${targetApiJar}")
-        }
-        File targetApiExports = extractedJavaCardApiExportDir.get()
-                .dir("api_export_files_${targetApiVersion}").asFile
-        if (!targetApiExports.isDirectory()) {
-            throw new GradleException("Expected Java Card API export files for targetApiVersion ${targetApiVersion} were not found: ${targetApiExports}")
-        }
-    }
-}
-
-def verifyExtractedSimulatorFiles = {
-    if (!extractedJavaCardSocketProviderJar.get().asFile.exists()) {
-        throw new GradleException("Expected Java Card simulator files were not found after extracting '${javaCardSimulatorArchive.get().asFile.name}' to '${extractedJavaCardToolsDir.get().asFile}'.")
-    }
-    if (!extractedJavaCardConfiguratorJar.get().asFile.exists()) {
-        throw new GradleException("Expected Java Card Configurator.jar was not found after extracting '${javaCardSimulatorArchive.get().asFile.name}' to '${extractedJavaCardToolsDir.get().asFile}'.")
-    }
-    if (!extractedJavaCardToolsDir.get().file('simulator/runtime/bin').asFile.isDirectory()) {
-        throw new GradleException("Expected Java Card simulator runtime directory was not found: ${extractedJavaCardToolsDir.get().file('simulator/runtime/bin').asFile}")
-    }
 }
 
 // These keys are the jcdksim development keyset. They must stay in sync with the
@@ -198,6 +114,12 @@ def configureJcslForJcdkSim = {
 
     if (!sourceRuntimeDir.isDirectory()) {
         throw new GradleException("Expected Java Card simulator runtime directory was not found: ${sourceRuntimeDir}")
+    }
+    if (!extractedJavaCardSocketProviderJar.get().asFile.isFile()) {
+        throw new GradleException("Expected Java Card socket terminal provider was not found: ${extractedJavaCardSocketProviderJar.get().asFile}")
+    }
+    if (!configuratorJar.isFile()) {
+        throw new GradleException("Expected Java Card Configurator.jar was not found: ${configuratorJar}")
     }
 
     copy {
@@ -254,12 +176,28 @@ def verifyJavaCardToolsArchive = tasks.register('verifyJavaCardToolsArchive') {
     group = 'cinpo'
     description = 'Checks that the vendor Java Card tools archive is present and unchanged.'
     doLast {
-        verifyDownloadedToolsArchive()
+        File toolsFile = toolsArchiveFile
+        if (!toolsFile.isFile()) {
+            throw new GradleException("Required vendor file '${toolsFile.name}' is missing. ${toolsMissingHint}")
+        }
+        def digest = MessageDigest.getInstance('SHA-256')
+        toolsFile.withInputStream { input ->
+            byte[] buffer = new byte[8192]
+            int read
+            while ((read = input.read(buffer)) != -1) {
+                digest.update(buffer, 0, read)
+            }
+        }
+        String actual = digest.digest().collect { String.format('%02x', it & 0xff) }.join()
+        if (actual != toolsChecksum) {
+            throw new GradleException("Checksum verification failed for '${toolsFile.name}'. Expected: ${toolsChecksum}, Actual: ${actual}. Please re-download the file and ensure it is not corrupted.")
+        }
     }
 }
 
 def extractJavaCardTools = tasks.register('extractJavaCardTools', Sync) {
     group = 'cinpo'
+    description = 'Extracts the Oracle Java Card tools and API jars.'
     dependsOn verifyJavaCardToolsArchive
     from(zipTree(javaCardToolsArchive.asFile)) {
         include 'lib/tools.jar'
@@ -274,14 +212,12 @@ def extractJavaCardTools = tasks.register('extractJavaCardTools', Sync) {
 // this task independent of manifest.yaml.
 def extractJavaCardApiExports = tasks.register('extractJavaCardApiExports', Sync) {
     group = 'cinpo'
+    description = 'Extracts the Java Card API export trees from tools.jar.'
     dependsOn extractJavaCardTools
     from(zipTree(extractedJavaCardToolsJar.get().asFile)) {
         include 'api_export_files_*/**'
     }
     into extractedJavaCardApiExportDir
-    doLast {
-        verifyExtractedToolsFiles()
-    }
 }
 
 // Compatibility task: the framework build and the runtime modules depend on this
@@ -300,12 +236,37 @@ def verifyJavaCardSimulatorArchive = tasks.register('verifyJavaCardSimulatorArch
     group = 'cinpo'
     description = 'Checks that the vendor Java Card simulator archive is present and unchanged.'
     doLast {
-        verifyDownloadedSimulatorArchive()
+        String archiveName = simulatorArchives[simulatorOs]
+        if (archiveName == null) {
+            throw new GradleException("No Oracle Java Card simulator archive is known for OS '${simulatorOs}'. " +
+                    "Supported: ${simulatorArchives.keySet().join(', ')}.")
+        }
+        File simulatorFile = new File(simulatorVendorDir, archiveName)
+        if (!simulatorFile.isFile()) {
+            throw new GradleException("Required vendor file '${simulatorFile.name}' is missing. ${simulatorMissingHint}")
+        }
+        String expectedChecksum = simulatorChecksums[archiveName]
+        if (expectedChecksum == null) {
+            throw new GradleException("No pinned checksum is known for vendor file '${simulatorFile.name}'.")
+        }
+        def digest = MessageDigest.getInstance('SHA-256')
+        simulatorFile.withInputStream { input ->
+            byte[] buffer = new byte[8192]
+            int read
+            while ((read = input.read(buffer)) != -1) {
+                digest.update(buffer, 0, read)
+            }
+        }
+        String actualChecksum = digest.digest().collect { String.format('%02x', it & 0xff) }.join()
+        if (actualChecksum != expectedChecksum) {
+            throw new GradleException("Checksum verification failed for '${simulatorFile.name}'. Expected: ${expectedChecksum}, Actual: ${actualChecksum}. Please re-download the file and ensure it is not corrupted.")
+        }
     }
 }
 
 def extractJavaCardSimulator = tasks.register('extractJavaCardSimulator', Sync) {
     group = 'cinpo'
+    description = 'Extracts the Oracle Java Card simulator kit.'
     dependsOn verifyJavaCardSimulatorArchive
     from(providers.provider { simulatorArchiveTree() }) {
         include 'client/COMService/socketprovider.jar'
@@ -313,9 +274,6 @@ def extractJavaCardSimulator = tasks.register('extractJavaCardSimulator', Sync) 
         include 'tools/Configurator.jar'
     }
     into extractedJavaCardToolsDir.map { it.dir('simulator') }
-    doLast {
-        verifyExtractedSimulatorFiles()
-    }
 }
 
 // Copy the extracted runtime to a project-owned directory and rekey it with

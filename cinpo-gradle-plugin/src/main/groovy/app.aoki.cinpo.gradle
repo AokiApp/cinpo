@@ -159,11 +159,8 @@ def mergeCinpoServiceFiles = tasks.register('mergeCinpoServiceFiles', MergeCinpo
 tasks.register('cinpoJar', CinpoJarTask) {
     runtimeClasspath.from(mainSourceSet.runtimeClasspath)
     from(mergeCinpoServiceFiles)
-    from(mainSourceSet.output) {
-        exclude 'META-INF/services/**'
-    }
     from(providers.provider {
-        configurations.runtimeClasspath.files
+        mainSourceSet.runtimeClasspath.files
                 .findAll { CinpoGradleSupport.isBundleableClasspathEntry(it) }
                 .collect { it.isDirectory() ? it : zipTree(it) }
     }) {

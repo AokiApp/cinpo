@@ -1,6 +1,7 @@
 package app.aoki.cinpo.gradle.task;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -167,6 +168,18 @@ public abstract class GenerateCapTask extends DefaultTask {
             // Manifest loading is kept in the Gradle task layer because manifest.yaml
             // is a project file, not an Oracle Java Card tool concept.
             AppletManifest manifest = ManifestLoader.load(manifestPath);
+
+            String targetApiVersion = manifest.targetApiVersion();
+            Path targetApiJar = toolLibrary.resolve("api_classic-" + targetApiVersion + ".jar");
+            if (!Files.isRegularFile(targetApiJar)) {
+                throw new GradleException("Java Card API jar for targetApiVersion "
+                        + targetApiVersion + " was not found: " + targetApiJar);
+            }
+            Path targetApiExports = apiExportRoot.resolve("api_export_files_" + targetApiVersion);
+            if (!Files.isDirectory(targetApiExports)) {
+                throw new GradleException("Java Card API export files for targetApiVersion "
+                        + targetApiVersion + " were not found: " + targetApiExports);
+            }
 
             // This layout is the contract with InstallPhase: the generated resource
             // must be loadable later as cap/<manifest.packageName>.cap.
