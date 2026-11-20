@@ -1,14 +1,9 @@
 package app.aoki.cinpo.task;
 
-import app.aoki.cinpo.apdu.ApduChannel;
-import app.aoki.cinpo.config.AppletManifest;
-import app.aoki.cinpo.config.Profile;
-import app.aoki.cinpo.gp.scp.SecureChannelProfile;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.reflect.Field;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -31,7 +26,7 @@ public final class CardTaskLoader {
     }
 
     /**
-     * Loads every task of {@code kind}, injects declared dependencies, and sorts by annotation order.
+     * Loads every task of {@code kind}, populates its dependency fields, and sorts by annotation order.
      */
     public static List<CardTask> loadAll(String kind, TaskContext ctx) {
         Objects.requireNonNull(kind);
@@ -46,7 +41,7 @@ public final class CardTaskLoader {
         for (String fqcn : fqcns) {
             CardTask task = instantiate(fqcn, kind);
             verifyKind(task, kind);
-            inject(task, ctx);
+            bind(task, ctx);
             tasks.add(task);
         }
 
@@ -93,13 +88,13 @@ public final class CardTaskLoader {
         try {
             Object instance = Class.forName(fqcn).getDeclaredConstructor().newInstance();
             if (!(instance instanceof CardTask task)) {
-                throw new IllegalStateException("Indexed @CardTaskDef(\"" + kind + "\") class does not implement CardTask: " + fqcn);
+                throw new IllegalStateException("Indexed @CardTaskDef(\"" + kind + "\") class does not extend CardTask: " + fqcn);
             }
             return task;
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(
                     "Failed to instantiate @CardTaskDef(\"" + kind + "\") CardTask: " + fqcn
-                            + ". The class must have a public no-arg constructor and implement CardTask.",
+                            + ". The class must have a public no-arg constructor and extend CardTask.",
                     e);
         }
     }
@@ -115,42 +110,11 @@ public final class CardTaskLoader {
         }
     }
 
-    private static void inject(Object task, TaskContext ctx) {
-        Class<?> type = task.getClass();
-        while (type != null && type != Object.class) {
-            for (Field field : type.getDeclaredFields()) {
-                if (!field.isAnnotationPresent(Inject.class)) {
-                    continue;
-                }
-                Object value = resolve(field.getType(), ctx);
-                try {
-                    field.setAccessible(true);
-                    field.set(task, value);
-                } catch (IllegalAccessException e) {
-                    throw new IllegalStateException("Failed to inject field " + field + " on " + task.getClass().getName(), e);
-                }
-            }
-            type = type.getSuperclass();
-        }
-    }
-
-    private static Object resolve(Class<?> type, TaskContext ctx) {
-        if (type == ApduChannel.class) {
-            return ctx.channel();
-        }
-        if (type == AppletManifest.class) {
-            return ctx.manifest();
-        }
-        if (type == Profile.class) {
-            return ctx.profile();
-        }
-        if (type == SecureChannelProfile.class) {
-            return ctx.toSecureChannelProfile();
-        }
-        if (type == TaskArguments.class) {
-            return ctx.taskArguments();
-        }
-        throw new IllegalStateException("Unsupported @Inject field type: " + type.getName()
-                + ". Supported types: ApduChannel, AppletManifest, Profile, SecureChannelProfile, TaskArguments");
+    private static void bind(CardTask task, TaskContext ctx) {
+        task.channel = ctx.channel();
+        task.manifest = ctx.manifest();
+        task.profile = ctx.profile();
+        task.taskArguments = ctx.taskArguments();
+        task.secureChannelProfile = ctx.toSecureChannelProfile();
     }
 }

@@ -14,17 +14,22 @@ import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 
 /**
- * Build-time processor that indexes {@link CardTaskDef} classes into META-INF/cinpo/<kind>.
+ * Build-time processor that validates and indexes {@link CardTaskDef} classes into META-INF/cinpo/<kind>.
  */
 @SupportedAnnotationTypes("app.aoki.cinpo.task.CardTaskDef")
 @SupportedSourceVersion(SourceVersion.RELEASE_21)
 public final class CardTaskProcessor extends AbstractProcessor {
+
+    private static final String CARD_TASK = "app.aoki.cinpo.task.CardTask";
 
     private final Map<String, List<String>> kindToFqcns = new LinkedHashMap<>();
     private boolean written;
@@ -36,9 +41,11 @@ public final class CardTaskProcessor extends AbstractProcessor {
                 continue;
             }
             CardTaskDef annotation = typeElement.getAnnotation(CardTaskDef.class);
-            String kind = annotation.value();
-            String fqcn = typeElement.getQualifiedName().toString();
-            kindToFqcns.computeIfAbsent(kind, ignored -> new ArrayList<>()).add(fqcn);
+            if (annotation == null || !isValidTask(typeElement)) {
+                continue;
+            }
+            String fqcn = processingEnv.getElementUtils().getBinaryName(typeElement).toString();
+            kindToFqcns.computeIfAbsent(annotation.value(), ignored -> new ArrayList<>()).add(fqcn);
         }
 
         if (roundEnv.processingOver() && !written) {
@@ -46,6 +53,38 @@ public final class CardTaskProcessor extends AbstractProcessor {
             writeIndexes();
         }
         return true;
+    }
+
+    private boolean isValidTask(TypeElement typeElement) {
+        String fqcn = typeElement.getQualifiedName().toString();
+        TypeElement cardTask = processingEnv.getElementUtils().getTypeElement(CARD_TASK);
+        if (cardTask == null || !processingEnv.getTypeUtils().isSubtype(typeElement.asType(), cardTask.asType())) {
+            error(typeElement, "@CardTaskDef class must extend " + CARD_TASK + ": " + fqcn);
+            return false;
+        }
+        if (!hasPublicNoArgConstructor(typeElement)) {
+            error(typeElement, "@CardTaskDef class must declare a public no-argument constructor: " + fqcn);
+            return false;
+        }
+        return true;
+    }
+
+    private boolean hasPublicNoArgConstructor(TypeElement typeElement) {
+        List<ExecutableElement> constructors = ElementFilter.constructorsIn(typeElement.getEnclosedElements());
+        if (constructors.isEmpty()) {
+            return typeElement.getModifiers().contains(Modifier.PUBLIC);
+        }
+        return constructors.stream()
+                .anyMatch(constructor -> constructor.getParameters().isEmpty()
+                        && constructor.getModifiers().contains(Modifier.PUBLIC));
+    }
+
+    private void error(Element element, String message) {
+        if (element == null) {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message);
+        } else {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message, element);
+        }
     }
 
     private void writeIndexes() {
@@ -64,9 +103,7 @@ public final class CardTaskProcessor extends AbstractProcessor {
                     }
                 }
             } catch (IOException e) {
-                processingEnv.getMessager().printMessage(
-                        Diagnostic.Kind.ERROR,
-                        "Failed to write CINPO task index for kind '" + entry.getKey() + "': " + e.getMessage());
+                error(null, "Failed to write CINPO task index for kind '" + entry.getKey() + "': " + e.getMessage());
             }
         }
     }

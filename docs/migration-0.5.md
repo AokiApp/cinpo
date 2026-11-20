@@ -1,6 +1,6 @@
 # Migrating to CINPO 0.5
 
-CINPO 0.5 splits the framework artifact into several Maven modules so that you only pull in the runtimes you use, changes the Gradle plugin ID, and names the Oracle JCDK simulator runtime `jcdksim`. This note documents what changed and what you need to do.
+CINPO 0.5 splits the framework artifact into several Maven modules so that you only pull in the runtimes you use, changes the Gradle plugin ID, names the Oracle JCDK simulator runtime `jcdksim`, and replaces the task API's `@Inject` fields with a `CardTask` base class. This note documents what changed and what you need to do.
 
 ## Simulator runtime: `jcdksim`
 
@@ -33,7 +33,59 @@ The marker lets `plugins { id 'app.aoki.cinpo' version '<version>' }` resolve th
 
 ## Consumer impact
 
-The source-level API your project uses in the core packages did not change. The packages `app.aoki.cinpo.apdu.*`, `app.aoki.cinpo.config.*`, `app.aoki.cinpo.orchestrator.*`, `app.aoki.cinpo.task.*`, `app.aoki.cinpo.gp.*`, and `app.aoki.cinpo.util.*` still contain the classes imported by the bundled templates.
+Most source-level APIs in the core packages did not change, with the task API exception described below. The packages `app.aoki.cinpo.apdu.*`, `app.aoki.cinpo.config.*`, `app.aoki.cinpo.orchestrator.*`, `app.aoki.cinpo.task.*`, `app.aoki.cinpo.gp.*`, and `app.aoki.cinpo.util.*` still contain the classes imported by the bundled templates.
+
+### Task API: extend `CardTask`
+
+`CardTask` is now an abstract base class instead of an interface, and `@Inject` has been removed. Task classes extend `CardTask` and read their dependencies from inherited protected fields. The loader populates these fields before `run()`:
+
+| Field | Type |
+|-------|------|
+| `channel` | `ApduChannel` |
+| `manifest` | `AppletManifest` |
+| `profile` | `Profile` |
+| `taskArguments` | `TaskArguments` |
+| `secureChannelProfile` | `SecureChannelProfile` |
+
+`secureChannelProfile` is now a field, not a method. The loader derives it from `profile` before `run()`.
+
+Before:
+
+```java
+@CardTaskDef("provision")
+public final class SetupPin implements CardTask {
+    @Inject private ApduChannel channel;
+    @Inject private AppletManifest manifest;
+
+    @Override
+    public void run() {
+        // ...
+    }
+}
+```
+
+After:
+
+```java
+@CardTaskDef("provision")
+public final class SetupPin extends CardTask {
+
+    @Override
+    public void run() {
+        byte[] aid = manifest.applets().get(0).instanceAid();
+        channel.transmit(Iso7816Commands.selectDf(aid));
+    }
+}
+```
+
+To migrate a task:
+
+1. Change `implements CardTask` to `extends CardTask`.
+2. Remove `import app.aoki.cinpo.task.Inject;` and every `@Inject` field.
+3. Use the inherited fields instead: `channel`, `manifest`, `profile`, `taskArguments`, and `secureChannelProfile`.
+4. Keep the class `public final`, keep a public no-argument constructor, and keep `@CardTaskDef`.
+
+The annotation processor now rejects a `@CardTaskDef` class that does not extend `CardTask` or does not declare a public no-argument constructor.
 
 ### Gradle plugin ID
 

@@ -4,7 +4,7 @@ Rules for agents (and humans) working in this project. Follow them literally.
 
 ## What this project is
 
-**CINPO** (**C**ard **IN**stallation and **P**rovision **O**rchestrator), "Spring Boot for Java Card", is a framework for installing and provisioning Java Card applets. You write host-side tasks as ordinary Java classes, annotate them (`@CardTaskDef`), inject what you need (`@Inject`), and CINPO handles manifest validation, CAP compilation/conversion, installation on the JCDK simulator or a real card, APDU transport, and GlobalPlatform secure-channel authentication. No `main()`, build scripts, or ad-hoc Gradle tasks — `./gradlew cinpoRun` does it all. Repository: [github.com/AokiApp/cinpo](https://github.com/AokiApp/cinpo). Documentation: [docs/](https://github.com/AokiApp/cinpo/tree/main/docs).
+**CINPO** (**C**ard **IN**stallation and **P**rovision **O**rchestrator), "Spring Boot for Java Card", is a framework for installing and provisioning Java Card applets. You write host-side tasks, annotate them with `@CardTaskDef`, and CINPO handles manifest validation, CAP compilation/conversion, installation on the JCDK simulator or a real card, APDU transport, and GlobalPlatform secure-channel authentication. No `main()`, build scripts, or ad-hoc Gradle tasks — `./gradlew cinpoRun` does it all. Repository: [github.com/AokiApp/cinpo](https://github.com/AokiApp/cinpo). Documentation: [docs/](https://github.com/AokiApp/cinpo/tree/main/docs).
 
 This project, generated from the `probe` starter template, is a host-side diagnostic, not an applet project. `ProbeTask` selects an application (or the default one), reads card data with `GET DATA`, and prints the result. `MaguroApplet` is a placeholder that accepts SELECT and rejects everything else. The probe task never writes to the card and reports what the card says, including refusals.
 
@@ -37,14 +37,14 @@ The only boundary is the APDU protocol. The probe does not import the applet, an
 - The default task kind is `provision`, which this template does not define; a bare `cinpoRun` fails. `--test` is not available unless you add `provision`/`test` kinds.
 - Without the Oracle archives in `vendor/`, `cinpoRun` and `cinpoJar` fail immediately — a setup failure, not a code failure.
 
-At compile time an annotation processor indexes `@CardTaskDef` classes into `META-INF/cinpo/<kind>`. At runtime: discover → instantiate → inject `@Inject` fields → call `run()`. An unchecked exception aborts the pipeline and exits non-zero. See [Writing tasks](https://github.com/AokiApp/cinpo/blob/main/docs/tasks.md#how-it-works).
+At compile time an annotation processor validates and indexes `@CardTaskDef` classes into `META-INF/cinpo/<kind>`. At runtime: discover → instantiate → populate inherited dependency fields → call `run()`. An unchecked exception aborts the pipeline and exits non-zero. See [Writing tasks](https://github.com/AokiApp/cinpo/blob/main/docs/tasks.md#how-it-works).
 
 ## The probe task at a glance (`host/probe/ProbeTask.java`)
 
-`@CardTaskDef("probe")`. It reads `--aid` from `TaskArguments` (validates 5–16 bytes), SELECTs that AID or the default one, sends `GET DATA` for tag `0x66`, and prints results. A card refusal SW is reported, not thrown; the task is read-only.
+`@CardTaskDef("probe")`. It reads `--aid` from the inherited `taskArguments` field (validates 5–16 bytes), SELECTs that AID or the default one, sends `GET DATA` for tag `0x66`, and prints results. A card refusal SW is reported, not thrown; the task is read-only.
 
 ```java
-Optional<byte[]> aid = arguments.firstValue("aid").map(Util::parseHex);
+Optional<byte[]> aid = taskArguments.firstValue("aid").map(Util::parseHex);
 ResponseApdu response = channel.transmit(/* SELECT ... */);
 if (response.sw() != 0x9000) {
     System.out.println("SELECT failed: SW=%04X".formatted(response.sw()));
@@ -149,7 +149,7 @@ Create `host/<kind>/YourTask.java` with `@CardTaskDef("<kind>")`. If a check mus
 2. **On a real card, prefer `--skip-install`.** Without it, CINPO installs the placeholder applet before probing.
 3. **Report status words; do not throw on a card refusal.** `6A82`, `6A81`, `6A88` are answers. Throw only on transport or programming errors.
 4. **AIDs come from the manifest or `--aid`, never from literals.** Validate `--aid` (5–16 bytes, valid hex).
-5. **Task classes** must be `public final`, have a `public` no-argument constructor, implement `app.aoki.cinpo.task.CardTask`, and carry `@CardTaskDef("<kind>")`. The package conventionally matches the directory under `host/`, but discovery is by annotation.
+5. **Task classes** must be `public final` classes, have a `public` no-argument constructor, extend `app.aoki.cinpo.task.CardTask`, and carry `@CardTaskDef("<kind>")`. The package conventionally matches the directory under `host/`, but discovery is by annotation.
 6. **`manifest.yaml` is the source of truth.** After editing it, package/AID fields and the applet declaration must agree.
 7. **If verification cannot run here** (no `vendor/`, no reader, no card), say so — do not report success.
 

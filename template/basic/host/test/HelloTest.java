@@ -1,35 +1,23 @@
 package test;
 
-import app.aoki.cinpo.apdu.ApduChannel;
 import app.aoki.cinpo.apdu.CommandApdu;
 import app.aoki.cinpo.apdu.Iso7816Commands;
 import app.aoki.cinpo.apdu.ResponseApdu;
-import app.aoki.cinpo.config.AppletManifest;
 import app.aoki.cinpo.task.CardTask;
 import app.aoki.cinpo.task.CardTaskDef;
-import app.aoki.cinpo.task.Inject;
 import java.io.ByteArrayInputStream;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 
 @CardTaskDef(value = "test", order = 100)
-public final class HelloTest implements CardTask {
+public final class HelloTest extends CardTask {
 
     private static final int CLA_CINPO = 0x80;
     private static final int INS_ECHO = 0x01;
     private static final int INS_GET_CERTIFICATE = 0x11;
     private static final int INS_GET_CERTIFICATE_LENGTH = 0x12;
     private static final byte[] ECHO_PAYLOAD = new byte[] {'p', 'i', 'n', 'g'};
-
-    @Inject
-    private ApduChannel channel;
-
-    @Inject
-    private AppletManifest manifest;
-
-    public HelloTest() {
-    }
 
     @Override
     public void run() {

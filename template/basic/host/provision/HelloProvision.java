@@ -1,32 +1,20 @@
 package provision;
 
-import app.aoki.cinpo.apdu.ApduChannel;
 import app.aoki.cinpo.apdu.CommandApdu;
 import app.aoki.cinpo.apdu.Iso7816Commands;
 import app.aoki.cinpo.apdu.ResponseApdu;
-import app.aoki.cinpo.config.AppletManifest;
 import app.aoki.cinpo.task.CardTask;
 import app.aoki.cinpo.task.CardTaskDef;
-import app.aoki.cinpo.task.Inject;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 @CardTaskDef(value = "provision", order = 100)
-public final class HelloProvision implements CardTask {
+public final class HelloProvision extends CardTask {
 
     private static final int CLA_CINPO = 0x80;
     private static final int INS_HELLO = 0x02;
     private static final int INS_PUT_CERTIFICATE = 0x10;
     private static final int CERTIFICATE_CHUNK_SIZE = 220;
-
-    @Inject
-    private ApduChannel channel;
-
-    @Inject
-    private AppletManifest manifest;
-
-    public HelloProvision() {
-    }
 
     @Override
     public void run() {
