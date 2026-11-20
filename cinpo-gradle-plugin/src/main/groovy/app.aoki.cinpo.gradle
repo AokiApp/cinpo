@@ -168,7 +168,6 @@ tasks.register('cinpoJar', CinpoJarTask) {
     }
     from(appletSourceSet.output.classesDirs)
     cinpoVersion.set(providers.provider { CinpoGradleSupport.declaredCinpoCoreVersion(project) })
-    targetApiVersion.set(providers.provider { CinpoGradleSupport.targetApiVersion(project) })
     dependsOn tasks.named('classes')
     dependsOn appletSourceSet.classesTaskName
     doLast {

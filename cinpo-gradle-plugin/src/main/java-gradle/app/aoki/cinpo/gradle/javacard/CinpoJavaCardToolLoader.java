@@ -88,7 +88,6 @@ final class CinpoJavaCardToolLoader implements AutoCloseable {
      * @throws Exception whatever the builder throws, unwrapped from reflection
      */
     Path build(CapBuildRequest request) throws Exception {
-        Objects.requireNonNull(request, "request");
         Class<?> builderClass = Class.forName(BUILDER_CLASS_NAME, true, loader);
         Method buildMethod = builderClass.getMethod(BUILD_METHOD_NAME, CapBuildRequest.class);
         try {

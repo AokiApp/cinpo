@@ -39,7 +39,6 @@ public abstract class CinpoJarTask extends Jar {
     private static final String MAIN_CLASS = "app.aoki.cinpo.cli.CinpoCli";
     private static final String AUTOMATIC_MODULE_NAME = "app.aoki.cinpo";
     private static final String MANIFEST_ENTRY = "META-INF/MANIFEST.MF";
-    private static final String API_EXPORT_ENTRY_PREFIX = "api_export_files_";
 
     private final ConfigurableFileCollection runtimeClasspath;
 
@@ -67,7 +66,7 @@ public abstract class CinpoJarTask extends Jar {
         getManifest().getAttributes().put("Main-Class", MAIN_CLASS);
         getManifest().getAttributes().put("Automatic-Module-Name", AUTOMATIC_MODULE_NAME);
 
-        exclude((Spec<FileTreeElement>) element -> shouldSkipEntry(element.getPath(), targetApiVersion()));
+        exclude((Spec<FileTreeElement>) element -> shouldSkipEntry(element.getPath()));
     }
 
     /**
@@ -93,15 +92,6 @@ public abstract class CinpoJarTask extends Jar {
     @Input
     @Optional
     public abstract Property<String> getCinpoVersion();
-
-    /**
-     * Returns the manifest target API used to keep Java Card export resources minimal.
-     *
-     * @return target Java Card API version, or empty when the project has no manifest
-     */
-    @Input
-    @Optional
-    public abstract Property<String> getTargetApiVersion();
 
     /**
      * Returns the configured simulator runtime directory to embed as classpath resources.
@@ -153,18 +143,13 @@ public abstract class CinpoJarTask extends Jar {
         return false;
     }
 
-    private String targetApiVersion() {
-        return getTargetApiVersion().isPresent() ? getTargetApiVersion().get() : null;
-    }
-
     /**
      * Determines whether an entry should be excluded from the merged appliance archive.
      *
      * @param entryName normalized archive entry name
-     * @param targetApiVersion manifest target API version, or {@code null}
      * @return {@code true} when the entry is appliance-owned metadata or invalid after merging
      */
-    private static boolean shouldSkipEntry(String entryName, String targetApiVersion) {
+    private static boolean shouldSkipEntry(String entryName) {
         // A service file name is a class name, so it can legitimately end in .SF,
         // .DSA or .RSA. Signature metadata only lives directly under META-INF/.
         if (entryName.startsWith("META-INF/services/")) {
@@ -183,8 +168,7 @@ public abstract class CinpoJarTask extends Jar {
                 || upperName.endsWith(".DSA")
                 || upperName.endsWith(".RSA")
                 || isModuleInfoEntry(entryName)
-                || entryName.startsWith("java/")
-                || isApiExportEntryForOtherVersion(entryName, targetApiVersion);
+                || entryName.startsWith("java/");
     }
 
     /**
@@ -201,15 +185,5 @@ public abstract class CinpoJarTask extends Jar {
         int lastSlash = entryName.lastIndexOf('/');
         String release = entryName.substring("META-INF/versions/".length(), lastSlash);
         return !release.isEmpty() && release.chars().allMatch(Character::isDigit);
-    }
-
-    private static boolean isApiExportEntryForOtherVersion(String entryName, String targetApiVersion) {
-        if (targetApiVersion == null || !entryName.startsWith(API_EXPORT_ENTRY_PREFIX)) {
-            return false;
-        }
-        String allowedPrefix = API_EXPORT_ENTRY_PREFIX + targetApiVersion;
-        // Directory entries arrive without the trailing slash. Excluding the target
-        // directory itself would prune every file below it.
-        return !entryName.equals(allowedPrefix) && !entryName.startsWith(allowedPrefix + "/");
     }
 }

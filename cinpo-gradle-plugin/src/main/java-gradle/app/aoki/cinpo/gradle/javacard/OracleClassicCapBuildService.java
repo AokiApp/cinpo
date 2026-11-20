@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
-import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
@@ -29,13 +28,10 @@ public final class OracleClassicCapBuildService {
      * @throws Exception whatever the builder throws
      */
     public static Path build(CapBuildRequest request) throws Exception {
-        Objects.requireNonNull(request, "request");
         verifyInputs(request);
 
         Path workDirectory = request.workDirectory();
         deleteRecursively(workDirectory);
-        Files.createDirectories(workDirectory);
-        Files.createDirectories(request.layout().resourceFile().getParent());
 
         Path toolsJar = request.toolLibraryDirectory().resolve("tools.jar");
         try (CinpoJavaCardToolLoader loader = CinpoJavaCardToolLoader.open(toolsJar)) {
@@ -44,8 +40,9 @@ public final class OracleClassicCapBuildService {
     }
 
     /**
-     * Ensures the project has the compiled classes and Oracle tool jar layout the
-     * builder expects.
+     * Ensures the project has the compiled classes and Oracle tool directory the
+     * builder expects. The builder creates its own directories and the loader
+     * checks {@code tools.jar}.
      */
     private static void verifyInputs(CapBuildRequest request) {
         if (!Files.isDirectory(request.compiledClassesRoot())) {
@@ -53,10 +50,6 @@ public final class OracleClassicCapBuildService {
         }
         if (!Files.isDirectory(request.toolLibraryDirectory())) {
             throw new JavaCardToolException("Java Card tool library directory does not exist: " + request.toolLibraryDirectory());
-        }
-        Path toolsJar = request.toolLibraryDirectory().resolve("tools.jar");
-        if (!Files.isRegularFile(toolsJar)) {
-            throw new JavaCardToolException("Java Card tools.jar not found: " + toolsJar);
         }
     }
 

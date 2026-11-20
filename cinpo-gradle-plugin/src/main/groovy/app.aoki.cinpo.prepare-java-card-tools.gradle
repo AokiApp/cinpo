@@ -1,6 +1,5 @@
 import org.gradle.api.GradleException
 
-import java.nio.file.Files
 import java.security.MessageDigest
 import java.util.Locale
 

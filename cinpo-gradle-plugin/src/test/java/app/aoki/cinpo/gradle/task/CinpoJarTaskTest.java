@@ -46,7 +46,6 @@ class CinpoJarTaskTest {
         task.from(classes.toFile());
         task.from(dependency.toFile());
         task.getCinpoVersion().set("9.9.9");
-        task.getTargetApiVersion().set("3.0.4");
         copy(task);
 
         try (JarFile jar = new JarFile(task.getArchiveFile().get().getAsFile())) {
@@ -63,24 +62,6 @@ class CinpoJarTaskTest {
             ZipEntry fixedTime = new ZipEntry("probe");
             fixedTime.setTime(LocalDateTime.of(1980, 2, 1, 0, 0).toInstant(ZoneOffset.UTC).toEpochMilli());
             assertEquals(fixedTime.getTimeLocal(), jar.getEntry("example/first.txt").getTimeLocal());
-        }
-    }
-
-    @Test
-    void dropsApiExportsForOtherVersions() throws Exception {
-        Path projectDirectory = tempDirectory.resolve("project");
-        Path dependency = projectDirectory.resolve("dependency");
-        write(dependency.resolve("api_export_files_3.0.4/javacard/framework/javacard/framework.exp"), "target");
-        write(dependency.resolve("api_export_files_3.0.5/javacard/framework/javacard/framework.exp"), "other");
-
-        CinpoJarTask task = newTask(projectDirectory);
-        task.from(dependency.toFile());
-        task.getTargetApiVersion().set("3.0.4");
-        copy(task);
-
-        try (JarFile jar = new JarFile(task.getArchiveFile().get().getAsFile())) {
-            assertTrue(jar.getEntry("api_export_files_3.0.4/javacard/framework/javacard/framework.exp") != null);
-            assertNull(jar.getEntry("api_export_files_3.0.5/javacard/framework/javacard/framework.exp"));
         }
     }
 

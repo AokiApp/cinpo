@@ -34,13 +34,6 @@ public final class CinpoGradleSupport {
     }
 
     /**
-     * Returns the Java Card API version declared by the applet manifest.
-     */
-    public static String targetApiVersion(Project project) {
-        return loadManifest(project, "target API resolution").targetApiVersion();
-    }
-
-    /**
      * Reports whether a runtime classpath entry can be flattened into the appliance.
      *
      * <p>The appliance copies directories as they are and expands archives. An entry
