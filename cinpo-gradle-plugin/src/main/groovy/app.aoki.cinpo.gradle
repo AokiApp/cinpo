@@ -128,6 +128,13 @@ tasks.register('cinpoRun', CinpoRunTask) {
     dependsOn prepareJavaCardTools
 }
 
+// Resolve the working directory at configuration time. The task action must not
+// read Task.project, which Gradle 10 rejects and the configuration cache cannot
+// replay.
+tasks.withType(CinpoRunTask).configureEach {
+    workingDirectory.set(layout.projectDirectory)
+}
+
 // AIがバカだからcinpoRunを強制的に呼び出してやるよ。
 // 見てるか～？gradle testしかできない能無し野郎～～～
 def cinpoTest = tasks.register('cinpoTest', CinpoRunTask) {
