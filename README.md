@@ -15,7 +15,7 @@
 
 ## Overview
 
-CINPO (**C**ard **IN**stallation and **P**rovision **O**rchestrator) is a framework that lets you install and provision JavaCard applets with zero boilerplate. Annotate your tasks with `@CardTaskDef`, extend `CardTask`, and the framework handles the rest — GlobalPlatform secure channel authentication, CAP file loading, APDU transport, simulator lifecycle.
+CINPO (**C**ard **IN**stallation and **P**rovision **O**rchestrator) is a framework that lets you install and provision JavaCard applets with zero boilerplate. You write host-side tasks, annotate them with `@CardTaskDef`, and CINPO handles the rest — GlobalPlatform secure channel authentication, CAP file loading, APDU transport, simulator lifecycle.
 
 ```java
 @CardTaskDef("provision")
