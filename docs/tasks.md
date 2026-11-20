@@ -18,7 +18,7 @@ A task is a small Java program that CINPO runs on the host side of the APDU link
 
 A task class must:
 
-1. be `public final` and top-level
+1. be `public final`
 2. have a `public` no-argument constructor
 3. extend `app.aoki.cinpo.task.CardTask`
 4. be annotated with `@CardTaskDef`
