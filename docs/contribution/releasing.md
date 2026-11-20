@@ -45,8 +45,7 @@ updates a release pull request containing:
 
 The configuration and the action input both set `skip-github-release: true`, so
 Release Please does not create a tag or a GitHub Release. The release workflow
-tags the verified commit instead. This keeps tagging behind the build and
-template checks.
+tags the verified commit instead. This keeps tagging behind the build.
 
 The workflow uses `GITHUB_TOKEN`. GitHub does not start CI for pull requests
 created with `GITHUB_TOKEN`, so run the CI workflow manually for the release
@@ -97,20 +96,19 @@ The `release` job performs these steps:
    already exists
 2. run `./gradlew clean check`
 3. build `build/staging-maven-repository` and `build/checksums.txt`
-4. build the `basic` template against that local repository
-5. create the annotated tag `v0.5.1`
-6. publish the six artifacts to GitHub Packages
-7. compare the published checksums with the staged files
-8. copy the staged files to `gh-pages` without removing older versions
-9. create the GitHub Release with `checksums.txt`
+4. create the annotated tag `v0.5.1`
+5. publish the six artifacts to GitHub Packages
+6. compare the published checksums with the staged files
+7. copy the staged files to `gh-pages` without removing older versions
+8. create the GitHub Release with `checksums.txt`
 
 The `deploy-pages` job deploys the `gh-pages` branch. `gh-pages` is the
 cumulative repository and was seeded with 0.5.0. Every version directory is
 kept, but `maven-metadata.xml` is copied from the latest release. CINPO pins
 exact versions, so version ranges are not supported.
 
-The templates accept `-PcinpoRepository=<uri>` so the release workflow can
-verify against the local staging repository instead of the public one.
+The templates accept `-PcinpoRepository=<uri>` to resolve CINPO artifacts from
+a local Maven repository instead of the public one.
 
 ### Failure and retry
 
