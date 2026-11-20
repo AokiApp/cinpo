@@ -1,6 +1,7 @@
 package app.aoki.cinpo.gradle.task;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -12,12 +13,11 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.LocalState;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
-
-import com.sun.javacard.cinpo.OracleClassicCapResult;
 
 import app.aoki.cinpo.config.AppletManifest;
 import app.aoki.cinpo.config.ManifestLoader;
@@ -103,6 +103,19 @@ public abstract class GenerateCapTask extends DefaultTask {
     public abstract DirectoryProperty getToolLibraryDirectory();
 
     /**
+     * Root of the Java Card API export trees extracted from {@code tools.jar}.
+     *
+     * <p>
+     * Standard value expected from the CINPO plugin wiring:
+     * {@code build/cinpo-cache/jcdk/api-exports}. A manifest targeting API
+     * {@code 3.0.4} makes the converter read
+     * {@code build/cinpo-cache/jcdk/api-exports/api_export_files_3.0.4/}.</p>
+     */
+    @InputDirectory
+    @PathSensitive(PathSensitivity.RELATIVE)
+    public abstract DirectoryProperty getApiExportDirectory();
+
+    /**
      * Generated resources root that becomes part of the main runtime classpath.
      *
      * <p>
@@ -113,6 +126,21 @@ public abstract class GenerateCapTask extends DefaultTask {
      */
     @OutputDirectory
     public abstract DirectoryProperty getGeneratedResourcesDirectory();
+
+    /**
+     * Task-owned scratch directory for Oracle converter intermediates.
+     *
+     * <p>The converter writes JCA, EXP and CAP files below the package tree. Those
+     * files are neither inputs nor outputs of the build, so they must not live next
+     * to the generated resources root: {@link LocalState} tells Gradle the task owns
+     * them, and the task action clears them before every run so leftovers from an
+     * older manifest cannot be read as current output.</p>
+     *
+     * <p>Standard value expected from the CINPO plugin wiring:
+     * {@code build/tmp/generateCap}.</p>
+     */
+    @LocalState
+    public abstract DirectoryProperty getWorkDirectory();
 
     /**
      * Executes the CAP build as a Gradle task action.
@@ -132,6 +160,8 @@ public abstract class GenerateCapTask extends DefaultTask {
                 .toList();
         Path classRoot = getAppletClassesDirectory().get().getAsFile().toPath();
         Path toolLibrary = getToolLibraryDirectory().get().getAsFile().toPath();
+        Path apiExportRoot = getApiExportDirectory().get().getAsFile().toPath();
+        Path workDirectory = getWorkDirectory().get().getAsFile().toPath();
         Path generatedResources = getGeneratedResourcesDirectory().get().getAsFile().toPath();
 
         try {
@@ -139,13 +169,28 @@ public abstract class GenerateCapTask extends DefaultTask {
             // is a project file, not an Oracle Java Card tool concept.
             AppletManifest manifest = ManifestLoader.load(manifestPath);
 
+            String targetApiVersion = manifest.targetApiVersion();
+            Path targetApiJar = toolLibrary.resolve("api_classic-" + targetApiVersion + ".jar");
+            if (!Files.isRegularFile(targetApiJar)) {
+                throw new GradleException("Java Card API jar for targetApiVersion "
+                        + targetApiVersion + " was not found: " + targetApiJar);
+            }
+            Path targetApiExports = apiExportRoot.resolve("api_export_files_" + targetApiVersion);
+            if (!Files.isDirectory(targetApiExports)) {
+                throw new GradleException("Java Card API export files for targetApiVersion "
+                        + targetApiVersion + " were not found: " + targetApiExports);
+            }
+
             // This layout is the contract with InstallPhase: the generated resource
             // must be loadable later as cap/<manifest.packageName>.cap.
             CapResourceLayout layout = CapResourceLayout.forManifest(manifest, generatedResources);
-            CapBuildRequest request = new CapBuildRequest(manifest, companionExportDirectories, classRoot, toolLibrary, generatedResources, layout);
-            OracleClassicCapResult result = OracleClassicCapBuildService.build(request);
+            CapBuildRequest request = new CapBuildRequest(
+                    manifest, companionExportDirectories, classRoot, toolLibrary, apiExportRoot,
+                    workDirectory, layout);
+            Path generatedCap = OracleClassicCapBuildService.build(request);
 
-            getLogger().lifecycle("Generated Java Card CAP resource {} from {}", layout.resourcePath(), result.capFile());
+            getLogger().lifecycle("Generated Java Card CAP resource {} from {}",
+                    layout.resourcePath(), generatedCap);
         } catch (IOException e) {
             throw new GradleException("Failed to read Java Card manifest for CAP generation: " + manifestPath, e);
         } catch (RuntimeException e) {

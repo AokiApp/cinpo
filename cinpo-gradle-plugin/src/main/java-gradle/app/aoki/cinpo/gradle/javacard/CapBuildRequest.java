@@ -7,18 +7,33 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Gradle-facing request for Java Card CAP generation.
+ * Everything one CAP build needs, expressed only in plugin-side types.
  *
- * <p>This DTO deliberately stays free of Oracle converter classes. It captures
- * only project concepts: manifest, compiled classes, template-local tool jars,
- * generated resources, and the target resource layout.</p>
+ * <p>The record deliberately avoids Oracle converter classes. The Java Card tool
+ * classloader loads the builder, but it delegates {@code app.aoki.*} back to the
+ * plugin classloader, so this type has the same identity on both sides of the
+ * boundary.</p>
+ *
+ * @param manifest                  applet manifest
+ * @param companionExportDirectories export directories contributed by companion
+ *                                  bundles
+ * @param compiledClassesRoot       root of the separately compiled applet classes
+ * @param toolLibraryDirectory      directory holding {@code tools.jar} and the
+ *                                  selected API jar
+ * @param apiExportRoot             root of the extracted {@code api_export_files_*}
+ *                                  trees
+ * @param workDirectory             task-owned scratch directory for converter
+ *                                  output
+ * @param layout                    classpath-facing resource location of the
+ *                                  generated CAP
  */
 public record CapBuildRequest(
         AppletManifest manifest,
         List<Path> companionExportDirectories,
         Path compiledClassesRoot,
         Path toolLibraryDirectory,
-        Path generatedResourcesRoot,
+        Path apiExportRoot,
+        Path workDirectory,
         CapResourceLayout layout
 ) {
     public CapBuildRequest {
@@ -26,7 +41,8 @@ public record CapBuildRequest(
         Objects.requireNonNull(companionExportDirectories, "companionExportDirectories");
         Objects.requireNonNull(compiledClassesRoot, "compiledClassesRoot");
         Objects.requireNonNull(toolLibraryDirectory, "toolLibraryDirectory");
-        Objects.requireNonNull(generatedResourcesRoot, "generatedResourcesRoot");
+        Objects.requireNonNull(apiExportRoot, "apiExportRoot");
+        Objects.requireNonNull(workDirectory, "workDirectory");
         Objects.requireNonNull(layout, "layout");
         companionExportDirectories = List.copyOf(companionExportDirectories);
     }
