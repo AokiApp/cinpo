@@ -81,6 +81,8 @@ dependencies {
 }
 
 tasks.named(appletSourceSet.compileJavaTaskName, JavaCompile) {
+    group = 'cinpo'
+    description = 'Compiles Java Card applet sources with converter-compatible bytecode.'
     options.release = 8
     options.encoding = 'UTF-8'
     dependsOn prepareJavaCardTools
@@ -120,7 +122,7 @@ tasks.named('processResources') {
 
 tasks.register('cinpoRun', CinpoRunTask) {
     classpath.from(mainSourceSet.runtimeClasspath)
-    classpath.from(appletSourceSet.output)
+    classpath.from(appletSourceSet.output.classesDirs)
     dependsOn tasks.named('classes')
     dependsOn appletSourceSet.classesTaskName
     dependsOn prepareJavaCardTools
@@ -131,7 +133,7 @@ tasks.register('cinpoRun', CinpoRunTask) {
 def cinpoTest = tasks.register('cinpoTest', CinpoRunTask) {
     description = 'Runs the CINPO test flow against this project.'
     classpath.from(mainSourceSet.runtimeClasspath)
-    classpath.from(appletSourceSet.output)
+    classpath.from(appletSourceSet.output.classesDirs)
     args = ['write', '--test']
     dependsOn tasks.named('classes')
     dependsOn appletSourceSet.classesTaskName
@@ -167,11 +169,14 @@ tasks.register('cinpoJar', CinpoJarTask) {
     }) {
         exclude 'META-INF/services/**'
     }
-    from(appletSourceSet.output)
+    from(appletSourceSet.output.classesDirs)
     cinpoVersion.set(providers.provider { CinpoGradleSupport.declaredCinpoCoreVersion(project) })
     targetApiVersion.set(providers.provider { CinpoGradleSupport.targetApiVersion(project) })
     dependsOn tasks.named('classes')
     dependsOn appletSourceSet.classesTaskName
+    doLast {
+        logger.lifecycle("Built CINPO appliance JAR: ${getArchiveFile().get().getAsFile()}")
+    }
 }
 
 // jcresim build inputs are wired only when the consumer declares the
