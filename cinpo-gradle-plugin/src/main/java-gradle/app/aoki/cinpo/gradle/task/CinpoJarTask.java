@@ -151,7 +151,7 @@ public abstract class CinpoJarTask extends Jar {
      */
     private static boolean shouldSkipEntry(String entryName) {
         // A service file name is a class name, so it can legitimately end in .SF,
-        // .DSA or .RSA. Signature metadata only lives directly under META-INF/.
+        // .DSA, .RSA or .EC. Signature metadata only lives directly under META-INF/.
         if (entryName.startsWith("META-INF/services/")) {
             return false;
         }
@@ -167,6 +167,7 @@ public abstract class CinpoJarTask extends Jar {
                 || upperName.endsWith(".SF")
                 || upperName.endsWith(".DSA")
                 || upperName.endsWith(".RSA")
+                || upperName.endsWith(".EC")
                 || isModuleInfoEntry(entryName)
                 || entryName.startsWith("java/");
     }

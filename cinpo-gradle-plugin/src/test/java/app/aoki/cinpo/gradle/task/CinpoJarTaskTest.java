@@ -85,6 +85,31 @@ class CinpoJarTaskTest {
     }
 
     @Test
+    void dropsEverySignatureMetadataTypeIncludingEc() throws Exception {
+        Path projectDirectory = tempDirectory.resolve("project");
+        Path dependency = projectDirectory.resolve("dependency");
+        write(dependency.resolve("META-INF/EXAMPLE.SF"), "signature");
+        write(dependency.resolve("META-INF/EXAMPLE.DSA"), "signature");
+        write(dependency.resolve("META-INF/EXAMPLE.RSA"), "signature");
+        write(dependency.resolve("META-INF/EXAMPLE.EC"), "signature");
+        write(dependency.resolve("META-INF/EXAMPLE.ec"), "signature");
+        write(dependency.resolve("META-INF/services/com.example.EC"), "com.example.Impl");
+
+        CinpoJarTask task = newTask(projectDirectory);
+        task.from(dependency.toFile());
+        copy(task);
+
+        try (JarFile jar = new JarFile(task.getArchiveFile().get().getAsFile())) {
+            assertNull(jar.getEntry("META-INF/EXAMPLE.SF"));
+            assertNull(jar.getEntry("META-INF/EXAMPLE.DSA"));
+            assertNull(jar.getEntry("META-INF/EXAMPLE.RSA"));
+            assertNull(jar.getEntry("META-INF/EXAMPLE.EC"));
+            assertNull(jar.getEntry("META-INF/EXAMPLE.ec"));
+            assertTrue(jar.getEntry("META-INF/services/com.example.EC") != null);
+        }
+    }
+
+    @Test
     void failsWhenJcresimIsOnTheClasspathWithoutASimulator() throws IOException {
         Path projectDirectory = tempDirectory.resolve("project");
         Path runtimeJar = projectDirectory.resolve("cinpo-runtime-jcresim-0.5.1.jar");
