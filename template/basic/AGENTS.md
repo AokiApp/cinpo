@@ -4,7 +4,7 @@ Rules for agents (and humans) working in this project. Follow them literally.
 
 ## What this project is
 
-**CINPO** (**C**ard **IN**stallation and **P**rovision **O**rchestrator), "Spring Boot for Java Card", is a framework for installing and provisioning Java Card applets. You write host-side tasks as ordinary Java classes, annotate them (`@CardTaskDef`), inject what you need (`@Inject`), and CINPO handles manifest validation, CAP compilation/conversion, installation on the JCDK simulator or a real card, APDU transport, and GlobalPlatform secure-channel authentication. No `main()`, build scripts, or ad-hoc Gradle tasks — `./gradlew cinpoRun` does it all. Repository: [github.com/AokiApp/cinpo](https://github.com/AokiApp/cinpo). Documentation: [docs/](https://github.com/AokiApp/cinpo/tree/main/docs).
+**CINPO** (**C**ard **IN**stallation and **P**rovision **O**rchestrator), "Spring Boot for Java Card", is a framework for installing and provisioning Java Card applets. You write host-side tasks as ordinary Java classes, annotate them (`@CardTaskDef`), extend `CardTask` to use the framework-provided dependencies, and CINPO handles manifest validation, CAP compilation/conversion, installation on the JCDK simulator or a real card, APDU transport, and GlobalPlatform secure-channel authentication. No `main()`, build scripts, or ad-hoc Gradle tasks — `./gradlew cinpoRun` does it all. Repository: [github.com/AokiApp/cinpo](https://github.com/AokiApp/cinpo). Documentation: [docs/](https://github.com/AokiApp/cinpo/tree/main/docs).
 
 This project, generated from the `basic` starter template, is a Java Card applet (`applet/HelloApplet.java`) plus host-side tasks (`host/`); `provision` runs by default, `test` with `--test`. It shows one flow: issue an X.509 leaf certificate on the host, write it into the applet's storage, read it back and verify it. Treat that flow as the contract and keep both ends consistent.
 
@@ -36,7 +36,7 @@ The only boundary between them is the APDU protocol: do not import applet classe
 - `./gradlew cinpoJar` — build the self-contained production JAR.
 - On Windows use `.\gradlew.bat`. Without the Oracle archives in `vendor/`, `cinpoRun` and `cinpoJar` fail immediately — a setup failure, not a code failure (see [vendor setup](https://github.com/AokiApp/cinpo/blob/main/docs/vendor.md)).
 
-At compile time an annotation processor indexes `@CardTaskDef` classes into `META-INF/cinpo/<kind>`. At runtime, for each selected kind: discover → instantiate (no-arg constructor) → inject `@Inject` fields → call `run()`. An unchecked exception aborts the pipeline and exits non-zero. See [Writing tasks](https://github.com/AokiApp/cinpo/blob/main/docs/tasks.md#how-it-works).
+At compile time an annotation processor validates and indexes `@CardTaskDef` classes into `META-INF/cinpo/<kind>`. At runtime, for each selected kind: discover → instantiate (no-arg constructor) → populate inherited dependency fields → call `run()`. An unchecked exception aborts the pipeline and exits non-zero. See [Writing tasks](https://github.com/AokiApp/cinpo/blob/main/docs/tasks.md#how-it-works).
 
 ## The applet at a glance (`applet/HelloApplet.java`)
 
@@ -130,7 +130,7 @@ public final class HelloApplet extends Applet {
 ### Add a task kind
 
 1. `host/<kind>/YourTask.java` with `package <kind>;`.
-2. `@CardTaskDef("<kind>") public final class YourTask implements CardTask`, with a public no-argument constructor.
+2. `@CardTaskDef("<kind>") public final class YourTask extends CardTask`, with a public no-argument constructor.
 3. Run it: `./gradlew cinpoRun --args='--task=<kind>'`.
 
 Task API details are in [Writing tasks](https://github.com/AokiApp/cinpo/blob/main/docs/tasks.md).
@@ -144,8 +144,8 @@ The issuer's subject/validity and the test's assertions are coupled; change both
 
 ## Hard rules
 
-1. **AIDs come from the manifest, never from literals.** Inject `AppletManifest` and use the AID from `manifest.applets()`.
-2. **Task classes** must be `public final`, have a `public` no-argument constructor, implement `app.aoki.cinpo.task.CardTask`, and carry `@CardTaskDef("<kind>")`. The package conventionally matches the directory under `host/`, but discovery is by annotation.
+1. **AIDs come from the manifest, never from literals.** Use the inherited `manifest` field and read the AID from `manifest.applets()`.
+2. **Task classes** must be `public final` top-level classes, have a `public` no-argument constructor, extend `app.aoki.cinpo.task.CardTask`, and carry `@CardTaskDef("<kind>")`. The package conventionally matches the directory under `host/`, but discovery is by annotation.
 3. **Check status words.** After every APDU, require the expected SW; otherwise throw `IllegalStateException` with the SW (or, in a read-only probe, report it explicitly).
 4. **`manifest.yaml` is the source of truth.** After editing it, `basePackage`, the applet `package`, `package.name`, `applets[0].className`, and the AIDs must agree.
 5. **If verification cannot run here** (no `vendor/`, no bundle, no card, no network), say so — do not report success. A check that could not run is not a passing check.

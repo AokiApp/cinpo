@@ -16,20 +16,16 @@ A task is a small Java program that CINPO runs on the host side of the APDU link
 
 ### Declaring a task
 
-A task class must be:
+A task class must:
 
-1. `public final`
-2. provide a `public` no-argument constructor
-3. implement `app.aoki.cinpo.task.CardTask`
-4. annotated with `@CardTaskDef`
+1. be `public final` and top-level
+2. have a `public` no-argument constructor
+3. extend `app.aoki.cinpo.task.CardTask`
+4. be annotated with `@CardTaskDef`
 
 ```java
 @CardTaskDef("provision")
-public final class SetupPin implements CardTask {
-    @Inject private ApduChannel channel;
-
-    public SetupPin() {
-    }
+public final class SetupPin extends CardTask {
 
     @Override
     public void run() {
@@ -42,7 +38,7 @@ The package name conventionally matches the directory under `host/` (e.g. a task
 
 ### Discovery and indexing
 
-At compile time, an annotation processor indexes every `@CardTaskDef` class into `META-INF/cinpo/<kind>` — one index file per kind. At runtime, the loader reads those files from the classpath, instantiates each class, injects its dependencies, and runs it. Kind names are arbitrary strings; `provision` and `test` are only conventions.
+At compile time, an annotation processor validates every `@CardTaskDef` class and indexes it into `META-INF/cinpo/<kind>` — one index file per kind. At runtime, the loader reads those files from the classpath, instantiates each class, populates its inherited dependency fields, and runs it. Kind names are arbitrary strings; `provision` and `test` are only conventions.
 
 ### Selection and execution order
 
@@ -60,17 +56,17 @@ At compile time, an annotation processor indexes every `@CardTaskDef` class into
 ./gradlew cinpoRun --args='--skip-install --task=provision' # re-run tasks without reinstalling
 ```
 
-### Injectable dependencies
+### Task dependencies
 
-Fields annotated with `@Inject` are populated before `run()` is called:
+`CardTask` exposes the runtime dependencies as inherited `protected` fields. The loader populates them before `run()` is called:
 
-| Type | What it is | Typical use |
-|------|-----------|-------------|
-| `ApduChannel` | Live channel to the card/simulator | Talking to the applet |
-| `AppletManifest` | Parsed `manifest.yaml` | Looping over applets, reading AIDs |
-| `Profile` | Active runtime profile | Conditional logic per environment |
-| `SecureChannelProfile` | SCP key material from the profile | Opening your own secure sessions |
-| `TaskArguments` | Raw arguments after `--` | Template-specific selectors |
+| Field | Type | What it is | Typical use |
+|-------|------|-----------|-------------|
+| `channel` | `ApduChannel` | Live channel to the card/simulator | Talking to the applet |
+| `manifest` | `AppletManifest` | Parsed `manifest.yaml` | Looping over applets, reading AIDs |
+| `profile` | `Profile` | Active runtime profile | Conditional logic per environment |
+| `secureChannelProfile` | `SecureChannelProfile` | SCP key material from the profile | Opening your own secure sessions |
+| `taskArguments` | `TaskArguments` | Raw arguments after `--` | Template-specific selectors |
 
 ### Passing arguments
 
@@ -81,8 +77,6 @@ Everything after `--` is forwarded verbatim to tasks and exposed as `TaskArgumen
 ```
 
 ```java
-@Inject private TaskArguments taskArguments;
-
 @Override
 public void run() {
     String recordId = taskArguments.firstValue("record").orElse("sample01");   // Optional<String>
@@ -117,7 +111,7 @@ Non-Java files under `host/` are packaged as classpath resources (useful for fix
 
 ### `app.aoki.cinpo.apdu.ApduChannel`
 
-Interface. The live connection to the card/simulator. Never instantiate; always inject.
+Interface. The live connection to the card/simulator. Never instantiate; use the inherited `channel` field.
 
 | Method | Description |
 |--------|-------------|
@@ -218,7 +212,7 @@ Record; carries the profile-declared SCP configuration. `toSecureChannelProfile(
 
 ### `app.aoki.cinpo.gp.scp.SecureChannelProfile`
 
-Record; the runtime SCP key material (look this up in [Profiles](profiles.md), or open it via `scp.protocol` on the active `Profile`).
+Record; the runtime SCP key material. The loader derives it from the active `Profile` and assigns it to `CardTask.secureChannelProfile`.
 
 - Variant: `SecureChannelProfile.Scp.SCP02` / `SecureChannelProfile.Scp.SCP03`
 - Static factories: `scp03(securityDomainAid, keyVersionNumber, keyIdentifier, securityLevel, encKey, macKey, dekKey)`, `scp02(securityDomainAid, keyVersionNumber, keyIdentifier, securityLevel, encKey, macKey, dekKey, hostChallenge, scp02SequenceCounter)`
@@ -254,25 +248,21 @@ Record; the arguments after `--`, verbatim.
 
 `--name value` and `--name=value` are both accepted. Missing value throws `IllegalArgumentException`.
 
-### `app.aoki.cinpo.task.CardTask`, `app.aoki.cinpo.task.CardTaskDef`, `app.aoki.cinpo.task.Inject`
+### `app.aoki.cinpo.task.CardTask`, `app.aoki.cinpo.task.CardTaskDef`
 
-- `CardTask` — marker interface; `void run()`.
+- `CardTask` — abstract base class; provides the `channel`, `manifest`, `profile`, `secureChannelProfile`, and `taskArguments` fields; declares `void run()`.
 - `@CardTaskDef(String value, int order = 0)` — declares a kind and an ordering weight.
-- `@Inject` — field injection marker. No constructor arguments; no configuration needed.
 
 ## Worked examples
 
 All examples assume:
 
 ```java
-import app.aoki.cinpo.apdu.ApduChannel;
 import app.aoki.cinpo.apdu.CommandApdu;
 import app.aoki.cinpo.apdu.Iso7816Commands;
 import app.aoki.cinpo.apdu.ResponseApdu;
-import app.aoki.cinpo.config.AppletManifest;
 import app.aoki.cinpo.task.CardTask;
 import app.aoki.cinpo.task.CardTaskDef;
-import app.aoki.cinpo.task.Inject;
 import java.nio.charset.StandardCharsets;
 ```
 
@@ -282,12 +272,7 @@ import java.nio.charset.StandardCharsets;
 package provision;
 
 @CardTaskDef("provision")
-public final class SetupPin implements CardTask {
-    @Inject private ApduChannel channel;
-    @Inject private AppletManifest manifest;
-
-    public SetupPin() {
-    }
+public final class SetupPin extends CardTask {
 
     @Override
     public void run() {
@@ -310,12 +295,7 @@ public final class SetupPin implements CardTask {
 package test;
 
 @CardTaskDef("test")
-public final class VerifyPinWorks implements CardTask {
-    @Inject private ApduChannel channel;
-    @Inject private AppletManifest manifest;
-
-    public VerifyPinWorks() {
-    }
+public final class VerifyPinWorks extends CardTask {
 
     @Override
     public void run() {
@@ -337,12 +317,7 @@ public final class VerifyPinWorks implements CardTask {
 package provision;
 
 @CardTaskDef("provision")
-public final class ProvisionAll implements CardTask {
-    @Inject private ApduChannel channel;
-    @Inject private AppletManifest manifest;
-
-    public ProvisionAll() {
-    }
+public final class ProvisionAll extends CardTask {
 
     @Override
     public void run() {
@@ -362,20 +337,14 @@ public final class ProvisionAll implements CardTask {
 ```java
 package provision;
 
-import app.aoki.cinpo.gp.scp.SecureChannelProfile;
 import app.aoki.cinpo.gp.scp.SecureChannelSession;
 
 @CardTaskDef(value = "provision", order = 200)
-public final class WriteKeys implements CardTask {
-    @Inject private ApduChannel channel;
-    @Inject private SecureChannelProfile scpProfile;
-
-    public WriteKeys() {
-    }
+public final class WriteKeys extends CardTask {
 
     @Override
     public void run() {
-        SecureChannelSession session = SecureChannelSession.create(channel, scpProfile);
+        SecureChannelSession session = SecureChannelSession.create(channel, secureChannelProfile);
         session.authenticate();
         try {
             session.transmit(new CommandApdu(0x80, 0xD4, 0x00, 0x00, new byte[] { /* key material */ }));
@@ -394,11 +363,7 @@ The `order = 200` ensures this task runs after the default-order provision tasks
 package probe;
 
 @CardTaskDef("probe")
-public final class CardProbe implements CardTask {
-    @Inject private ApduChannel channel;
-
-    public CardProbe() {
-    }
+public final class CardProbe extends CardTask {
 
     @Override
     public void run() {

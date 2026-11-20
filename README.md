@@ -15,13 +15,11 @@
 
 ## Overview
 
-CINPO (**C**ard **IN**stallation and **P**rovision **O**rchestrator) is a framework that lets you install and provision JavaCard applets with zero boilerplate. Annotate your tasks with `@CardTaskDef`, inject dependencies with `@Inject`, and the framework handles the rest — GlobalPlatform secure channel authentication, CAP file loading, APDU transport, simulator lifecycle.
+CINPO (**C**ard **IN**stallation and **P**rovision **O**rchestrator) is a framework that lets you install and provision JavaCard applets with zero boilerplate. Annotate your tasks with `@CardTaskDef`, extend `CardTask` to use the framework-provided dependencies, and the framework handles the rest — GlobalPlatform secure channel authentication, CAP file loading, APDU transport, simulator lifecycle.
 
 ```java
 @CardTaskDef("provision")
-public final class MyProvision implements CardTask {
-    @Inject private ApduChannel channel;
-    @Inject private AppletManifest manifest;
+public final class MyProvision extends CardTask {
 
     @Override
     public void run() {
@@ -32,7 +30,7 @@ public final class MyProvision implements CardTask {
 }
 ```
 
-No manual wiring. No scripts. Just annotate, inject, run.
+No manual wiring. No scripts. Just annotate, extend `CardTask`, and run.
 
 ## Philosophy
 
@@ -130,8 +128,7 @@ Create a class in `host/provision/`:
 
 ```java
 @CardTaskDef("provision")
-public final class SetupPins implements CardTask {
-    @Inject private ApduChannel channel;
+public final class SetupPins extends CardTask {
 
     @Override
     public void run() {
@@ -218,19 +215,18 @@ Some of the jobs tasks can do:
 
 ```java
 @CardTaskDef("provision")
-public final class LoadSelectedRecord implements CardTask {
-    @Inject private TaskArguments args;
+public final class LoadSelectedRecord extends CardTask {
 
     @Override
     public void run() {
-        String recordId = args.firstValue("record").orElse("sample01");
-        String dbPath = args.firstValue("db").orElse("host/data/cards.db");
+        String recordId = taskArguments.firstValue("record").orElse("sample01");
+        String dbPath = taskArguments.firstValue("db").orElse("host/data/cards.db");
         // the template decides what these mean
     }
 }
 ```
 
-For the full guide — discovery internals, injection semantics, resources, complete examples — see [docs/tasks.md](docs/tasks.md).
+For the full guide — discovery internals, dependency fields, resources, complete examples — see [docs/tasks.md](docs/tasks.md).
 
 ## License
 

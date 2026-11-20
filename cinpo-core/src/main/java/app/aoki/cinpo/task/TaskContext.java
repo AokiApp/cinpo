@@ -6,9 +6,10 @@ import app.aoki.cinpo.config.Profile;
 import app.aoki.cinpo.gp.scp.SecureChannelProfile;
 
 /**
- * Encapsulates dependencies that can be injected into {@link CardTask} instances.
+ * Bundles the runtime dependencies that {@link CardTaskLoader} assigns to a
+ * {@link CardTask} before {@link CardTask#run()} is called.
  *
- * <p>A {@code TaskContext} bundles the core runtime dependencies that card tasks
+ * <p>A {@code TaskContext} carries the core runtime dependencies that card tasks
  * typically need:
  * <ul>
  *   <li>{@link ApduChannel} - for sending APDUs to the card</li>
@@ -17,25 +18,20 @@ import app.aoki.cinpo.gp.scp.SecureChannelProfile;
  *   <li>{@link TaskArguments} - raw template-specific arguments passed after {@code --}</li>
  * </ul>
  *
- * <p>Tasks declare dependencies via {@link Inject} annotations on fields:
+ * <p>Tasks extend {@link CardTask} and use the inherited fields:
  * <pre>{@code
  * @CardTaskDef("provision")
- * public class MyProvisionTask implements CardTask {
- *     @Inject
- *     private ApduChannel channel;
- *
- *     @Inject
- *     private AppletManifest manifest;
- *
+ * public final class MyProvisionTask extends CardTask {
  *     @Override
  *     public void run() {
- *         // Use injected dependencies
+ *         channel.transmit(...);
+ *         byte[] aid = manifest.applets().get(0).instanceAid();
  *     }
  * }
  * }</pre>
  *
- * <h2>Supported Injectable Types</h2>
- * The following types can be injected via {@code @Inject} (see {@link CardTaskLoader}):
+ * <h2>Dependencies exposed on CardTask</h2>
+ * The loader assigns the following fields (see {@link CardTaskLoader}):
  * <ul>
  *   <li>{@link ApduChannel}</li>
  *   <li>{@link AppletManifest}</li>
@@ -49,7 +45,6 @@ import app.aoki.cinpo.gp.scp.SecureChannelProfile;
  * @param profile       the runtime profile containing secure channel configuration
  * @param taskArguments raw template-specific arguments passed after {@code --}
  * @see CardTaskLoader
- * @see Inject
  * @see CardTask
  */
 public record TaskContext(
@@ -61,8 +56,7 @@ public record TaskContext(
     /**
      * Converts the profile's secure channel configuration to a {@link SecureChannelProfile}.
      *
-     * <p>This is a convenience method for tasks that need to establish their own
-     * secure channel sessions.
+     * <p>The loader uses this value to populate {@link CardTask#secureChannelProfile}.
      *
      * @return a {@link SecureChannelProfile} derived from the profile
      */
