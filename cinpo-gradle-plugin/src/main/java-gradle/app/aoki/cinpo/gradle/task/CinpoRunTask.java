@@ -7,11 +7,13 @@ import javax.inject.Inject;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.TaskAction;
@@ -66,13 +68,25 @@ public abstract class CinpoRunTask extends DefaultTask {
         getArgs().set(normalizeArgs(tokenizeArgs(argsString)));
     }
 
+    /**
+     * Returns the working directory of the spawned CLI process.
+     *
+     * <p>The plugin sets this at configuration time. The task action reads only this
+     * property, so it never touches {@code Task.project} at execution time, which
+     * Gradle 10 rejects and the configuration cache cannot replay.</p>
+     *
+     * @return working directory, normally the project directory
+     */
+    @Internal
+    public abstract DirectoryProperty getWorkingDirectory();
+
     @TaskAction
     public void runTask() {
         getExecOperations().javaexec(spec -> {
             spec.setClasspath(classpath);
             spec.getMainClass().set(getMainClass());
             spec.setArgs(getArgs().get());
-            spec.setWorkingDir(getProject().getProjectDir());
+            spec.setWorkingDir(getWorkingDirectory().get().getAsFile());
         });
     }
 
