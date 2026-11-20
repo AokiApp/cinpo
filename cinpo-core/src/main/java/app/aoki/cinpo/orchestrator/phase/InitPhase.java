@@ -20,7 +20,7 @@ import java.util.logging.Logger;
  *
  * <h2>Runtime Support</h2>
  * The runtime identifier is resolved through {@link ApduChannelFactory}, which discovers the
- * adapters on the classpath. The bundled modules provide {@code jcresim}, {@code jcardengine},
+ * adapters on the classpath. The bundled modules provide {@code jcdksim}, {@code jcardengine},
  * and {@code pcsc}; a project can add its own adapter through the SPI.
  *
  * <h2>Lifecycle</h2>

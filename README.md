@@ -75,13 +75,13 @@ my-project/
 │   ├── provision/         # Default task kind for plain `write`
 │   └── test/              # Conventional verification tasks for `--test`
 ├── profile/
-│   └── jcdksim.yaml       # jcdksim simulator profile (development-only keys)
+│   └── jcdksim.yaml       # Oracle JCDK simulator profile (development-only keys)
 └── vendor/                # Oracle JCDK archives (you provide these)
 ```
 
 ### 2. Prepare the vendor directory
 
-CINPO does not redistribute the Oracle JCDK; you must download it and place the Tools and Simulator archives in `my-project/vendor/` (see [docs/vendor.md](docs/vendor.md)). The Tools archive is required for every project. The Simulator archive is needed only while `cinpo-runtime-jcresim` is declared in `build.gradle`; the starter templates declare it, so a fresh project still needs the Simulator archive — remove the dependency if you don't use `jcresim`. Without the required archives, `cinpoRun` and `cinpoJar` fail.
+CINPO does not redistribute the Oracle JCDK; you must download it and place the Tools and Simulator archives in `my-project/vendor/` (see [docs/vendor.md](docs/vendor.md)). The Tools archive is required for every project. The Simulator archive is needed only while `cinpo-runtime-jcdksim` is declared in `build.gradle`; the starter templates declare it, so a fresh project still needs the Simulator archive — remove the dependency if you don't use the `jcdksim` runtime. Without the required archives, `cinpoRun` and `cinpoJar` fail.
 
 After placement, `my-project/vendor/` should look like this:
 
@@ -194,7 +194,7 @@ java -jar build/libs/cinpo-appliance.jar write --profile mycard --test
 java -jar build/libs/cinpo-appliance.jar write --profile mycard -- --record customer-42
 ```
 
-When you declare `jcresim`, the appliance also embeds the simulator binaries from `vendor/`. If you removed it, they aren't included — pass `--profile` with a profile that names your own runtime.
+When you declare the `jcdksim` runtime, the appliance also embeds the simulator binaries from `vendor/`. If you removed it, they aren't included — pass `--profile` with a profile that names your own runtime.
 
 ## Templates
 

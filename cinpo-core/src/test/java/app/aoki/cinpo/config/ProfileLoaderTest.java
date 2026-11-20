@@ -21,7 +21,7 @@ class ProfileLoaderTest {
     @Test
     void loadNamedProfile_ResolvesFromProjectLocalProfileDirectory() throws IOException {
         writeProfile(projectDir.resolve("profile/card1.yaml"), "card1", "pcsc");
-        writeProfile(projectDir.resolve("project/profile/card1.yaml"), "legacy-card1", "jcresim");
+        writeProfile(projectDir.resolve("project/profile/card1.yaml"), "legacy-card1", "jcdksim");
 
         Profile profile = ProfileLoader.load("card1", projectDir);
 
@@ -31,7 +31,7 @@ class ProfileLoaderTest {
 
     @Test
     void loadNamedProfile_DoesNotSupportLegacyProjectProfileDirectory() throws IOException {
-        writeProfile(projectDir.resolve("project/profile/card1.yaml"), "legacy-card1", "jcresim");
+        writeProfile(projectDir.resolve("project/profile/card1.yaml"), "legacy-card1", "jcdksim");
 
         IOException exception = assertThrows(IOException.class, () -> ProfileLoader.load("card1", projectDir));
 
@@ -66,7 +66,7 @@ class ProfileLoaderTest {
         Profile profile = ProfileLoader.load("jcdksim", projectDir);
 
         assertEquals("jcdksim", profile.name());
-        assertEquals("jcresim", profile.runtime());
+        assertEquals("jcdksim", profile.runtime());
     }
 
     @Test

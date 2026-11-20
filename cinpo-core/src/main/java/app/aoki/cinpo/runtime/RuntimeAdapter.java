@@ -9,7 +9,7 @@ import app.aoki.cinpo.orchestrator.Phase;
  *
  * <p>A runtime adapter owns one transport and one install strategy. An implementation
  * declares its {@link #name()} (the value users put in the profile's {@code runtime:} key,
- * e.g. {@code jcresim}), creates the {@link ApduChannel} for that runtime, and
+ * e.g. {@code jcdksim}), creates the {@link ApduChannel} for that runtime, and
  * supplies the {@link Phase} used for installing applets.
  *
  * <p>Implementations are discovered via {@code META-INF/services/app.aoki.cinpo.runtime.RuntimeAdapter}.
@@ -20,7 +20,7 @@ import app.aoki.cinpo.orchestrator.Phase;
 public interface RuntimeAdapter {
 
     /**
-     * Returns the runtime identifier used by the profile, such as {@code jcresim}.
+     * Returns the runtime identifier used by the profile, such as {@code jcdksim}.
      *
      * @return the runtime name (case-insensitive)
      */

@@ -38,7 +38,7 @@ dependencies {
     // intentionally not embedded in the framework artifact; end-user projects must
     // provide their own EULA-covered copy on the runtime classpath.
     compileOnly files(rootProject.layout.buildDirectory.file('cinpo-cache/jcdk/simulator/client/COMService/socketprovider.jar'))
-            .builtBy(rootProject.tasks.named('prepareJcresimSimulator'))
+            .builtBy(rootProject.tasks.named('prepareJcdksimSimulator'))
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.10.2'

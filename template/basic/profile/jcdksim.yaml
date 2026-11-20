@@ -3,7 +3,7 @@ name: jcdksim
 
 # Local Oracle JCDK simulator profile using SCP03 test keys.
 # Development only. Never use these keys on a real card.
-runtime: jcresim
+runtime: jcdksim
 
 secureChannel:
   protocol: scp03

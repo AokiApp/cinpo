@@ -11,7 +11,7 @@ dependencies {
     // to implement the SocketCardTerminalProvider bridge, and at runtime projects
     // supply their own copy (see vendor/docs in the template projects).
     compileOnly files(rootProject.layout.buildDirectory.file('cinpo-cache/jcdk/simulator/client/COMService/socketprovider.jar'))
-            .builtBy(rootProject.tasks.named('prepareJcresimSimulator'))
+            .builtBy(rootProject.tasks.named('prepareJcdksimSimulator'))
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
@@ -21,7 +21,7 @@ dependencies {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifactId = 'cinpo-runtime-jcresim'
+            artifactId = 'cinpo-runtime-jcdksim'
             from components.java
         }
     }
@@ -46,7 +46,7 @@ publishing {
     publications.withType(MavenPublication).configureEach {
         pom {
             name = "CINPO ${artifactId}"
-            description = 'Java Card SDK simulator runtime adapter for the CINPO Java Card provisioning framework.'
+            description = 'Oracle JCDK simulator runtime adapter for the CINPO Java Card provisioning framework.'
             url = 'https://github.com/AokiApp/cinpo'
             licenses {
                 license {

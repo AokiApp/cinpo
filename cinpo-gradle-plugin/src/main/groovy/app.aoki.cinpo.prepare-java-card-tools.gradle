@@ -56,7 +56,7 @@ ext.extractedJavaCardConfiguratorJar = extractedJavaCardToolsDir.map { it.file('
 ext.configuredJcsl = configuredJcslDir.map { it.file(javaCardSimulatorExecutableName) }
 
 // The simulator archive name is resolved lazily on purpose. Projects that never
-// prepare a simulator (for example a PC/SC-only consumer without the jcresim
+// prepare a simulator (for example a PC/SC-only consumer without the jcdksim
 // runtime) must still be able to configure the build, including on host OSes
 // Oracle ships no simulator archive for. Resolving it below fails only when the
 // simulator preparation actually runs.
@@ -94,7 +94,7 @@ def simulatorVendorDir = layout.projectDirectory.dir('vendor').asFile
 def simulatorArchives = SIMULATOR_ARCHIVES
 def simulatorChecksums = SIMULATOR_CHECKSUMS
 def simulatorMissingHint = "Please download it from the Oracle Java Card website and place it in the 'vendor' directory. " +
-        "If you do not use the jcresim runtime, remove the cinpo-runtime-jcresim dependency from build.gradle instead."
+        "If you do not use the jcdksim runtime, remove the cinpo-runtime-jcdksim dependency from build.gradle instead."
 
 def simulatorArchiveTree = {
     File archive = javaCardSimulatorArchive.get().asFile
@@ -246,9 +246,9 @@ def extractJavaCardSimulator = tasks.register('extractJavaCardSimulator', Sync) 
 // Sync owns the output directory, so stale files from a previous OS or kit do
 // not survive. The action reads only values resolved during configuration; that
 // keeps the task usable with the configuration cache.
-tasks.register('prepareJcresimSimulator', Sync) {
+tasks.register('prepareJcdksimSimulator', Sync) {
     group = 'cinpo'
-    description = 'Extracts and configures the Oracle JCDK simulator used by the jcresim runtime.'
+    description = 'Extracts and configures the Oracle JCDK simulator used by the jcdksim runtime.'
     dependsOn extractJavaCardSimulator
     from preparedRuntimeDir
     into preparedConfiguredRuntimeDir

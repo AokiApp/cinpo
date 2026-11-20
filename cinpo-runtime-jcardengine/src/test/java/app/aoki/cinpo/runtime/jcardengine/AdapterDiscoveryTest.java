@@ -20,7 +20,7 @@ class AdapterDiscoveryTest {
                 instanceof JCardEngineInstallPhase);
 
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
-                () -> ApduChannelFactory.createInstallPhase(profile("jcresim")));
+                () -> ApduChannelFactory.createInstallPhase(profile("jcdksim")));
         assertTrue(e.getMessage().contains("(available: jcardengine)"));
     }
 

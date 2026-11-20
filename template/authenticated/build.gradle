@@ -51,7 +51,7 @@ repositories {
 
 dependencies {
     implementation libs.cinpo.core
-    implementation libs.cinpo.runtime.jcresim
+    implementation libs.cinpo.runtime.jcdksim
     implementation libs.cinpo.runtime.jcardengine
     implementation libs.cinpo.runtime.pcsc
     implementation libs.snakeyaml

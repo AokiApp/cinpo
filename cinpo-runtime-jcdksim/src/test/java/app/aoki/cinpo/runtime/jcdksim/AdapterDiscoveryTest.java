@@ -1,4 +1,4 @@
-package app.aoki.cinpo.runtime.jcresim;
+package app.aoki.cinpo.runtime.jcdksim;
 
 import app.aoki.cinpo.config.Profile;
 import app.aoki.cinpo.config.ScpConfig;
@@ -17,12 +17,12 @@ class AdapterDiscoveryTest {
 
     @Test
     void onlyTheDeclaredRuntimeIsDiscoverable() {
-        assertTrue(ApduChannelFactory.createInstallPhase(profile("jcresim"))
+        assertTrue(ApduChannelFactory.createInstallPhase(profile("jcdksim"))
                 instanceof InstallPhase);
 
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> ApduChannelFactory.createInstallPhase(profile("jcardengine")));
-        assertTrue(e.getMessage().contains("(available: jcresim)"));
+        assertTrue(e.getMessage().contains("(available: jcdksim)"));
     }
 
     private static Profile profile(String runtime) {

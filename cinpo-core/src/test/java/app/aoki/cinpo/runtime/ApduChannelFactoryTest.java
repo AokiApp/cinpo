@@ -16,7 +16,7 @@ class ApduChannelFactoryTest {
     void createInstallPhase_ResolvesTheProfileRuntime() {
         assertTrue(ApduChannelFactory.createInstallPhase(profileFor("jcardengine"))
                 instanceof JCardEngineInstallPhase);
-        assertTrue(ApduChannelFactory.createInstallPhase(profileFor("jcresim"))
+        assertTrue(ApduChannelFactory.createInstallPhase(profileFor("jcdksim"))
                 instanceof InstallPhase);
         assertTrue(ApduChannelFactory.createInstallPhase(profileFor("pcsc"))
                 instanceof InstallPhase);
@@ -24,7 +24,7 @@ class ApduChannelFactoryTest {
 
     @Test
     void createInstallPhase_MatchesCaseAndSurroundingWhitespace() {
-        assertTrue(ApduChannelFactory.createInstallPhase(profileFor("JcreSim"))
+        assertTrue(ApduChannelFactory.createInstallPhase(profileFor("JcdkSim"))
                 instanceof InstallPhase);
         assertTrue(ApduChannelFactory.createInstallPhase(profileFor("  PCSC  "))
                 instanceof InstallPhase);

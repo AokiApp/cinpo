@@ -1,4 +1,4 @@
-package app.aoki.cinpo.runtime.jcresim;
+package app.aoki.cinpo.runtime.jcdksim;
 
 import app.aoki.cinpo.apdu.ApduChannel;
 import app.aoki.cinpo.apdu.CommandApdu;
@@ -24,21 +24,21 @@ import javax.smartcardio.ResponseAPDU;
 import javax.smartcardio.TerminalFactory;
 
 /**
- * JCRE simulator adapter that manages the Oracle jcsl simulator process lifecycle.
+ * JCDK simulator adapter that manages the Oracle jcsl simulator process lifecycle.
  */
-public final class JcreSimAdapter {
+public final class JcdkSimAdapter {
 
     private static final String TERMINAL_FACTORY_TYPE = "SocketCardTerminalFactoryType";
     private static final String LOOPBACK_HOST = "127.0.0.1";
     private static final String CONNECT_PROTOCOL = "*";
 
     /**
-     * Create an APDU channel backed by the JCRE simulator.
+     * Create an APDU channel backed by the JCDK simulator.
      *
      * @return an APDU channel implementation
      */
     public ApduChannel createChannel() {
-        return new JcreSimChannel();
+        return new JcdkSimChannel();
     }
 
     /**
@@ -74,7 +74,7 @@ public final class JcreSimAdapter {
             return buildCachePath;
         }
 
-        String executableName = JcreSimPlatform.simulatorExecutableName();
+        String executableName = JcdkSimPlatform.simulatorExecutableName();
         Path managedSimulator = Path.of("build").resolve("cinpo-cache").resolve("jcdk")
                 .resolve("simulator").resolve("runtime").resolve("bin").resolve(executableName);
         if (Files.isExecutable(managedSimulator)) {
@@ -82,27 +82,27 @@ public final class JcreSimAdapter {
         }
 
         throw new IllegalStateException(
-                "Oracle JCRE simulator executable (" + executableName + ") not found. Searched locations:\n" +
+                "Oracle JCDK simulator executable (" + executableName + ") not found. Searched locations:\n" +
                 "  - cinpo.simulator.path=" + (configuredPath == null ? "<unset>" : configuredPath) + "\n" +
-                "  - build/cinpo-cache/jcsl/" + JcreSimPlatform.detectOS() + "-" + JcreSimPlatform.detectArch() + "/" + executableName + "\n" +
+                "  - build/cinpo-cache/jcsl/" + JcdkSimPlatform.detectOS() + "-" + JcdkSimPlatform.detectArch() + "/" + executableName + "\n" +
                 "  - build/cinpo-cache/jcdk/simulator/runtime/bin/" + executableName + "\n" +
                 "Configure cinpo.simulator.path or prepare the managed JCDK build cache first.");
     }
 
     private static Path extractBundledSimulatorIfPresent() {
-        String os = JcreSimPlatform.detectOS();
-        String arch = JcreSimPlatform.detectArch();
-        String executableName = JcreSimPlatform.simulatorExecutableName();
+        String os = JcdkSimPlatform.detectOS();
+        String arch = JcdkSimPlatform.detectArch();
+        String executableName = JcdkSimPlatform.simulatorExecutableName();
         String resourcePrefix = "cinpo-simulator/" + os + "-" + arch + "/";
         String markerResource = resourcePrefix + executableName;
-        ClassLoader loader = JcreSimAdapter.class.getClassLoader();
+        ClassLoader loader = JcdkSimAdapter.class.getClassLoader();
         if (loader.getResource(markerResource) == null) {
             return null;
         }
 
         List<String> stagedFiles = new ArrayList<>();
         stagedFiles.add(executableName);
-        stagedFiles.addAll(JcreSimPlatform.simulatorRuntimeLibraryNames());
+        stagedFiles.addAll(JcdkSimPlatform.simulatorRuntimeLibraryNames());
 
         Path sharedDir = Path.of(System.getProperty("java.io.tmpdir"), "cinpo-simulator", os + "-" + arch);
         try {
@@ -171,16 +171,16 @@ public final class JcreSimAdapter {
      * @return path to the simulator executable in the build cache; existence is checked by the caller
      */
     private static Path findJcslInBuildCache() {
-        String os = JcreSimPlatform.detectOS();
-        String arch = JcreSimPlatform.detectArch();
+        String os = JcdkSimPlatform.detectOS();
+        String arch = JcdkSimPlatform.detectArch();
         Path buildCache = Path.of("build").resolve("cinpo-cache").resolve("jcsl");
-        return buildCache.resolve(os + "-" + arch).resolve(JcreSimPlatform.simulatorExecutableName());
+        return buildCache.resolve(os + "-" + arch).resolve(JcdkSimPlatform.simulatorExecutableName());
     }
 
     /**
-     * APDU channel implementation backed by the JCRE simulator.
+     * APDU channel implementation backed by the JCDK simulator.
      */
-    private static final class JcreSimChannel implements ApduChannel {
+    private static final class JcdkSimChannel implements ApduChannel {
 
         private final Object monitor = new Object();
         private final SimulatorProcess simulatorProcess;
@@ -188,7 +188,7 @@ public final class JcreSimAdapter {
         private Card card;
         private CardChannel basicChannel;
 
-        JcreSimChannel() {
+        JcdkSimChannel() {
             Path executable = resolveSimulatorExecutable();
             this.simulatorProcess = new SimulatorProcess(executable);
         }
@@ -204,14 +204,14 @@ public final class JcreSimAdapter {
                     return ResponseApdu.fromBytes(rapdu.getBytes());
                 } catch (CardException e) {
                     invalidateConnection();
-                    throw new IllegalStateException("Failed to transmit APDU to the Oracle JCRE simulator", e);
+                    throw new IllegalStateException("Failed to transmit APDU to the Oracle JCDK simulator", e);
                 } catch (IllegalStateException e) {
                     invalidateConnection();
                     throw e;
                 } catch (RuntimeException e) {
                     invalidateConnection();
                     throw new IllegalStateException(
-                            "Oracle JCRE simulator transport failed during APDU exchange. " +
+                            "Oracle JCDK simulator transport failed during APDU exchange. " +
                             "A common cause is the simulator binary lacking configured SCP keys: when its log " +
                             "contains 'Binary is not configured with initial SCP keys', configure a project-local " +
                             "copied jcsl binary with Oracle Configurator using keys matching the jcdksim profile. " +
@@ -228,7 +228,7 @@ public final class JcreSimAdapter {
                         card.disconnect(true);
                     }
                 } catch (CardException e) {
-                    throw new IllegalStateException("Failed to reset the Oracle JCRE simulator session", e);
+                    throw new IllegalStateException("Failed to reset the Oracle JCDK simulator session", e);
                 } finally {
                     invalidateConnection();
                 }
@@ -243,7 +243,7 @@ public final class JcreSimAdapter {
                         card.disconnect(false);
                     }
                 } catch (CardException e) {
-                    throw new IllegalStateException("Failed to close the Oracle JCRE simulator session", e);
+                    throw new IllegalStateException("Failed to close the Oracle JCDK simulator session", e);
                 } finally {
                     invalidateConnection();
                     simulatorProcess.close();

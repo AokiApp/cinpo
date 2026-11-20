@@ -161,7 +161,7 @@ def mergeCinpoServiceFiles = tasks.register('mergeCinpoServiceFiles', MergeCinpo
 
 // Build the production appliance from the same runtime classpath used by cinpoRun.
 // classes contributes host task classes, manifest.yaml, generated CAP resources,
-// and the separately compiled applet classes; prepareJcresimSimulator contributes
+// and the separately compiled applet classes; prepareJcdksimSimulator contributes
 // the configured simulator runtime bundled below cinpo-simulator/<os>-<arch>.
 tasks.register('cinpoJar', CinpoJarTask) {
     runtimeClasspath.from(mainSourceSet.runtimeClasspath)
@@ -182,45 +182,45 @@ tasks.register('cinpoJar', CinpoJarTask) {
     }
 }
 
-// jcresim build inputs are wired only when the consumer declares the
-// jcresim runtime module in the main runtime scope (api, implementation,
+// jcdksim build inputs are wired only when the consumer declares the
+// jcdksim runtime module in the main runtime scope (api, implementation,
 // or runtimeOnly). Slim builds (PC/SC or jCardEngine only) then never run the
 // simulator preparation, never require the simulator vendor archive, and
 // never carry Oracle's socket terminal provider. A missing runtime module fails
 // at adapter lookup exactly as it does on the framework side
 // (ApduChannelFactory: "Unsupported runtime: ...").
-def prepareJcresimSimulator = tasks.named('prepareJcresimSimulator')
+def prepareJcdksimSimulator = tasks.named('prepareJcdksimSimulator')
 def socketProviderJar = files(
         layout.buildDirectory.file('cinpo-cache/jcdk/simulator/client/COMService/socketprovider.jar')
-).builtBy(prepareJcresimSimulator)
+).builtBy(prepareJcdksimSimulator)
 
 afterEvaluate {
-    // Only the main runtime scope decides. A jcresim declaration on compileOnly,
+    // Only the main runtime scope decides. A jcdksim declaration on compileOnly,
     // annotationProcessor, or a test configuration never triggers simulator
     // preparation, so those builds never pay for an archive they do not run.
     // The java plugin names the main source set's runtime classpath configuration
     // "runtimeClasspath" (JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME).
     def runtimeClasspathConfiguration = configurations.getByName('runtimeClasspath')
     def runtimeScope = [runtimeClasspathConfiguration] + runtimeClasspathConfiguration.extendsFrom
-    boolean usesJcresimRuntime = runtimeScope.any { configuration ->
+    boolean usesJcdksimRuntime = runtimeScope.any { configuration ->
         configuration.dependencies.any { dependency ->
-            dependency.name != null && dependency.name.contains('cinpo-runtime-jcresim')
+            dependency.name != null && dependency.name.contains('cinpo-runtime-jcdksim')
         }
     }
-    if (usesJcresimRuntime) {
+    if (usesJcdksimRuntime) {
         tasks.withType(CinpoRunTask).configureEach {
             classpath.from(socketProviderJar)
-            dependsOn prepareJcresimSimulator
+            dependsOn prepareJcdksimSimulator
         }
         tasks.withType(CinpoJarTask).configureEach {
             // The prepare plugin owns the platform-specific jcsl directory. The jar
             // task only relocates that directory into the resource namespace
-            // JcreSimAdapter reads. The property stays unset for slim builds so no
+            // JcdkSimAdapter reads. The property stays unset for slim builds so no
             // simulator directory is ever demanded of them.
             def configuredJcslDir = project.ext.configuredJcslDir
             bundledSimulatorDirectory.set(configuredJcslDir)
             runtimeClasspath.from(socketProviderJar)
-            dependsOn prepareJcresimSimulator
+            dependsOn prepareJcdksimSimulator
             from(providers.provider { socketProviderJar.collect { zipTree(it) } }) {
                 exclude 'META-INF/services/**'
             }

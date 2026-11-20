@@ -1,4 +1,4 @@
-package app.aoki.cinpo.runtime.jcresim;
+package app.aoki.cinpo.runtime.jcdksim;
 
 import java.util.List;
 import java.util.Locale;
@@ -6,16 +6,16 @@ import java.util.Locale;
 /**
  * Host-platform helpers needed to stage the Oracle JCDK simulator binary.
  *
- * <p>These helpers are jcresim-specific: they describe which simulator build to
+ * <p>These helpers are jcdksim-specific: they describe which simulator build to
  * bundle, which executable it uses, and which files ship with it. Other runtimes
  * (pcsc, jcardengine) have no equivalent concept and do not need these values.
  */
-final class JcreSimPlatform {
+final class JcdkSimPlatform {
 
     private static final String OS_NAME = System.getProperty("os.name").toLowerCase(Locale.ROOT);
     private static final String OS_ARCH = System.getProperty("os.arch").toLowerCase(Locale.ROOT);
 
-    private JcreSimPlatform() {
+    private JcdkSimPlatform() {
     }
 
     static String detectOS() {

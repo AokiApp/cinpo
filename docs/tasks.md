@@ -198,7 +198,7 @@ Record describing a profile (`profile/<name>.yaml`).
 | Accessor | Type | Notes |
 |----------|------|-------|
 | `name()` | `String` | the profile name, e.g. `jcdksim`, `mycard` |
-| `runtime()` | `String` | `jcresim` (simulator) or `pcsc` (physical card) |
+| `runtime()` | `String` | `jcdksim` (simulator) or `pcsc` (physical card) |
 | `secureChannel()` | `ScpConfig` | SCP configuration |
 
 ### `app.aoki.cinpo.config.ScpConfig`
@@ -418,5 +418,5 @@ Run it with:
 ## Where to look next
 
 - Compilable examples in the templates: `template/basic/host/provision/HelloProvision.java`, `template/basic/host/test/HelloTest.java`, `template/probe/host/probe/ProbeTask.java`.
-- [Profiles](profiles.md) — `jcresim` (simulator), `jcardengine` (in-process engine), and `pcsc` (real card reader), `scp02` vs `scp03`.
+- [Profiles](profiles.md) — `jcdksim` (simulator), `jcardengine` (in-process engine), and `pcsc` (real card reader), `scp02` vs `scp03`.
 - Framework changes are verified before publication by the `Release` workflow, which builds the `basic` template against the staged repository.

@@ -1,4 +1,4 @@
-package app.aoki.cinpo.runtime.jcresim;
+package app.aoki.cinpo.runtime.jcdksim;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -42,10 +42,10 @@ final class SimulatorProcessTest {
     @Test
     void processBuilderPrependsSimulatorDirectoryToNativeLibraryPath() throws Exception {
         Path runtimeDir = Files.createTempDirectory("cinpo-jcsl-runtime");
-        Path executable = runtimeDir.resolve(JcreSimPlatform.simulatorExecutableName());
+        Path executable = runtimeDir.resolve(JcdkSimPlatform.simulatorExecutableName());
         Files.writeString(executable, "#!/bin/sh\nexit 0\n");
 
-        boolean windows = JcreSimPlatform.isWindows();
+        boolean windows = JcdkSimPlatform.isWindows();
         String variable = windows ? "PATH" : "LD_LIBRARY_PATH";
         String separator = windows ? ";" : ":";
 

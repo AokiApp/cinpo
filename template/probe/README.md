@@ -10,7 +10,7 @@ This template is a read-only diagnostic: the applet is a placeholder, and `Probe
 
 - `applet/MaguroApplet.java` — a placeholder applet that accepts SELECT only.
 - `host/probe/ProbeTask.java` — the `probe` task: SELECT, `GET DATA` (tag `0x66`), and print.
-- `profile/jcdksim.yaml` — simulator profile with development-only keys.
+- `profile/jcdksim.yaml` — Oracle JCDK simulator profile with development-only keys.
 
 **The default kind is `provision`, which this template does not define.** Run `--task=probe` explicitly.
 

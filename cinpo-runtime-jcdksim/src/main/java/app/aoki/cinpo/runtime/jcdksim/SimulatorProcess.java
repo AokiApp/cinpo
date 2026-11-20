@@ -1,4 +1,4 @@
-package app.aoki.cinpo.runtime.jcresim;
+package app.aoki.cinpo.runtime.jcdksim;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -123,7 +123,7 @@ final class SimulatorProcess implements AutoCloseable {
             return proc;
         } catch (IOException e) {
             throw new IllegalStateException(
-                    "Failed to start Oracle JCRE simulator using " + executable, e);
+                    "Failed to start Oracle JCDK simulator using " + executable, e);
         }
     }
 
@@ -149,7 +149,7 @@ final class SimulatorProcess implements AutoCloseable {
      * {@code LD_LIBRARY_PATH} (colon separated).
      */
     static void prependNativeLibraryPath(Map<String, String> environment, Path libraryDirectory) {
-        boolean windows = JcreSimPlatform.isWindows();
+        boolean windows = JcdkSimPlatform.isWindows();
         String variable = windows ? "PATH" : "LD_LIBRARY_PATH";
         String separator = windows ? ";" : ":";
         String libPath = libraryDirectory.toAbsolutePath().toString();
@@ -171,7 +171,7 @@ final class SimulatorProcess implements AutoCloseable {
                 awaitOutputDrainer();
                 int exitCode = process.exitValue();
                 String output = outputCapture.toString(StandardCharsets.UTF_8).strip();
-                String diagnostic = "Oracle JCRE simulator terminated with exit code " + exitCode
+                String diagnostic = "Oracle JCDK simulator terminated with exit code " + exitCode
                         + " before becoming ready.";
                 if (!output.isEmpty()) {
                     diagnostic += "\noutput:\n" + output;
@@ -182,7 +182,7 @@ final class SimulatorProcess implements AutoCloseable {
         }
 
         String output = outputCapture.toString(StandardCharsets.UTF_8).strip();
-        String msg = "Oracle JCRE simulator did not become ready within " + startupTimeoutMillis + " ms.";
+        String msg = "Oracle JCDK simulator did not become ready within " + startupTimeoutMillis + " ms.";
         if (!output.isEmpty()) {
             msg += "\noutput (so far):\n" + output;
         }
@@ -232,7 +232,7 @@ final class SimulatorProcess implements AutoCloseable {
         try (ServerSocket serverSocket = new ServerSocket(0)) {
             return serverSocket.getLocalPort();
         } catch (IOException e) {
-            throw new IllegalStateException("Failed to allocate an ephemeral port for Oracle JCRE simulator", e);
+            throw new IllegalStateException("Failed to allocate an ephemeral port for Oracle JCDK simulator", e);
         }
     }
 
@@ -265,7 +265,7 @@ final class SimulatorProcess implements AutoCloseable {
             Thread.sleep(millis);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while waiting for Oracle JCRE simulator startup", e);
+            throw new IllegalStateException("Interrupted while waiting for Oracle JCDK simulator startup", e);
         }
     }
 }

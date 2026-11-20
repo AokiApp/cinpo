@@ -1,4 +1,4 @@
-package app.aoki.cinpo.runtime.jcresim;
+package app.aoki.cinpo.runtime.jcdksim;
 
 import app.aoki.cinpo.apdu.ApduChannel;
 import app.aoki.cinpo.config.Profile;
@@ -7,12 +7,12 @@ import app.aoki.cinpo.orchestrator.phase.InstallPhase;
 import app.aoki.cinpo.runtime.RuntimeAdapter;
 
 /**
- * {@code runtime: jcresim} — Oracle JCDK simulator. Applets are installed from CAP
+ * {@code runtime: jcdksim} — Oracle JCDK simulator. Applets are installed from CAP
  * artifacts over the GlobalPlatform secure channel.
  */
-public final class JcreSimRuntimeAdapter implements RuntimeAdapter {
+public final class JcdkSimRuntimeAdapter implements RuntimeAdapter {
 
-    public static final String NAME = "jcresim";
+    public static final String NAME = "jcdksim";
 
     @Override
     public String name() {
@@ -21,7 +21,7 @@ public final class JcreSimRuntimeAdapter implements RuntimeAdapter {
 
     @Override
     public ApduChannel createChannel(Profile profile) {
-        return new JcreSimAdapter().createChannel();
+        return new JcdkSimAdapter().createChannel();
     }
 
     @Override

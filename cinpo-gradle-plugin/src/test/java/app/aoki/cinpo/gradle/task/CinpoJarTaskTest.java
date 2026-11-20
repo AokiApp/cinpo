@@ -110,9 +110,9 @@ class CinpoJarTaskTest {
     }
 
     @Test
-    void failsWhenJcresimIsOnTheClasspathWithoutASimulator() throws IOException {
+    void failsWhenJcdksimIsOnTheClasspathWithoutASimulator() throws IOException {
         Path projectDirectory = tempDirectory.resolve("project");
-        Path runtimeJar = projectDirectory.resolve("cinpo-runtime-jcresim-0.5.1.jar");
+        Path runtimeJar = projectDirectory.resolve("cinpo-runtime-jcdksim-0.5.1.jar");
         write(runtimeJar, "runtime");
 
         CinpoJarTask task = newTask(projectDirectory);

@@ -8,7 +8,7 @@ pluginManagement {
 rootProject.name = 'cinpo'
 
 include 'cinpo-core'
-include 'cinpo-runtime-jcresim'
+include 'cinpo-runtime-jcdksim'
 include 'cinpo-runtime-jcardengine'
 include 'cinpo-runtime-pcsc'
 include 'cinpo-gradle-plugin'
