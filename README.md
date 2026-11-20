@@ -34,30 +34,6 @@ public final class MyProvision implements CardTask {
 
 No manual wiring. No scripts. Just annotate, inject, run.
 
-## Modules
-
-CINPO is published as several Maven artifacts so that applications only carry what they use. `app.aoki.cinpo:cinpo` is the framework core; `app.aoki.cinpo:cinpo-runtime-*` are the runtime adapters your project selects.
-
-| Module | Description |
-|--------|-------------|
-| `app.aoki.cinpo:cinpo` | Framework core: CLI, orchestrator, manifest parser, GP / SCP crypto, APDU I/O, task loader. Every runtime module brings it in transitively. |
-| `app.aoki.cinpo:cinpo-runtime-jcresim` | Oracle JCDK simulator runtime. This jar contains only the CINPO adapter; the Oracle simulator itself comes from the archive you place in `vendor/` and is embedded into the appliance JAR when you use this runtime. Needed only for `runtime: jcresim` profiles. |
-| `app.aoki.cinpo:cinpo-runtime-jcardengine` | In-process Java Card engine runtime. Brings in `jCardEngine` and its dependencies (Byte Buddy, BouncyCastle, …). Needed only for `runtime: jcardengine` profiles. |
-| `app.aoki.cinpo:cinpo-runtime-pcsc` | PC/SC runtime. Uses the host's PC/SC stack via `javax.smartcardio`. No native dependencies. |
-
-A typical consumer declares the core plus the runtimes it actually needs:
-
-```groovy
-dependencies {
-    implementation 'app.aoki.cinpo:cinpo:<version>'
-    implementation 'app.aoki.cinpo:cinpo-runtime-jcresim:<version>'
-}
-```
-
-Replace `<version>` with the version from the latest release. The starter templates keep this value in `gradle/libs.versions.toml`.
-
-The three runtime modules depend on `cinpo` transitively, so declaring the core artifact is optional. The starter templates declare it explicitly along with all three runtimes, which works as well. The appliance JAR produced by `cinpoJar` contains only what your project puts on `runtimeClasspath`. To ship a smaller one, remove the runtimes you don't use from the template's `dependencies` block. If you declare only `cinpo-runtime-jcresim`, the appliance carries the simulator's class files and native libraries, but not PC/SC or jcardengine. For guidance on what changed from previous 0.x releases, see [migration-0.5.0](docs/migration-0.5.0.md).
-
 ## Philosophy
 
 CINPO defines a streamlined developer experience for Java Card applet development. It provides complete workflows and frameworks for building, provisioning, testing, and deploying in the wild, from creating the template project to packaging for production. It is designed just like "Spring Boot for Java Card."
