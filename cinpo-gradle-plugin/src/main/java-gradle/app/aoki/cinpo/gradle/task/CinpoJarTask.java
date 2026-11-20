@@ -33,6 +33,12 @@ import org.gradle.api.tasks.bundling.Jar;
  * {@code META-INF/services} directory produced by
  * {@link MergeCinpoServiceFilesTask} and the configured simulator directory, which
  * the plugin maps under {@code cinpo-simulator/<os>-<arch>}.</p>
+ *
+ * <p>The archive is reproducible at the entry level, because entries are written
+ * in a fixed order with fixed timestamps. The file as a whole is not
+ * byte-for-byte reproducible across clean builds: Oracle's CAP generator writes
+ * a {@code Java-Card-CAP-Creation-Time} value into the
+ * {@code META-INF/MANIFEST.MF} of every {@code cap/<package>.cap} entry.</p>
  */
 public abstract class CinpoJarTask extends Jar {
 
