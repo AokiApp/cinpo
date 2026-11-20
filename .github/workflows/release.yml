@@ -11,6 +11,9 @@ on:
 permissions:
   contents: write
   packages: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 concurrency:
   group: release
@@ -72,6 +75,15 @@ jobs:
           find . -type f \( -name '*.pom' -o -name '*.module' -o -name '*.jar' \) -printf '%P\0' \
             | sort -z \
             | xargs -0 sha256sum > ../checksums.txt
+
+      # Sign the staged artifacts so consumers can verify their provenance.
+      - name: Attest the staged artifacts
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            build/staging-maven-repository/**/*.jar
+            build/staging-maven-repository/**/*.pom
+            build/staging-maven-repository/**/*.module
 
       - name: Upload the staged repository
         uses: actions/upload-artifact@v4
