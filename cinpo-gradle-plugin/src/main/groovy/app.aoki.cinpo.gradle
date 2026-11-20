@@ -213,11 +213,11 @@ afterEvaluate {
             dependsOn prepareJcresimSimulator
         }
         tasks.withType(CinpoJarTask).configureEach {
-            // The prepare task owns the platform-specific jcsl directory and hands it over
-            // through its task extension. The jar task only relocates that directory into
-            // the resource namespace JcreSimAdapter reads. The property stays unset for
-            // slim builds so no simulator directory is ever demanded of them.
-            def configuredJcslDir = prepareJcresimSimulator.get().extensions.extraProperties.get('configuredJcslDir')
+            // The prepare plugin owns the platform-specific jcsl directory. The jar
+            // task only relocates that directory into the resource namespace
+            // JcreSimAdapter reads. The property stays unset for slim builds so no
+            // simulator directory is ever demanded of them.
+            def configuredJcslDir = project.ext.configuredJcslDir
             bundledSimulatorDirectory.set(configuredJcslDir)
             runtimeClasspath.from(socketProviderJar)
             dependsOn prepareJcresimSimulator

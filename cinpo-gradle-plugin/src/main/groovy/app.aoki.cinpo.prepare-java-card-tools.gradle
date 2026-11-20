@@ -102,67 +102,32 @@ def simulatorArchiveTree = {
     return archive.name.endsWith('.zip') ? zipTree(archive) : tarTree(resources.gzip(archive))
 }
 
-// These keys are the jcdksim development keyset. They must stay in sync with the
-// template's profile/jcdksim.yaml, which is the profile the default runs use.
-// Changing the keyset means changing both places.
-def configureJcslForJcdkSim = {
-    File sourceRuntimeDir = extractedJavaCardToolsDir.get().file('simulator/runtime/bin').asFile
-    File configuredRuntimeDir = configuredJcslDir.get().asFile
-    File configuratorJar = extractedJavaCardConfiguratorJar.get().asFile
-    File configuredJcslFile = configuredJcsl.get().asFile
-
-    if (!sourceRuntimeDir.isDirectory()) {
-        throw new GradleException("Expected Java Card simulator runtime directory was not found: ${sourceRuntimeDir}")
-    }
-    if (!extractedJavaCardSocketProviderJar.get().asFile.isFile()) {
-        throw new GradleException("Expected Java Card socket terminal provider was not found: ${extractedJavaCardSocketProviderJar.get().asFile}")
-    }
-    if (!configuratorJar.isFile()) {
-        throw new GradleException("Expected Java Card Configurator.jar was not found: ${configuratorJar}")
-    }
-
-    copy {
-        from sourceRuntimeDir
-        into configuredRuntimeDir
-    }
-
-    configuredJcslFile.setExecutable(true)
-
-    String javaLauncher = detectCinpoOs() == 'windows' ? 'bin/java.exe' : 'bin/java'
-    List<String> command = [
-            new File(System.getProperty('java.home'), javaLauncher).absolutePath,
-            '-jar', configuratorJar.absolutePath,
-            '-binary', configuredJcslFile.absolutePath,
-            '-force',
-            '-SCP-keyset', '10',
-            '1111111111111111111111111111111111111111111111111111111111111111',
-            '2222222222222222222222222222222222222222222222222222222222222222',
-            '3333333333333333333333333333333333333333333333333333333333333333',
-            '-global-pin', '000000', '03'
-    ]
-    Process process = new ProcessBuilder(command)
-            .redirectErrorStream(true)
-            .start()
-    String output = process.inputStream.getText('UTF-8')
-    int exitCode = process.waitFor()
-    if (exitCode != 0) {
-        throw new GradleException("Java Card Configurator failed with exit code ${exitCode}:\n${output}")
-    }
-    if (!output.isBlank()) {
-        logger.lifecycle(output.trim())
-    }
-
-    configuredJcslFile.setExecutable(true)
-}
-
-def verifyConfiguredJcsl = {
-    File configuredJcslFile = configuredJcsl.get().asFile
-    // Windows has no POSIX execute bit; a .exe on disk is all that can be asserted there.
-    boolean usable = detectCinpoOs() == 'windows' ? configuredJcslFile.isFile() : configuredJcslFile.canExecute()
-    if (!usable) {
-        throw new GradleException("Expected configured Java Card simulator executable was not found or is not executable: ${configuredJcslFile}")
-    }
-}
+// Resolve the simulator preparation inputs during configuration. The task action
+// below uses only these captured values, not script properties or providers, so
+// Gradle can store and reuse the task with the configuration cache. These keys
+// are the jcdksim development keyset. They must stay in sync with the template's
+// profile/jcdksim.yaml, which is the profile the default runs use. Changing the
+// keyset means changing both places.
+def preparedRuntimeDir = extractedJavaCardToolsDir.get().file('simulator/runtime/bin').asFile
+def preparedConfiguredRuntimeDir = configuredJcslDir.get().asFile
+def preparedConfiguratorJar = extractedJavaCardConfiguratorJar.get().asFile
+def preparedSocketProviderJar = extractedJavaCardSocketProviderJar.get().asFile
+def preparedJcslFile = configuredJcsl.get().asFile
+def preparedHostOs = detectCinpoOs()
+def preparedIsWindows = preparedHostOs == 'windows'
+String preparedJavaLauncher = preparedIsWindows ? 'bin/java.exe' : 'bin/java'
+List<String> preparedConfiguratorCommand = [
+        new File(System.getProperty('java.home'), preparedJavaLauncher).absolutePath,
+        '-jar', preparedConfiguratorJar.absolutePath,
+        '-binary', preparedJcslFile.absolutePath,
+        '-force',
+        '-SCP-keyset', '10',
+        '1111111111111111111111111111111111111111111111111111111111111111',
+        '2222222222222222222222222222222222222222222222222222222222222222',
+        '3333333333333333333333333333333333333333333333333333333333333333',
+        '-global-pin', '000000', '03'
+]
+String preparedJavaHome = System.getProperty('java.home')
 
 // Extract the Oracle tool jar and API jars into a directory this task owns. Sync
 // removes stale files from previous runs; the vendor archive is a task input, so
@@ -278,25 +243,48 @@ def extractJavaCardSimulator = tasks.register('extractJavaCardSimulator', Sync) 
 // Copy the extracted runtime to a project-owned directory and rekey it with
 // Oracle's Configurator. The copy stays explicit because Configurator modifies
 // the binary in place, and the raw vendor extraction must stay unmodified.
-tasks.register('prepareJcresimSimulator') {
+// Sync owns the output directory, so stale files from a previous OS or kit do
+// not survive. The action reads only values resolved during configuration; that
+// keeps the task usable with the configuration cache.
+tasks.register('prepareJcresimSimulator', Sync) {
     group = 'cinpo'
     description = 'Extracts and configures the Oracle JCDK simulator used by the jcresim runtime.'
     dependsOn extractJavaCardSimulator
-    inputs.dir extractedJavaCardToolsDir.map { it.dir('simulator/runtime/bin') }
-    inputs.file extractedJavaCardConfiguratorJar
-    inputs.property('hostOs', providers.provider { detectCinpoOs() })
-    inputs.property('hostArch', providers.provider { detectCinpoArch() })
-    inputs.property('javaHome', providers.provider { System.getProperty('java.home') })
-    outputs.dir configuredJcslDir
-
-    // Hand the platform-specific jcsl directory to consumers of this task (for
-    // example CinpoJarTask) through the task's own extension, so no cross-plugin
-    // property plumbing is needed.
-    ext.configuredJcslDir = configuredJcslDir
+    from preparedRuntimeDir
+    into preparedConfiguredRuntimeDir
+    inputs.file preparedConfiguratorJar
+    inputs.file preparedSocketProviderJar
+    inputs.property('hostOs', preparedHostOs)
+    inputs.property('hostArch', detectCinpoArch())
+    inputs.property('javaHome', preparedJavaHome)
 
     doLast {
-        delete configuredJcslDir
-        configureJcslForJcdkSim()
-        verifyConfiguredJcsl()
+        if (!preparedSocketProviderJar.isFile()) {
+            throw new GradleException("Expected Java Card socket terminal provider was not found: ${preparedSocketProviderJar}")
+        }
+        if (!preparedConfiguratorJar.isFile()) {
+            throw new GradleException("Expected Java Card Configurator.jar was not found: ${preparedConfiguratorJar}")
+        }
+
+        preparedJcslFile.setExecutable(true)
+
+        Process process = new ProcessBuilder(preparedConfiguratorCommand)
+                .redirectErrorStream(true)
+                .start()
+        String output = process.inputStream.getText('UTF-8')
+        int exitCode = process.waitFor()
+        if (exitCode != 0) {
+            throw new GradleException("Java Card Configurator failed with exit code ${exitCode}:\n${output}")
+        }
+        if (!output.isBlank()) {
+            logger.lifecycle(output.trim())
+        }
+
+        preparedJcslFile.setExecutable(true)
+        // Windows has no POSIX execute bit; a .exe on disk is all that can be asserted there.
+        boolean usable = preparedIsWindows ? preparedJcslFile.isFile() : preparedJcslFile.canExecute()
+        if (!usable) {
+            throw new GradleException("Expected configured Java Card simulator executable was not found or is not executable: ${preparedJcslFile}")
+        }
     }
 }
