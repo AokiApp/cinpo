@@ -134,6 +134,12 @@ Check that GitHub Packages has the core, the three runtimes, the Gradle plugin,
 and the plugin marker at the released version. The release workflow already
 compares their checksums before it promotes Pages.
 
+The release job attests the staged artifacts. To verify a downloaded artifact:
+
+```bash
+gh attestation verify <file> --repo AokiApp/cinpo
+```
+
 ### Pages recovery
 
 `gh-pages` is a normal branch that stores the cumulative Maven repository and
