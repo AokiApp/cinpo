@@ -50,7 +50,7 @@ On Windows use `.\gradlew.bat`. `--skip-install` avoids installing the placehold
 ./gradlew cinpoRun --args='--debug --task=probe'          # show APDU traffic
 ```
 
-This template has no `--test` kind. A run is successful when the output is readable and the card answered, including a refusal status word.
+This template has no `--test` kind. A run is successful when the output is readable and the card answered, including a refusal status word. `./gradlew build` runs the same probe through the Gradle `test` lifecycle.
 
 If it fails, check `vendor/`, then the profile/reader, then the SELECT or command SW.
 

@@ -66,3 +66,10 @@ sourceSets {
         }
     }
 }
+
+// `build` runs cinpoTest through the Gradle test lifecycle. This template only
+// defines the probe kind, so run that instead of the default provision+test flow.
+tasks.named('cinpoTest') {
+    description = 'Runs the probe against the configured card.'
+    args = ['write', '--task=probe']
+}
