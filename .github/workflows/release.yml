@@ -68,6 +68,9 @@ jobs:
       - name: Build and stage
         run: ./gradlew --no-daemon clean check publishAllPublicationsToStagingRepository
 
+      - name: Package templates
+        run: ./scripts/package-templates.sh "$PWD/build/templates"
+
       - name: Write checksums
         run: |
           set -euo pipefail
@@ -140,7 +143,7 @@ jobs:
           echo "published checksums match"
 
       - name: Promote the staged repository to gh-pages
-        run: ./.github/scripts/promote-gh-pages.sh "${{ inputs.version }}" "$PWD/build/staging-maven-repository" "$PWD/build/checksums.txt"
+        run: ./.github/scripts/promote-gh-pages.sh "${{ inputs.version }}" "$PWD/build/staging-maven-repository" "$PWD/build/checksums.txt" "$PWD/build/templates"
 
       - name: Create the GitHub Release
         env:

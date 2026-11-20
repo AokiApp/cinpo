@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -ne 3 ]]; then
-    echo "Usage: $0 <version> <staging-directory> <checksums-file>" >&2
+if [[ $# -ne 4 ]]; then
+    echo "Usage: $0 <version> <staging-directory> <checksums-file> <templates-directory>" >&2
     exit 2
 fi
 
 version="$1"
 staging_dir="$2"
 checksums_file="$3"
+templates_dir="$4"
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "$script_dir/../.." && pwd)"
@@ -23,6 +24,7 @@ fail() {
     fail "version.txt does not contain $version"
 [[ -d "$staging_dir" ]] || fail "$staging_dir is not a directory"
 [[ -f "$checksums_file" ]] || fail "$checksums_file is missing"
+[[ -d "$templates_dir/$version" ]] || fail "$templates_dir/$version is not a directory"
 
 pages_dir="$(mktemp -d)"
 rmdir "$pages_dir"
@@ -43,16 +45,38 @@ else
     git -C "$pages_dir" rm -rf . >/dev/null 2>&1 || true
 fi
 
+maven_promoted=0
 if [[ -e "$pages_dir/app/aoki/cinpo/cinpo/$version" ]]; then
     if [[ -f "$pages_dir/checksums-${version}.txt" ]] && \
         cmp -s "$checksums_file" "$pages_dir/checksums-${version}.txt"; then
-        echo "version $version is already promoted"
-        exit 0
+        maven_promoted=1
+    else
+        fail "version $version already exists in gh-pages with different checksums"
     fi
-    fail "version $version already exists in gh-pages with different checksums"
 fi
 
-cp -a "$staging_dir"/. "$pages_dir"/
+templates_promoted=0
+if [[ -d "$pages_dir/templates/$version" ]]; then
+    if diff -r "$templates_dir/$version" "$pages_dir/templates/$version" >/dev/null; then
+        templates_promoted=1
+    else
+        fail "templates for version $version already exist in gh-pages with different contents"
+    fi
+fi
+
+if [[ "$maven_promoted" -eq 1 && "$templates_promoted" -eq 1 ]]; then
+    echo "version $version is already promoted"
+    exit 0
+fi
+
+if [[ "$maven_promoted" -eq 0 ]]; then
+    cp -a "$staging_dir"/. "$pages_dir"/
+fi
+
+if [[ "$templates_promoted" -eq 0 ]]; then
+    mkdir -p "$pages_dir/templates"
+    cp -a "$templates_dir/$version" "$pages_dir/templates/"
+fi
 install -m 755 "$repo_root/scripts/bootstrap.sh" "$pages_dir/bootstrap.sh"
 install -m 644 "$repo_root/scripts/bootstrap.ps1" "$pages_dir/bootstrap.ps1"
 
