@@ -1,12 +1,9 @@
 package app.aoki.cinpo.gradle.task;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.stream.Collectors;
 
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.GradleRunner;
@@ -27,7 +24,7 @@ class CinpoRunTaskConfigurationCacheTest {
     Path tempDirectory;
 
     @Test
-    void runsWithConfigurationCache() throws IOException {
+    void runsWithConfigurationCache() throws Exception {
         Path projectDirectory = Files.createDirectories(tempDirectory.resolve("project"));
         Path observedWorkingDirectory = tempDirectory.resolve("observed-working-directory.txt");
 
@@ -50,10 +47,9 @@ class CinpoRunTaskConfigurationCacheTest {
                 .withArguments("probeWorkingDirectory", "--configuration-cache", "--offline", "--stacktrace");
     }
 
-    private String buildScript(Path observedWorkingDirectory) {
-        String classpath = Arrays.stream(System.getProperty("java.class.path").split(File.pathSeparator))
-                .map(CinpoRunTaskConfigurationCacheTest::groovyString)
-                .collect(Collectors.joining(", "));
+    private String buildScript(Path observedWorkingDirectory) throws Exception {
+        Path testClasses = Path.of(CinpoRunTaskConfigurationCacheTest.class.getProtectionDomain()
+                .getCodeSource().getLocation().toURI());
         return """
                 plugins {
                     id 'app.aoki.cinpo'
@@ -71,7 +67,8 @@ class CinpoRunTaskConfigurationCacheTest {
                     args = [%s]
                     workingDirectory = layout.projectDirectory
                 }
-                """.formatted(classpath, groovyString(observedWorkingDirectory.toString()));
+                """.formatted(groovyString(testClasses.toString()),
+                        groovyString(observedWorkingDirectory.toString()));
     }
 
     private static String groovyString(String value) {
