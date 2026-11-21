@@ -65,8 +65,6 @@ powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1 my-project
 
 Pass `--name`/`-Name` and `--template`/`-Template` to choose the destination and starter (see [Templates](#templates)).
 
-The script downloads the template archive for the pinned release, for example `https://AokiApp.github.io/cinpo/templates/<version>/<template>/template.tar.gz`.
-
 ```
 my-project/
 ├── manifest.yaml          # What to install (package AID, applets, SDK version)
