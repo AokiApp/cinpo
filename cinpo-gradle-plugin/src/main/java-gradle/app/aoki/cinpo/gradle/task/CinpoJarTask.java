@@ -45,6 +45,7 @@ public abstract class CinpoJarTask extends Jar {
     private static final String MAIN_CLASS = "app.aoki.cinpo.cli.CinpoCli";
     private static final String AUTOMATIC_MODULE_NAME = "app.aoki.cinpo";
     private static final String MANIFEST_ENTRY = "META-INF/MANIFEST.MF";
+    private static final String META_INF_PREFIX = "META-INF/";
 
     private final ConfigurableFileCollection runtimeClasspath;
 
@@ -168,14 +169,32 @@ public abstract class CinpoJarTask extends Jar {
         // a multi-release section. The java/ stubs jCardEngine ships for compiling applets are
         // never loaded at runtime (the bootstrap loader reads the JDK's own java/*), but they
         // split java.base if the JAR is ever placed on the module path.
-        String upperName = entryName.toUpperCase(Locale.ROOT);
         return MANIFEST_ENTRY.equalsIgnoreCase(entryName)
-                || upperName.endsWith(".SF")
-                || upperName.endsWith(".DSA")
-                || upperName.endsWith(".RSA")
-                || upperName.endsWith(".EC")
+                || isSignatureMetadata(entryName)
                 || isModuleInfoEntry(entryName)
                 || entryName.startsWith("java/");
+    }
+
+    /**
+     * Matches JAR signature metadata, which lives directly under {@code META-INF/}.
+     *
+     * <p>A resource outside {@code META-INF/}, or in a nested directory below it, can
+     * legitimately end in {@code .SF}, {@code .DSA}, {@code .RSA} or {@code .EC}; only
+     * the direct children of {@code META-INF/} are signature metadata.</p>
+     */
+    private static boolean isSignatureMetadata(String entryName) {
+        if (!entryName.regionMatches(true, 0, META_INF_PREFIX, 0, META_INF_PREFIX.length())) {
+            return false;
+        }
+        String fileName = entryName.substring(META_INF_PREFIX.length());
+        if (fileName.indexOf('/') >= 0) {
+            return false;
+        }
+        String upperName = fileName.toUpperCase(Locale.ROOT);
+        return upperName.endsWith(".SF")
+                || upperName.endsWith(".DSA")
+                || upperName.endsWith(".RSA")
+                || upperName.endsWith(".EC");
     }
 
     /**
