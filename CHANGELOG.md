@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.3](https://github.com/AokiApp/cinpo/compare/v0.5.2...v0.5.3) (2026-11-21)
+
+
+### Bug Fixes
+
+* **gradle-plugin:** scope signature exclusion to META-INF ([ef95b71](https://github.com/AokiApp/cinpo/commit/ef95b71ac2e266fc18d4aa89589cdf4567e2d358))
+* **gradle-plugin:** scope signature metadata exclusion to META-INF ([53e66cd](https://github.com/AokiApp/cinpo/commit/53e66cdcedff5c634fadc91c7fd16903ded2cd3f))
+
 ## [0.5.2](https://github.com/AokiApp/cinpo/compare/v0.5.1...v0.5.2) (2026-11-21)
 
 
