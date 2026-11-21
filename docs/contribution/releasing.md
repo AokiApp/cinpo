@@ -178,9 +178,11 @@ treat HTTP 404 as "not published for this version", and extract it with `tar`.
 They no longer fetch the repository or the Gradle wrapper with git. Generated
 projects are still initialized as git repositories.
 
-During template development, run the bootstrap from a CINPO checkout (it uses
-`template/<name>` automatically) or pass `--template-dir <path>`
-(`-TemplateDir` on Windows). There is no fallback to `main`.
+The bootstrap only downloads release archives. To test a template change end to
+end, package it with `scripts/package-templates.sh`, serve the output locally,
+and pass `--version <version>` with `CINPO_TEMPLATE_BASE_URL` pointing at the
+server. A template can also be built directly from a copy of its directory,
+because every starter ships its own Gradle wrapper.
 
 The template archives are published only on Pages; they are not attached to the
 GitHub Release and do not have checksum files or attestations. Corrupted

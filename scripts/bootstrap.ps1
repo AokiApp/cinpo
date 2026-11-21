@@ -4,15 +4,12 @@
     Windows counterpart of bootstrap.sh: creates a standalone CINPO starter project.
 
 .DESCRIPTION
-    Downloads a released template archive, or copies a local template directory,
-    configures the project name, and initializes a git repository.
+    Downloads a released template archive, configures the project name, and
+    initializes a git repository.
 
-    Without -TemplateDir or -Version, a local template is used when the script runs
-    from a CINPO checkout. A release-pinned copy uses the version written into
-    $DefaultVersion.
+    A release-pinned copy uses the version written into $DefaultVersion.
 
     Environment overrides:
-      CINPO_TEMPLATE_DIR        Local template directory.
       CINPO_TEMPLATE_VERSION    Release version to download.
       CINPO_TEMPLATE_BASE_URL   Base URL for template archives.
 
@@ -23,7 +20,7 @@
     powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -Template probe C:\src\my-project
 
 .EXAMPLE
-    powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -TemplateDir template\basic C:\src\my-project
+    powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -Version 0.5.2 C:\src\my-project
 #>
 [CmdletBinding()]
 param(
@@ -32,8 +29,6 @@ param(
     [string] $Template = 'basic',
 
     [string] $Name,
-
-    [string] $TemplateDir,
 
     [string] $Version,
 
@@ -83,19 +78,16 @@ function Stop-WithError([string] $Message) {
 
 function Show-Usage {
     Write-Host ''
-    Write-Host 'Usage:  scripts\bootstrap.ps1 [-Template <name>] [-TemplateDir <path> | -Version <version>] [-Name <name>] <destination>' -ForegroundColor Cyan
+    Write-Host 'Usage:  scripts\bootstrap.ps1 [-Template <name>] [-Version <version>] [-Name <name>] <destination>' -ForegroundColor Cyan
     Write-Host ''
-    Write-Host 'Creates a standalone starter project from a released template archive, or from'
-    Write-Host 'a local template directory.'
+    Write-Host 'Creates a standalone starter project from a released template archive.'
     Write-Host ''
     Write-Host 'Options:'
     Write-Host '  -Template <name>    Template to use (default: basic)'
-    Write-Host '  -TemplateDir <path> Local template directory (development use)'
     Write-Host '  -Version <x.y.z>    Release version to download'
     Write-Host '  -Name <name>        Project name (default: destination directory basename)'
     Write-Host ''
     Write-Host 'Environment:'
-    Write-Host '  CINPO_TEMPLATE_DIR        Local template directory.'
     Write-Host '  CINPO_TEMPLATE_VERSION    Release version to download.'
     Write-Host '  CINPO_TEMPLATE_BASE_URL   Base URL for template archives.'
     Write-Host ''
@@ -175,12 +167,6 @@ if (-not $Template) {
 if ($Template -match '[\\/]' -or $Template -eq '.' -or $Template -eq '..') {
     Stop-WithError "Invalid template name: $Template"
 }
-if ($TemplateDir -and $Version) {
-    Stop-WithError 'Choose one of -TemplateDir or -Version'
-}
-if ($TemplateDir -and $PSBoundParameters.ContainsKey('Template')) {
-    Stop-WithError '-TemplateDir and -Template cannot be used together'
-}
 
 foreach ($commandName in @('git', 'tar.exe', 'curl.exe')) {
     if (-not (Get-Command $commandName -ErrorAction SilentlyContinue)) {
@@ -192,51 +178,24 @@ foreach ($commandName in @('git', 'tar.exe', 'curl.exe')) {
 }
 
 # --------------------------------------------------------------------------
-# Resolve the template source
+# Resolve the template version
 # --------------------------------------------------------------------------
 
 $selectedTemplate = $Template
-$sourceMode = $null
-$localTemplateDir = $null
 $templateVersion = $null
 
-if ($TemplateDir) {
-    $sourceMode = 'local'
-    $localTemplateDir = $TemplateDir
-} elseif ($Version) {
-    $sourceMode = 'download'
+if ($Version) {
     $templateVersion = $Version
-} elseif ($env:CINPO_TEMPLATE_DIR) {
-    $sourceMode = 'local'
-    $localTemplateDir = $env:CINPO_TEMPLATE_DIR
 } elseif ($env:CINPO_TEMPLATE_VERSION) {
-    $sourceMode = 'download'
     $templateVersion = $env:CINPO_TEMPLATE_VERSION
+} elseif ($DefaultVersion) {
+    $templateVersion = $DefaultVersion
 } else {
-    $checkoutTemplate = Join-Path (Join-Path $PSScriptRoot '..\template') $selectedTemplate
-    if (Test-Path -LiteralPath $checkoutTemplate -PathType Container) {
-        $sourceMode = 'local'
-        $localTemplateDir = $checkoutTemplate
-    } elseif ($DefaultVersion) {
-        $sourceMode = 'download'
-        $templateVersion = $DefaultVersion
-    } else {
-        Stop-WithError 'No template source: pass -TemplateDir <path> or -Version <x.y.z>'
-    }
+    Stop-WithError 'No template version: pass -Version <x.y.z>'
 }
 
-if ($sourceMode -eq 'local') {
-    if (-not (Test-Path -LiteralPath $localTemplateDir -PathType Container)) {
-        Stop-WithError "Template directory not found: $localTemplateDir"
-    }
-    $localTemplateDir = (Resolve-Path -LiteralPath $localTemplateDir).ProviderPath
-    if (-not $PSBoundParameters.ContainsKey('Template')) {
-        $selectedTemplate = Split-Path -Leaf $localTemplateDir
-    }
-} else {
-    if ($templateVersion -notmatch $VersionPattern) {
-        Stop-WithError "Invalid version: $templateVersion (expected x.y.z)"
-    }
+if ($templateVersion -notmatch $VersionPattern) {
+    Stop-WithError "Invalid version: $templateVersion (expected x.y.z)"
 }
 
 $baseUrl = $env:CINPO_TEMPLATE_BASE_URL
@@ -245,10 +204,7 @@ if (-not $baseUrl) {
 }
 $baseUrl = $baseUrl.TrimEnd('/')
 
-$templateUrl = $null
-if ($sourceMode -eq 'download') {
-    $templateUrl = "$baseUrl/templates/$templateVersion/$selectedTemplate/template.tar.gz"
-}
+$templateUrl = "$baseUrl/templates/$templateVersion/$selectedTemplate/template.tar.gz"
 
 $destinationDir = [IO.Path]::GetFullPath([IO.Path]::Combine((Get-Location).ProviderPath, $Destination))
 
@@ -271,12 +227,7 @@ Write-Section 'Configuration'
 Write-Info 'Template'     $selectedTemplate
 Write-Info 'Project name' $projectName
 Write-Info 'Destination'  $destinationDir
-if ($sourceMode -eq 'local') {
-    Write-Info 'Source' "local: $localTemplateDir"
-    Write-Host "[!] Using a local template (development): $localTemplateDir" -ForegroundColor Yellow
-} else {
-    Write-Info 'Source' $templateUrl
-}
+Write-Info 'Source'       $templateUrl
 
 $workDir = Join-Path ([IO.Path]::GetTempPath()) ("cinpo-bootstrap-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $workDir | Out-Null
@@ -290,54 +241,35 @@ try {
     # Phase 1 - acquire the template
     # ----------------------------------------------------------------------
 
-    if ($sourceMode -eq 'download') {
-        Invoke-Step 1 3 "Fetching template ($selectedTemplate $templateVersion)" {
-            $httpCode = & curl.exe -sS -L --retry 3 -o $archive -w '%{http_code}' $templateUrl 2>$null
-            if ($LASTEXITCODE -ne 0) {
-                throw "failed to download $templateUrl (curl exit $LASTEXITCODE)"
-            }
-            if ("$httpCode" -ne '200') {
-                if ("$httpCode" -eq '404') {
-                    throw "template '$selectedTemplate' is not published for version $templateVersion`n    $templateUrl"
-                }
-                throw "failed to download $templateUrl (HTTP $httpCode)"
-            }
+    Invoke-Step 1 3 "Fetching template ($selectedTemplate $templateVersion)" {
+        $httpCode = & curl.exe -sS -L --retry 3 -o $archive -w '%{http_code}' $templateUrl 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            throw "failed to download $templateUrl (curl exit $LASTEXITCODE)"
         }
-    } else {
-        Invoke-Step 1 3 "Preparing local template ($selectedTemplate)" {
-            if (-not (Test-Path -LiteralPath $localTemplateDir -PathType Container)) {
-                throw "Template directory not found: $localTemplateDir"
+        if ("$httpCode" -ne '200') {
+            if ("$httpCode" -eq '404') {
+                throw "template '$selectedTemplate' is not published for version $templateVersion`n    $templateUrl"
             }
+            throw "failed to download $templateUrl (HTTP $httpCode)"
         }
     }
 
     # ----------------------------------------------------------------------
-    # Phase 2 - copy files + configure project
+    # Phase 2 - extract files + configure project
     # ----------------------------------------------------------------------
 
     $destinationCreated = $true
 
-    Invoke-Step 2 3 'Copying files & configuring project' {
+    Invoke-Step 2 3 'Extracting files & configuring project' {
         $parent = Split-Path -Parent $destinationDir
         if ($parent -and -not (Test-Path -LiteralPath $parent)) {
             New-Item -ItemType Directory -Force -Path $parent | Out-Null
         }
 
-        if ($sourceMode -eq 'download') {
-            New-Item -ItemType Directory -Force -Path $destinationDir | Out-Null
-            & tar.exe -xzf $archive -C $destinationDir
-            if ($LASTEXITCODE -ne 0) {
-                throw "tar failed to extract $archive"
-            }
-        } else {
-            Copy-Item -LiteralPath $localTemplateDir -Destination $destinationDir -Recurse -Force
-        }
-
-        foreach ($stale in @('.gradle', 'build', 'vendor')) {
-            $stalePath = Join-Path $destinationDir $stale
-            if (Test-Path -LiteralPath $stalePath) {
-                Remove-Item -LiteralPath $stalePath -Recurse -Force
-            }
+        New-Item -ItemType Directory -Force -Path $destinationDir | Out-Null
+        & tar.exe -xzf $archive -C $destinationDir
+        if ($LASTEXITCODE -ne 0) {
+            throw "tar failed to extract $archive"
         }
 
         $settingsFile = Join-Path $destinationDir 'settings.gradle'
@@ -413,11 +345,7 @@ Write-Host 'Next steps'
 Write-Host "    1. cd $destinationDir"
 Write-Host '    2. .\gradlew.bat cinpoRun'
 
-if ($sourceMode -eq 'local') {
-    $sourceLine = "  local: $localTemplateDir"
-} else {
-    $sourceLine = "  $templateUrl @ $templateVersion"
-}
+$sourceLine = "  $templateUrl @ $templateVersion"
 
 Write-Output @"
 Created project from template:
