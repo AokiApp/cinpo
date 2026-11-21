@@ -102,13 +102,13 @@ The `release` job performs these steps:
 7. copy the staged files to `gh-pages` without removing older versions
 8. create the GitHub Release with `checksums.txt`
 
+The same job packages and promotes the template archives; see
+[Template distribution](templates.md).
+
 The `deploy-pages` job deploys the `gh-pages` branch. `gh-pages` is the
 cumulative repository and was seeded with 0.5.0. Every version directory is
 kept, but `maven-metadata.xml` is copied from the latest release. CINPO pins
 exact versions, so version ranges are not supported.
-
-The templates accept `-PcinpoRepository=<uri>` to resolve CINPO artifacts from
-a local Maven repository instead of the public one.
 
 ### Failure and retry
 
@@ -125,16 +125,18 @@ a local Maven repository instead of the public one.
 
 ```bash
 gh release view v0.5.1
-git show origin/gh-pages:bootstrap.sh | grep '^default_ref='
 curl -I https://AokiApp.github.io/cinpo/app/aoki/cinpo/cinpo/0.5.1/cinpo-0.5.1.pom
 curl -I https://AokiApp.github.io/cinpo/checksums-0.5.1.txt
 ```
+
+For the template archives and the pinned bootstrap version, see
+[Template distribution](templates.md#verification-after-a-release).
 
 Check that GitHub Packages has the core, the three runtimes, the Gradle plugin,
 and the plugin marker at the released version. The release workflow already
 compares their checksums before it promotes Pages.
 
-The release job attests the staged artifacts. To verify a downloaded artifact:
+The release job attests the staged Maven artifacts. To verify a downloaded artifact:
 
 ```bash
 gh attestation verify <file> --repo AokiApp/cinpo
@@ -142,25 +144,8 @@ gh attestation verify <file> --repo AokiApp/cinpo
 
 ### Pages recovery
 
-`gh-pages` is a normal branch that stores the cumulative Maven repository and
-the bootstrap scripts. If it is lost, recreate it from the live Pages site or
-from a release artifact, then let the next release add its version on top. Do
-not delete version directories to save space; older templates rely on them.
-
-## Template distribution
-
-The current `bootstrap.sh` and `bootstrap.ps1` fetch `template/<name>` from the
-GitHub repository with a sparse checkout. That is useful during development, but
-it is not a release artifact:
-
-- the unversioned Pages bootstrap defaults to `main`, which can be ahead of the
-  published framework version
-- the generated project depends on `git` and on the repository layout
-- the download is not checked against a checksum
-
-The target is to package each template as a versioned archive, including the
-Gradle wrapper and its version catalog, publish the archives with checksums on
-the release and on Pages, and have the bootstrap scripts download and verify the
-archive for a specific release. Until that change lands, the release workflow
-pins the Pages copy of the bootstrap script to the release tag so that the
-template and the framework version at least match.
+`gh-pages` is a normal branch that stores the cumulative Maven repository, the
+template archives, and the bootstrap scripts. If it is lost, recreate it from
+the live Pages site or from a release artifact, then let the next release add
+its version on top. Do not delete version directories to save space; older
+templates rely on them.
