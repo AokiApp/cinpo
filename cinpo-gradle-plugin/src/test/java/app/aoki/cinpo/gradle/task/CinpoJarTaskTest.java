@@ -85,6 +85,33 @@ class CinpoJarTaskTest {
     }
 
     @Test
+    void keepsSignatureLikeResourcesOutsideTopLevelMetaInf() throws Exception {
+        Path projectDirectory = tempDirectory.resolve("project");
+        Path dependency = projectDirectory.resolve("dependency");
+        write(dependency.resolve("data/example.SF"), "resource");
+        write(dependency.resolve("data/example.DSA"), "resource");
+        write(dependency.resolve("data/example.RSA"), "resource");
+        write(dependency.resolve("data/example.EC"), "resource");
+        write(dependency.resolve("META-INF/nested/example.SF"), "resource");
+        write(dependency.resolve("META-INF/EXAMPLE.SF"), "signature");
+        write(dependency.resolve("meta-inf/lowercase.SF"), "signature");
+
+        CinpoJarTask task = newTask(projectDirectory);
+        task.from(dependency.toFile());
+        copy(task);
+
+        try (JarFile jar = new JarFile(task.getArchiveFile().get().getAsFile())) {
+            assertEquals("resource", read(jar, "data/example.SF"));
+            assertEquals("resource", read(jar, "data/example.DSA"));
+            assertEquals("resource", read(jar, "data/example.RSA"));
+            assertEquals("resource", read(jar, "data/example.EC"));
+            assertEquals("resource", read(jar, "META-INF/nested/example.SF"));
+            assertNull(jar.getEntry("META-INF/EXAMPLE.SF"));
+            assertNull(jar.getEntry("meta-inf/lowercase.SF"));
+        }
+    }
+
+    @Test
     void dropsEverySignatureMetadataTypeIncludingEc() throws Exception {
         Path projectDirectory = tempDirectory.resolve("project");
         Path dependency = projectDirectory.resolve("dependency");
