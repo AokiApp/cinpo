@@ -2,6 +2,7 @@ package com.sun.javacard.converter;
 
 import app.aoki.cinpo.config.AppletEntry;
 import app.aoki.cinpo.config.AppletManifest;
+import app.aoki.cinpo.gradle.javacard.JavaCardApiLayout;
 import app.aoki.cinpo.gradle.javacard.tools.JavaCardToolException;
 
 import java.io.File;
@@ -45,7 +46,7 @@ public final class CinpoConverterLogic {
         Objects.requireNonNull(companionExportDirectories, "companionExportDirectories");
 
         ConversionProfile profile = new ConversionProfile();
-        profile.APIExpDir = "api_export_files_" + manifest.targetApiVersion();
+        profile.APIExpDir = JavaCardApiLayout.apiExportsName(manifest.targetApiVersion());
         profile.target22 = "3.0.4".equals(manifest.targetApiVersion()) || "3.0.5".equals(manifest.targetApiVersion());
 
         // Support Java Card's int-capable converter mode. CINPO does not currently
@@ -126,7 +127,7 @@ public final class CinpoConverterLogic {
     private static Path[] exportPaths(AppletManifest manifest, List<Path> companionExportDirectories, Path apiExportRoot) {
         List<Path> exportPaths = new ArrayList<>();
 
-        Path apiExports = apiExportRoot.resolve("api_export_files_" + manifest.targetApiVersion());
+        Path apiExports = JavaCardApiLayout.apiExports(apiExportRoot, manifest.targetApiVersion());
         if (Files.isDirectory(apiExports)) {
             exportPaths.add(apiExports);
         }

@@ -23,6 +23,7 @@ import app.aoki.cinpo.config.AppletManifest;
 import app.aoki.cinpo.config.ManifestLoader;
 import app.aoki.cinpo.gradle.javacard.CapBuildRequest;
 import app.aoki.cinpo.gradle.javacard.CapResourceLayout;
+import app.aoki.cinpo.gradle.javacard.JavaCardApiLayout;
 import app.aoki.cinpo.gradle.javacard.OracleClassicCapBuildService;
 
 /**
@@ -170,12 +171,12 @@ public abstract class GenerateCapTask extends DefaultTask {
             AppletManifest manifest = ManifestLoader.load(manifestPath);
 
             String targetApiVersion = manifest.targetApiVersion();
-            Path targetApiJar = toolLibrary.resolve("api_classic-" + targetApiVersion + ".jar");
+            Path targetApiJar = JavaCardApiLayout.apiJar(toolLibrary, targetApiVersion);
             if (!Files.isRegularFile(targetApiJar)) {
                 throw new GradleException("Java Card API jar for targetApiVersion "
                         + targetApiVersion + " was not found: " + targetApiJar);
             }
-            Path targetApiExports = apiExportRoot.resolve("api_export_files_" + targetApiVersion);
+            Path targetApiExports = JavaCardApiLayout.apiExports(apiExportRoot, targetApiVersion);
             if (!Files.isDirectory(targetApiExports)) {
                 throw new GradleException("Java Card API export files for targetApiVersion "
                         + targetApiVersion + " were not found: " + targetApiExports);

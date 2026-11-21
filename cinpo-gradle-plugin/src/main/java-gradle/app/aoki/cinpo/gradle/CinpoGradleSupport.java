@@ -14,6 +14,7 @@ import org.gradle.api.artifacts.ExternalDependency;
 
 import app.aoki.cinpo.config.AppletManifest;
 import app.aoki.cinpo.config.ManifestLoader;
+import app.aoki.cinpo.gradle.javacard.JavaCardApiLayout;
 
 /**
  * Java helper methods used by the Gradle DSL plugin layer.
@@ -30,7 +31,7 @@ public final class CinpoGradleSupport {
         AppletManifest manifest = loadManifest(project, "applet compilation");
         String targetApiVersion = manifest.targetApiVersion();
         return project.getLayout().getBuildDirectory()
-                .file("cinpo-cache/jcdk/tools/lib/api_classic-" + targetApiVersion + ".jar");
+                .file("cinpo-cache/jcdk/tools/lib/" + JavaCardApiLayout.apiJarName(targetApiVersion));
     }
 
     /**
