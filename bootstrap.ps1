@@ -4,23 +4,23 @@
     Windows counterpart of bootstrap.sh: creates a standalone CINPO starter project.
 
 .DESCRIPTION
-    Fetches the CINPO template with git into a temporary sparse checkout, copies
-    ./template/<template-name> into a new project directory, and prepares it as a
-    standalone starter project.
+    Downloads a released template archive, configures the project name, and
+    initializes a git repository.
 
-    When run from a CINPO Git checkout, the template is fetched from the current
-    origin/HEAD commit so the generated project matches that checked-out revision.
-    Otherwise it defaults to https://github.com/AokiApp/cinpo @ main.
+    A release-pinned copy uses the version written into $DefaultVersion.
 
     Environment overrides:
-      CINPO_TEMPLATE_REPO  Git repository URL used when auto-detection is unavailable.
-      CINPO_TEMPLATE_REF   Git ref used when auto-detection is unavailable.
+      CINPO_TEMPLATE_VERSION    Release version to download.
+      CINPO_TEMPLATE_BASE_URL   Base URL for template archives.
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 my-project
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -Template probe C:\src\my-project
+
+.EXAMPLE
+    powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -Version 0.5.2 C:\src\my-project
 #>
 [CmdletBinding()]
 param(
@@ -30,17 +30,18 @@ param(
 
     [string] $Name,
 
+    [string] $Version,
+
     [Parameter(Position = 0)]
     [string] $Destination
 )
 
 $ErrorActionPreference = 'Stop'
 
-$GradleVersion = '9.3.1'
-$GradleRepo = 'https://github.com/gradle/gradle'
-$DefaultRepo = 'https://github.com/AokiApp/cinpo'
-$DefaultRef = 'v0.5.1'
+$DefaultVersion = '0.5.2'
+$DefaultBaseUrl = 'https://AokiApp.github.io/cinpo'
 $TemplateProjectNameLine = "rootProject.name = 'cinpo-template'"
+$VersionPattern = '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z][0-9A-Za-z.-]*)?$'
 
 # --------------------------------------------------------------------------
 # UI helpers
@@ -77,19 +78,18 @@ function Stop-WithError([string] $Message) {
 
 function Show-Usage {
     Write-Host ''
-    Write-Host 'Usage:  scripts\bootstrap.ps1 [-Template <name>] [-Name <name>] <destination>' -ForegroundColor Cyan
+    Write-Host 'Usage:  scripts\bootstrap.ps1 [-Template <name>] [-Version <version>] [-Name <name>] <destination>' -ForegroundColor Cyan
     Write-Host ''
-    Write-Host 'Fetches the CINPO template with git into a temporary sparse checkout, copies'
-    Write-Host './template/<template-name> into a new project directory, and prepares it as a'
-    Write-Host 'standalone starter project.'
+    Write-Host 'Creates a standalone starter project from a released template archive.'
     Write-Host ''
     Write-Host 'Options:'
-    Write-Host '  -Template <name>   Template to use (default: basic)'
-    Write-Host '  -Name <name>       Project name (default: destination directory basename)'
+    Write-Host '  -Template <name>    Template to use (default: basic)'
+    Write-Host '  -Version <x.y.z>    Release version to download'
+    Write-Host '  -Name <name>        Project name (default: destination directory basename)'
     Write-Host ''
-    Write-Host 'Environment overrides:'
-    Write-Host '  CINPO_TEMPLATE_REPO  Git repository URL used when auto-detection is unavailable.'
-    Write-Host '  CINPO_TEMPLATE_REF   Git ref used when auto-detection is unavailable.'
+    Write-Host 'Environment:'
+    Write-Host '  CINPO_TEMPLATE_VERSION    Release version to download.'
+    Write-Host '  CINPO_TEMPLATE_BASE_URL   Base URL for template archives.'
     Write-Host ''
 }
 
@@ -115,8 +115,7 @@ function Invoke-Step {
             Write-Host $captured
             Write-Host '------------------------' -ForegroundColor DarkGray
         }
-        Write-Host "[x] Error: $($_.Exception.Message)" -ForegroundColor Red
-        exit 1
+        throw
     } finally {
         Remove-Item -LiteralPath $logFile -Force -ErrorAction SilentlyContinue
     }
@@ -152,55 +151,6 @@ function Write-TextFileLf {
     [IO.File]::WriteAllText($Path, $normalized, (New-Object Text.UTF8Encoding($false)))
 }
 
-function Get-CheckoutSource {
-    param([string] $CandidateDirectory)
-
-    if (-not $CandidateDirectory) { return $null }
-
-    $previousPreference = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    try {
-        & git -C $CandidateDirectory rev-parse --show-toplevel 2>&1 | Out-Null
-        if ($LASTEXITCODE -ne 0) { return $null }
-
-        $repoUrl = & git -C $CandidateDirectory remote get-url origin 2>&1 | ForEach-Object { "$_" }
-        if ($LASTEXITCODE -ne 0) { return $null }
-        $ref = & git -C $CandidateDirectory rev-parse HEAD 2>&1 | ForEach-Object { "$_" }
-        if ($LASTEXITCODE -ne 0) { return $null }
-    } finally {
-        $ErrorActionPreference = $previousPreference
-    }
-
-    if (-not $repoUrl -or -not $ref) { return $null }
-    return [PSCustomObject]@{ Repo = "$repoUrl".Trim(); Ref = "$ref".Trim() }
-}
-
-function Invoke-SparseCheckout {
-    param(
-        [string] $RepoUrl,
-        [string] $Ref,
-        [string] $CheckoutDirectory,
-        [string[]] $SparsePaths
-    )
-
-    Invoke-Git @('init', '-q', $CheckoutDirectory)
-    Invoke-Git @('-C', $CheckoutDirectory, 'remote', 'add', 'origin', $RepoUrl)
-    Invoke-Git @('-C', $CheckoutDirectory, 'config', 'advice.detachedHead', 'false')
-    Invoke-Git @('-C', $CheckoutDirectory, 'config', 'core.sparseCheckout', 'true')
-    # Check out bytes verbatim. With the user's global core.autocrlf=true the POSIX
-    # gradlew copied into the generated project would otherwise get CRLF endings and
-    # fail with "bad interpreter: /bin/sh^M" on Linux and in the devcontainer.
-    Invoke-Git @('-C', $CheckoutDirectory, 'config', 'core.autocrlf', 'false')
-    Invoke-Git @('-C', $CheckoutDirectory, 'config', 'core.eol', 'lf')
-
-    $infoDir = Join-Path $CheckoutDirectory '.git\info'
-    New-Item -ItemType Directory -Force -Path $infoDir | Out-Null
-    Write-TextFileLf -Path (Join-Path $infoDir 'sparse-checkout') -Content (($SparsePaths -join "`n") + "`n")
-
-    Invoke-Git @('-C', $CheckoutDirectory, 'fetch', '--depth', '1', 'origin', $Ref)
-    Invoke-Git @('-C', $CheckoutDirectory, 'checkout', '--detach', '-q', 'FETCH_HEAD')
-}
-
 # --------------------------------------------------------------------------
 # Validate arguments
 # --------------------------------------------------------------------------
@@ -218,26 +168,43 @@ if ($Template -match '[\\/]' -or $Template -eq '.' -or $Template -eq '..') {
     Stop-WithError "Invalid template name: $Template"
 }
 
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    Stop-WithError 'Required command not found: git'
-}
-
-# --------------------------------------------------------------------------
-# Resolve repo / ref / paths
-# --------------------------------------------------------------------------
-
-$templateRepo = $env:CINPO_TEMPLATE_REPO
-$templateRef = $env:CINPO_TEMPLATE_REF
-
-if (-not $templateRepo -or -not $templateRef) {
-    $detected = Get-CheckoutSource -CandidateDirectory $PSScriptRoot
-    if ($detected) {
-        if (-not $templateRepo) { $templateRepo = $detected.Repo }
-        if (-not $templateRef) { $templateRef = $detected.Ref }
+foreach ($commandName in @('git', 'tar.exe', 'curl.exe')) {
+    if (-not (Get-Command $commandName -ErrorAction SilentlyContinue)) {
+        if ($commandName -eq 'git') {
+            Stop-WithError 'Required command not found: git'
+        }
+        Stop-WithError "$commandName is required (bundled with Windows 10 1803 and later)"
     }
 }
-if (-not $templateRepo) { $templateRepo = $DefaultRepo }
-if (-not $templateRef) { $templateRef = $DefaultRef }
+
+# --------------------------------------------------------------------------
+# Resolve the template version
+# --------------------------------------------------------------------------
+
+$selectedTemplate = $Template
+$templateVersion = $null
+
+if ($Version) {
+    $templateVersion = $Version
+} elseif ($env:CINPO_TEMPLATE_VERSION) {
+    $templateVersion = $env:CINPO_TEMPLATE_VERSION
+} elseif ($DefaultVersion) {
+    $templateVersion = $DefaultVersion
+} else {
+    Stop-WithError 'No template version: pass -Version <x.y.z>'
+}
+
+if ($templateVersion -notmatch $VersionPattern) {
+    Stop-WithError "Invalid version: $templateVersion (expected x.y.z)"
+}
+
+$baseUrl = $env:CINPO_TEMPLATE_BASE_URL
+if (-not $baseUrl) {
+    $baseUrl = $DefaultBaseUrl
+}
+$baseUrl = $baseUrl.TrimEnd('/')
+
+$templateUrl = "$baseUrl/templates/$templateVersion/$selectedTemplate/template.tar.gz"
 
 $destinationDir = [IO.Path]::GetFullPath([IO.Path]::Combine((Get-Location).ProviderPath, $Destination))
 
@@ -257,49 +224,52 @@ if (-not $projectName) {
 Write-Banner
 
 Write-Section 'Configuration'
-Write-Info 'Template'     $Template
+Write-Info 'Template'     $selectedTemplate
 Write-Info 'Project name' $projectName
 Write-Info 'Destination'  $destinationDir
-Write-Info 'Source'       "$templateRepo @ $templateRef"
+Write-Info 'Source'       $templateUrl
 
 $workDir = Join-Path ([IO.Path]::GetTempPath()) ("cinpo-bootstrap-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path $workDir | Out-Null
 
+$destinationCreated = $false
+$completed = $false
+$archive = Join-Path $workDir 'template.tar.gz'
+
 try {
     # ----------------------------------------------------------------------
-    # Phase 1 - fetch template
+    # Phase 1 - acquire the template
     # ----------------------------------------------------------------------
 
-    $templateCheckoutDir = Join-Path $workDir 'cinpo-source'
-
-    Invoke-Step 1 4 'Fetching template' {
-        Invoke-SparseCheckout -RepoUrl $templateRepo -Ref $templateRef `
-            -CheckoutDirectory $templateCheckoutDir -SparsePaths @("template/$Template/")
+    Invoke-Step 1 3 "Fetching template ($selectedTemplate $templateVersion)" {
+        $httpCode = & curl.exe -sS -L --retry 3 -o $archive -w '%{http_code}' $templateUrl 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            throw "failed to download $templateUrl (curl exit $LASTEXITCODE)"
+        }
+        if ("$httpCode" -ne '200') {
+            if ("$httpCode" -eq '404') {
+                throw "template '$selectedTemplate' is not published for version $templateVersion`n    $templateUrl"
+            }
+            throw "failed to download $templateUrl (HTTP $httpCode)"
+        }
     }
 
-    $templateDir = Join-Path $templateCheckoutDir "template\$Template"
-    if (-not (Test-Path -LiteralPath $templateDir -PathType Container)) {
-        Write-Host "[x] Error: template not found: $Template" -ForegroundColor Red
-        Write-Host "    Template source: $templateRepo @ $templateRef"
-        exit 1
-    }
-
     # ----------------------------------------------------------------------
-    # Phase 2 - copy files + configure project
+    # Phase 2 - extract files + configure project
     # ----------------------------------------------------------------------
 
-    Invoke-Step 2 4 'Copying files & configuring project' {
+    $destinationCreated = $true
+
+    Invoke-Step 2 3 'Extracting files & configuring project' {
         $parent = Split-Path -Parent $destinationDir
         if ($parent -and -not (Test-Path -LiteralPath $parent)) {
             New-Item -ItemType Directory -Force -Path $parent | Out-Null
         }
-        Copy-Item -LiteralPath $templateDir -Destination $destinationDir -Recurse -Force
 
-        foreach ($stale in @('.gradle', 'build', 'vendor')) {
-            $stalePath = Join-Path $destinationDir $stale
-            if (Test-Path -LiteralPath $stalePath) {
-                Remove-Item -LiteralPath $stalePath -Recurse -Force
-            }
+        New-Item -ItemType Directory -Force -Path $destinationDir | Out-Null
+        & tar.exe -xzf $archive -C $destinationDir
+        if ($LASTEXITCODE -ne 0) {
+            throw "tar failed to extract $archive"
         }
 
         $settingsFile = Join-Path $destinationDir 'settings.gradle'
@@ -325,56 +295,33 @@ try {
     }
 
     # ----------------------------------------------------------------------
-    # Phase 3 - Gradle wrapper
+    # Phase 3 - git init
     # ----------------------------------------------------------------------
 
-    $wrapperDir = Join-Path $destinationDir 'gradle\wrapper'
-
-    Invoke-Step 3 4 "Fetching Gradle wrapper ($GradleVersion)" {
-        New-Item -ItemType Directory -Force -Path $wrapperDir | Out-Null
-
-        $gradleCheckoutDir = Join-Path $workDir 'gradle-source'
-        Invoke-SparseCheckout -RepoUrl $GradleRepo -Ref "v$GradleVersion" `
-            -CheckoutDirectory $gradleCheckoutDir `
-            -SparsePaths @('gradle/wrapper/gradle-wrapper.jar', 'gradlew', 'gradlew.bat')
-
-        $wrapperJar = Join-Path $gradleCheckoutDir 'gradle\wrapper\gradle-wrapper.jar'
-        if (-not (Test-Path -LiteralPath $wrapperJar -PathType Leaf)) {
-            throw "gradle-wrapper.jar not found in fetched Gradle source: $GradleRepo @ v$GradleVersion"
-        }
-
-        Copy-Item -LiteralPath $wrapperJar -Destination (Join-Path $wrapperDir 'gradle-wrapper.jar') -Force
-        Copy-Item -LiteralPath (Join-Path $gradleCheckoutDir 'gradlew') -Destination (Join-Path $destinationDir 'gradlew') -Force
-        Copy-Item -LiteralPath (Join-Path $gradleCheckoutDir 'gradlew.bat') -Destination (Join-Path $destinationDir 'gradlew.bat') -Force
-
-        Write-TextFileLf -Path (Join-Path $wrapperDir 'gradle-wrapper.properties') -Content @"
-distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-$GradleVersion-all.zip
-networkTimeout=10000
-validateDistributionUrl=true
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists
-"@
-    }
-
-    # ----------------------------------------------------------------------
-    # Phase 4 - git init
-    # ----------------------------------------------------------------------
-
-    Invoke-Step 4 4 'Initializing git repository' {
+    Invoke-Step 3 3 'Initializing git repository' {
         Invoke-Git @('-C', $destinationDir, 'init', '-q')
+        Invoke-Git @('-C', $destinationDir, 'add', '-A')
         # Windows has no POSIX execute bit, so record it in the index directly.
         # Without this the generated project's gradlew is not executable on Linux.
-        Invoke-Git @('-C', $destinationDir, 'add', '-A')
         Invoke-Git @('-C', $destinationDir, 'update-index', '--chmod=+x', 'gradlew')
         Invoke-Git @('-C', $destinationDir,
             '-c', 'user.name=CINPO Template',
             '-c', 'user.email=cinpo-template@example.invalid',
             'commit', '-q', '-m', 'Initial commit')
     }
+
+    $completed = $true
+} catch {
+    Write-Host "[x] Error: $($_.Exception.Message)" -ForegroundColor Red
 } finally {
+    if (-not $completed -and $destinationCreated -and (Test-Path -LiteralPath $destinationDir)) {
+        Remove-Item -LiteralPath $destinationDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
     Remove-Item -LiteralPath $workDir -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+if (-not $completed) {
+    exit 1
 }
 
 # --------------------------------------------------------------------------
@@ -398,16 +345,18 @@ Write-Host 'Next steps'
 Write-Host "    1. cd $destinationDir"
 Write-Host '    2. .\gradlew.bat cinpoRun'
 
+$sourceLine = "  $templateUrl @ $templateVersion"
+
 Write-Output @"
 Created project from template:
   $destinationDir
 
 Template:
-  $Template
+  $selectedTemplate
 
 Project name:
   $projectName
 
 Template source:
-  $templateRepo @ $templateRef
+$sourceLine
 "@

@@ -1,0 +1,76 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "app.aoki.cinpo",
+    "module": "cinpo",
+    "version": "0.5.2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.3.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "cinpo-0.5.2.jar",
+          "url": "cinpo-0.5.2.jar",
+          "size": 132562,
+          "sha512": "e3474c596ad3fd60de0e3677854f7d2df0d80eae867e8abdf9f2467f8374df1866bea98b0d6c28824d64ee8c73386d893de950c0dff3958a930d90bd6a975558",
+          "sha256": "53b453b4105142786ff22eef6dd01811e9257efd3d2d8759a2b0c6c3df337802",
+          "sha1": "a45e0c3aecb0d6f6042080dc25b3f131f453ea5a",
+          "md5": "86cf890de2ee030d06ea0b4935a772ee"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.yaml",
+          "module": "snakeyaml",
+          "version": {
+            "requires": "2.2"
+          }
+        },
+        {
+          "group": "info.picocli",
+          "module": "picocli",
+          "version": {
+            "requires": "4.7.6"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "cinpo-0.5.2.jar",
+          "url": "cinpo-0.5.2.jar",
+          "size": 132562,
+          "sha512": "e3474c596ad3fd60de0e3677854f7d2df0d80eae867e8abdf9f2467f8374df1866bea98b0d6c28824d64ee8c73386d893de950c0dff3958a930d90bd6a975558",
+          "sha256": "53b453b4105142786ff22eef6dd01811e9257efd3d2d8759a2b0c6c3df337802",
+          "sha1": "a45e0c3aecb0d6f6042080dc25b3f131f453ea5a",
+          "md5": "86cf890de2ee030d06ea0b4935a772ee"
+        }
+      ]
+    }
+  ]
+}
