@@ -1,0 +1,85 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "app.aoki.cinpo",
+    "module": "cinpo-runtime-jcardengine",
+    "version": "0.5.3",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.3.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "app.aoki.cinpo",
+          "module": "cinpo",
+          "version": {
+            "requires": "0.5.3"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "cinpo-runtime-jcardengine-0.5.3.jar",
+          "url": "cinpo-runtime-jcardengine-0.5.3.jar",
+          "size": 7235,
+          "sha512": "4c9251853e880194291e9cd7ac0f06c18e8013259257dee100c06184a65aaca2a4977db18104422035f1f1efa5a6a80954d0b0fa5fe69d624b4a3f1d31359a09",
+          "sha256": "6384a94efc41280b44faec7ae63b5dfc3c7dbbf9960d39613a2ae2b091357492",
+          "sha1": "562e306ff498b033d8f9804cc1706d344429de41",
+          "md5": "aecc068ba6ace900d46bcc2112e43ae8"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "com.github.martinpaljak",
+          "module": "jcardengine",
+          "version": {
+            "requires": "26.06.05-SNAPSHOT"
+          }
+        },
+        {
+          "group": "app.aoki.cinpo",
+          "module": "cinpo",
+          "version": {
+            "requires": "0.5.3"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "cinpo-runtime-jcardengine-0.5.3.jar",
+          "url": "cinpo-runtime-jcardengine-0.5.3.jar",
+          "size": 7235,
+          "sha512": "4c9251853e880194291e9cd7ac0f06c18e8013259257dee100c06184a65aaca2a4977db18104422035f1f1efa5a6a80954d0b0fa5fe69d624b4a3f1d31359a09",
+          "sha256": "6384a94efc41280b44faec7ae63b5dfc3c7dbbf9960d39613a2ae2b091357492",
+          "sha1": "562e306ff498b033d8f9804cc1706d344429de41",
+          "md5": "aecc068ba6ace900d46bcc2112e43ae8"
+        }
+      ]
+    }
+  ]
+}

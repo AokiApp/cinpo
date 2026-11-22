@@ -266,7 +266,7 @@ require_command tar
 require_command awk
 require_command mktemp
 
-default_version="0.5.2"
+default_version="0.5.3"
 template_base_url="${CINPO_TEMPLATE_BASE_URL:-https://AokiApp.github.io/cinpo}"
 while [[ "${template_base_url}" == */ ]]; do
   template_base_url="${template_base_url%/}"

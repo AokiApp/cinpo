@@ -1,0 +1,78 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "app.aoki.cinpo",
+    "module": "cinpo-runtime-jcdksim",
+    "version": "0.5.3",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.3.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "app.aoki.cinpo",
+          "module": "cinpo",
+          "version": {
+            "requires": "0.5.3"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "cinpo-runtime-jcdksim-0.5.3.jar",
+          "url": "cinpo-runtime-jcdksim-0.5.3.jar",
+          "size": 14672,
+          "sha512": "0313d90c2618f7de29fdad53cd388148bf67edd7fb1b6c45223f1a5a868ac48195b4092caf80e5f82b3e4a6a6ecaefde0618140138ac1643a44fec0b4ddaa986",
+          "sha256": "3586c39218758f408f6ece8e1e033f52d47d18c4a1ae2cf4f20f5b8c67dfbe1d",
+          "sha1": "e8463f2b286ca21b737af05440f59fe1a6a685b2",
+          "md5": "9bcf1acc72c5038b8970e2a3a99a02db"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "app.aoki.cinpo",
+          "module": "cinpo",
+          "version": {
+            "requires": "0.5.3"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "cinpo-runtime-jcdksim-0.5.3.jar",
+          "url": "cinpo-runtime-jcdksim-0.5.3.jar",
+          "size": 14672,
+          "sha512": "0313d90c2618f7de29fdad53cd388148bf67edd7fb1b6c45223f1a5a868ac48195b4092caf80e5f82b3e4a6a6ecaefde0618140138ac1643a44fec0b4ddaa986",
+          "sha256": "3586c39218758f408f6ece8e1e033f52d47d18c4a1ae2cf4f20f5b8c67dfbe1d",
+          "sha1": "e8463f2b286ca21b737af05440f59fe1a6a685b2",
+          "md5": "9bcf1acc72c5038b8970e2a3a99a02db"
+        }
+      ]
+    }
+  ]
+}

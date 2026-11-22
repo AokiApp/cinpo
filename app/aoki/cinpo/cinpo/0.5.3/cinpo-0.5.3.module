@@ -1,0 +1,76 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "app.aoki.cinpo",
+    "module": "cinpo",
+    "version": "0.5.3",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.3.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "cinpo-0.5.3.jar",
+          "url": "cinpo-0.5.3.jar",
+          "size": 133870,
+          "sha512": "3caf42d29e540499263c80105c33279c400bc88b66643e663855bec0e1190a83bb27fd36f96bcea8646469f2bf94a3e4b256d8fb70fa11b9bbbbcb3186e9cb17",
+          "sha256": "4d78a116ffee5c7ea1eedcd4e5648c700113454a840dc122d2ded18cfcc5a117",
+          "sha1": "a3008dd21975b7f668df552c22f3b5d0d68cb375",
+          "md5": "f15c9c64a8a2328902197ef6182d006d"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.yaml",
+          "module": "snakeyaml",
+          "version": {
+            "requires": "2.2"
+          }
+        },
+        {
+          "group": "info.picocli",
+          "module": "picocli",
+          "version": {
+            "requires": "4.7.6"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "cinpo-0.5.3.jar",
+          "url": "cinpo-0.5.3.jar",
+          "size": 133870,
+          "sha512": "3caf42d29e540499263c80105c33279c400bc88b66643e663855bec0e1190a83bb27fd36f96bcea8646469f2bf94a3e4b256d8fb70fa11b9bbbbcb3186e9cb17",
+          "sha256": "4d78a116ffee5c7ea1eedcd4e5648c700113454a840dc122d2ded18cfcc5a117",
+          "sha1": "a3008dd21975b7f668df552c22f3b5d0d68cb375",
+          "md5": "f15c9c64a8a2328902197ef6182d006d"
+        }
+      ]
+    }
+  ]
+}

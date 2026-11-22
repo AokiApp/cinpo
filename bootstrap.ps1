@@ -38,7 +38,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$DefaultVersion = '0.5.2'
+$DefaultVersion = '0.5.3'
 $DefaultBaseUrl = 'https://AokiApp.github.io/cinpo'
 $TemplateProjectNameLine = "rootProject.name = 'cinpo-template'"
 $VersionPattern = '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z][0-9A-Za-z.-]*)?$'
