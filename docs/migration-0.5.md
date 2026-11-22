@@ -2,6 +2,10 @@
 
 CINPO 0.5 splits the framework artifact into several Maven modules so that you only pull in the runtimes you use, changes the Gradle plugin ID, names the Oracle JCDK simulator runtime `jcdksim`, and replaces the task API's `@Inject` fields with a `CardTask` base class. This note documents what changed and what you need to do.
 
+## License change
+
+CINPO is now licensed under the Apache License 2.0 (see [LICENSE.md](../LICENSE.md)). Versions 0.5 and earlier were licensed under ANAL-Tight (AokiApp Normative Application License - Tight 1.0.1); the older license text is available at <https://github.com/AokiApp/ANAL/blob/main/licenses/ANAL-Tight-1.0.1.md>.
+
 ## Simulator runtime: `jcdksim`
 
 The Oracle JCDK simulator uses the name `jcdksim` across the profile, the runtime identifier, the Maven artifact, the Java package, and the Gradle task.

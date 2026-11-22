@@ -5,7 +5,7 @@
 **Spring Boot for JavaCard — annotation-driven applet installation and provisioning.**
 
 [![Release](https://github.com/AokiApp/cinpo/actions/workflows/release.yml/badge.svg)](https://github.com/AokiApp/cinpo/actions/workflows/release.yml)
-[![License](https://img.shields.io/badge/License-ANAL--T-4c1?labelColor=30363d)](LICENSE.md)
+[![License](https://img.shields.io/badge/License-Apache--2.0?labelColor=30363d)](LICENSE.md)
 
 [Getting Started](#getting-started) · [Templates](#templates) · [Writing Tasks](#writing-tasks)
 
@@ -230,7 +230,6 @@ For the full guide — discovery internals, dependency fields, resources, comple
 
 ## License
 
-CINPO is source-available, not open source. It is provided under the
-[AokiApp Normative Application License - Tight](LICENSE.md). Review that license before using,
+CINPO is licensed under the Apache License 2.0. Review the license before using,
 modifying, or distributing the software. Third-party components remain subject to their own terms;
 see [Third-Party Notices](THIRD_PARTY_NOTICES.md).
