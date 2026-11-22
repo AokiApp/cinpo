@@ -33,7 +33,9 @@ permissions:
 env:
   # A release event supplies the tag. Keep the leading "v" for the checkout,
   # and strip it where bootstrap.ps1 wants x.y.z.
-  CINPO_REF: ${{ inputs.version || github.event.release.tag_name }}
+  # The push trigger exists only on this temporary branch, so it falls back to
+  # the release under test.
+  CINPO_REF: ${{ inputs.version || github.event.release.tag_name || 'v0.5.2' }}
   VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
   PROJECT_ROOT: 'C:\cpa'
 
