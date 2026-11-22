@@ -18,15 +18,25 @@ final class JcdkSimPlatform {
   private JcdkSimPlatform() {}
 
   static String detectOS() {
-    if (OS_NAME.contains("linux")) return "linux";
-    if (OS_NAME.contains("mac") || OS_NAME.contains("darwin")) return "darwin";
-    if (OS_NAME.contains("win")) return "windows";
+    if (OS_NAME.contains("linux")) {
+      return "linux";
+    }
+    if (OS_NAME.contains("mac") || OS_NAME.contains("darwin")) {
+      return "darwin";
+    }
+    if (OS_NAME.contains("win")) {
+      return "windows";
+    }
     throw new IllegalStateException("Unsupported operating system: " + OS_NAME);
   }
 
   static String detectArch() {
-    if (OS_ARCH.contains("aarch64") || OS_ARCH.contains("arm64")) return "aarch64";
-    if (OS_ARCH.contains("amd64") || OS_ARCH.contains("x86_64")) return "amd64";
+    if (OS_ARCH.contains("aarch64") || OS_ARCH.contains("arm64")) {
+      return "aarch64";
+    }
+    if (OS_ARCH.contains("amd64") || OS_ARCH.contains("x86_64")) {
+      return "amd64";
+    }
     throw new IllegalStateException("Unsupported CPU architecture: " + OS_ARCH);
   }
 
