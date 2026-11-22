@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+    "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+<suppressions>
+  <!-- cinpo-gradle-plugin compiles against Oracle Java Card tool classes in com.sun.javacard.* -->
+  <suppress checks="IllegalImport"
+            files="cinpo-gradle-plugin[/\\]src[/\\].*java-gradle[/\\].*\.java"/>
+</suppressions>

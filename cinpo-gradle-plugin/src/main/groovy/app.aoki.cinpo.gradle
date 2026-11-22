@@ -8,8 +8,8 @@ import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.compile.JavaCompile
 
 plugins {
-    id 'java'
-    id 'app.aoki.cinpo.prepare-java-card-tools'
+	id 'java'
+	id 'app.aoki.cinpo.prepare-java-card-tools'
 }
 
 SourceSetContainer sourceSets = extensions.getByType(SourceSetContainer)
@@ -20,8 +20,8 @@ SourceSet mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME)
 // own classpath, output directory and compile task, so the paths below are read
 // from the source set instead of being repeated in several task registrations.
 SourceSet appletSourceSet = sourceSets.create('applet') {
-    java.srcDirs = ['applet']
-    resources.srcDirs = []
+	java.srcDirs = ['applet']
+	resources.srcDirs = []
 }
 
 // Root for files the CINPO tasks generate for the runtime classpath. The task
@@ -34,14 +34,14 @@ SourceSet appletSourceSet = sourceSets.create('applet') {
 def generatedCapResourcesDir = layout.buildDirectory.dir('generated/cinpo/resources/main')
 
 repositories {
-    maven {
-        name = 'javacardPro'
-        url = uri('https://mvn.javacard.pro/maven/')
-    }
-    maven {
-        name = 'javacardProSnapshots'
-        url = uri('https://mvn.javacard.pro/maven/SNAPSHOTS/')
-    }
+	maven {
+		name = 'javacardPro'
+		url = uri('https://mvn.javacard.pro/maven/')
+	}
+	maven {
+		name = 'javacardProSnapshots'
+		url = uri('https://mvn.javacard.pro/maven/SNAPSHOTS/')
+	}
 }
 
 def prepareJavaCardTools = tasks.named('prepareJavaCardTools')
@@ -49,114 +49,120 @@ def prepareJavaCardTools = tasks.named('prepareJavaCardTools')
 // (app.aoki.cinpo.task.CardTaskProcessor), which the plugin jar does not contain
 // after the module split. The consumer's own implementation declaration already
 // pins the framework version, so the processor is wired from that declaration.
-def companionBundleExportDirectories = providers.provider { CinpoGradleSupport.companionBundleExportDirectories(project) }
+def companionBundleExportDirectories = providers.provider {
+	CinpoGradleSupport.companionBundleExportDirectories(project)
+}
 
 afterEvaluate {
-    // The consumer's build script has run by now, so the declared core version is
-    // visible. Adding the framework's own artifact as the annotation processor at
-    // exactly that version keeps the processor on the same framework the host code
-    // compiles against, even when the plugin itself is newer.
-    dependencies {
-        annotationProcessor "app.aoki.cinpo:cinpo:${CinpoGradleSupport.declaredCinpoCoreVersion(project)}"
-    }
+	// The consumer's build script has run by now, so the declared core version is
+	// visible. Adding the framework's own artifact as the annotation processor at
+	// exactly that version keeps the processor on the same framework the host code
+	// compiles against, even when the plugin itself is newer.
+	dependencies {
+		annotationProcessor "app.aoki.cinpo:cinpo:${CinpoGradleSupport.declaredCinpoCoreVersion(project)}"
+	}
 }
 
 dependencies {
-    // JCardEngine installs applets from compiled classes instead of CAP files.
-    // Do not put Oracle's api_classic jar on runtimeClasspath: JCardEngine ships
-    // its own javacard.* runtime classes, and Oracle's native stubs would shadow
-    // them. Companion API jars are still needed when applet classes reference
-    // vendor packages that are not bundled by JCardEngine itself.
-    runtimeOnly files(
-            providers.provider { CinpoGradleSupport.companionBundleJars(project) }
-    )
+	// JCardEngine installs applets from compiled classes instead of CAP files.
+	// Do not put Oracle's api_classic jar on runtimeClasspath: JCardEngine ships
+	// its own javacard.* runtime classes, and Oracle's native stubs would shadow
+	// them. Companion API jars are still needed when applet classes reference
+	// vendor packages that are not bundled by JCardEngine itself.
+	runtimeOnly files(
+			providers.provider {
+				CinpoGradleSupport.companionBundleJars(project)
+			}
+	)
 
-    // Applet compilation sees the Java Card API, the Oracle support classes and
-    // the companion API jars, and nothing from the host runtime.
-    appletCompileOnly files(
-            providers.provider { CinpoGradleSupport.targetApiJar(project) },
-            layout.buildDirectory.file('cinpo-cache/jcdk/tools/lib/tools.jar'),
-            providers.provider { CinpoGradleSupport.companionBundleJars(project) }
-    )
+	// Applet compilation sees the Java Card API, the Oracle support classes and
+	// the companion API jars, and nothing from the host runtime.
+	appletCompileOnly files(
+			providers.provider { CinpoGradleSupport.targetApiJar(project) },
+			layout.buildDirectory.file('cinpo-cache/jcdk/tools/lib/tools.jar'),
+			providers.provider {
+				CinpoGradleSupport.companionBundleJars(project)
+			}
+	)
 }
 
 tasks.named(appletSourceSet.compileJavaTaskName, JavaCompile) {
-    group = 'cinpo'
-    description = 'Compiles Java Card applet sources with converter-compatible bytecode.'
-    options.release = 8
-    options.encoding = 'UTF-8'
-    dependsOn prepareJavaCardTools
+	group = 'cinpo'
+	description = 'Compiles Java Card applet sources with converter-compatible bytecode.'
+	options.release = 8
+	options.encoding = 'UTF-8'
+	dependsOn prepareJavaCardTools
 }
 
 def generateCap = tasks.register('generateCap', GenerateCapTask) {
-    group = 'cinpo'
-    description = 'Builds the Java Card CAP file and stages it at cap/<packageName>.cap.'
-    manifestFile = layout.projectDirectory.file('manifest.yaml')
-    companionExportDirectories.from(companionBundleExportDirectories)
-    appletClassesDirectory = appletSourceSet.java.destinationDirectory
-    toolLibraryDirectory = layout.buildDirectory.dir('cinpo-cache/jcdk/tools/lib')
-    apiExportDirectory = layout.buildDirectory.dir('cinpo-cache/jcdk/api-exports')
-    generatedResourcesDirectory = generatedCapResourcesDir
-    workDirectory = layout.buildDirectory.dir('tmp/generateCap')
-    dependsOn prepareJavaCardTools
-    dependsOn appletSourceSet.classesTaskName
+	group = 'cinpo'
+	description = 'Builds the Java Card CAP file and stages it at cap/<packageName>.cap.'
+	manifestFile = layout.projectDirectory.file('manifest.yaml')
+	companionExportDirectories.from(companionBundleExportDirectories)
+	appletClassesDirectory = appletSourceSet.java.destinationDirectory
+	toolLibraryDirectory = layout.buildDirectory.dir('cinpo-cache/jcdk/tools/lib')
+	apiExportDirectory = layout.buildDirectory.dir('cinpo-cache/jcdk/api-exports')
+	generatedResourcesDirectory = generatedCapResourcesDir
+	workDirectory = layout.buildDirectory.dir('tmp/generateCap')
+	dependsOn prepareJavaCardTools
+	dependsOn appletSourceSet.classesTaskName
 }
 
 afterEvaluate {
-    // Adding the directory to the source set after the consumer's build script has
-    // run is what makes `resources.srcDirs = [...]` unable to drop it. The task
-    // output is the single registration point; processResources must not also
-    // include the same directory with from(), which Gradle rejects as a duplicate.
-    mainSourceSet.resources.srcDir(generatedCapResourcesDir)
+	// Adding the directory to the source set after the consumer's build script has
+	// run is what makes `resources.srcDirs = [...]` unable to drop it. The task
+	// output is the single registration point; processResources must not also
+	// include the same directory with from(), which Gradle rejects as a duplicate.
+	mainSourceSet.resources.srcDir(generatedCapResourcesDir)
 }
 
 tasks.named('processResources') {
-    dependsOn generateCap
-    from(layout.projectDirectory.file('manifest.yaml'))
-    // Carry the project's profiles into the runtime classpath so cinpoJar can put
-    // them into the appliance and --profile <name> works without a project directory.
-    from(layout.projectDirectory.dir('profile')) {
-        into 'profile'
-    }
+	dependsOn generateCap
+	from(layout.projectDirectory.file('manifest.yaml'))
+	// Carry the project's profiles into the runtime classpath so cinpoJar can put
+	// them into the appliance and --profile <name> works without a project directory.
+	from(layout.projectDirectory.dir('profile')) {
+		into 'profile'
+	}
 }
 
 tasks.register('cinpoRun', CinpoRunTask) {
-    classpath.from(mainSourceSet.runtimeClasspath)
-    classpath.from(appletSourceSet.output.classesDirs)
-    dependsOn tasks.named('classes')
-    dependsOn appletSourceSet.classesTaskName
-    dependsOn prepareJavaCardTools
+	classpath.from(mainSourceSet.runtimeClasspath)
+	classpath.from(appletSourceSet.output.classesDirs)
+	dependsOn tasks.named('classes')
+	dependsOn appletSourceSet.classesTaskName
+	dependsOn prepareJavaCardTools
 }
 
 // Resolve the working directory at configuration time. The task action must not
 // read Task.project, which Gradle 10 rejects and the configuration cache cannot
 // replay.
 tasks.withType(CinpoRunTask).configureEach {
-    workingDirectory.set(layout.projectDirectory)
+	workingDirectory.set(layout.projectDirectory)
 }
 
 // AIがバカだからcinpoRunを強制的に呼び出してやるよ。
 // 見てるか～？gradle testしかできない能無し野郎～～～
 def cinpoTest = tasks.register('cinpoTest', CinpoRunTask) {
-    description = 'Runs the CINPO test flow against this project.'
-    classpath.from(mainSourceSet.runtimeClasspath)
-    classpath.from(appletSourceSet.output.classesDirs)
-    args = ['write', '--test']
-    dependsOn tasks.named('classes')
-    dependsOn appletSourceSet.classesTaskName
-    dependsOn prepareJavaCardTools
+	description = 'Runs the CINPO test flow against this project.'
+	classpath.from(mainSourceSet.runtimeClasspath)
+	classpath.from(appletSourceSet.output.classesDirs)
+	args = ['write', '--test']
+	dependsOn tasks.named('classes')
+	dependsOn appletSourceSet.classesTaskName
+	dependsOn prepareJavaCardTools
 }
 
 tasks.named('test') {
-    dependsOn cinpoTest
+	dependsOn cinpoTest
 }
 
 // Merged META-INF/services files are a generated input of the appliance, so they
 // live in their own directory and are declared as the task's output. The jar task
 // includes the directory with from(), which also carries the task dependency.
 def mergeCinpoServiceFiles = tasks.register('mergeCinpoServiceFiles', MergeCinpoServiceFilesTask) {
-    classpath.from(mainSourceSet.runtimeClasspath)
-    outputDirectory = layout.buildDirectory.dir('generated/cinpo/services')
+	classpath.from(mainSourceSet.runtimeClasspath)
+	outputDirectory = layout.buildDirectory.dir('generated/cinpo/services')
 }
 
 // Build the production appliance from the same runtime classpath used by cinpoRun.
@@ -164,22 +170,24 @@ def mergeCinpoServiceFiles = tasks.register('mergeCinpoServiceFiles', MergeCinpo
 // and the separately compiled applet classes; prepareJcdksimSimulator contributes
 // the configured simulator runtime bundled below cinpo-simulator/<os>-<arch>.
 tasks.register('cinpoJar', CinpoJarTask) {
-    runtimeClasspath.from(mainSourceSet.runtimeClasspath)
-    from(mergeCinpoServiceFiles)
-    from(providers.provider {
-        mainSourceSet.runtimeClasspath.files
-                .findAll { CinpoGradleSupport.isBundleableClasspathEntry(it) }
-                .collect { it.isDirectory() ? it : zipTree(it) }
-    }) {
-        exclude 'META-INF/services/**'
-    }
-    from(appletSourceSet.output.classesDirs)
-    cinpoVersion.set(providers.provider { CinpoGradleSupport.declaredCinpoCoreVersion(project) })
-    dependsOn tasks.named('classes')
-    dependsOn appletSourceSet.classesTaskName
-    doLast {
-        logger.lifecycle("Built CINPO appliance JAR: ${getArchiveFile().get().getAsFile()}")
-    }
+	runtimeClasspath.from(mainSourceSet.runtimeClasspath)
+	from(mergeCinpoServiceFiles)
+	from(providers.provider {
+		mainSourceSet.runtimeClasspath.files
+				.findAll { CinpoGradleSupport.isBundleableClasspathEntry(it) }
+				.collect { it.isDirectory() ? it : zipTree(it) }
+	}) {
+		exclude 'META-INF/services/**'
+	}
+	from(appletSourceSet.output.classesDirs)
+	cinpoVersion.set(providers.provider {
+		CinpoGradleSupport.declaredCinpoCoreVersion(project)
+	})
+	dependsOn tasks.named('classes')
+	dependsOn appletSourceSet.classesTaskName
+	doLast {
+		logger.lifecycle("Built CINPO appliance JAR: ${getArchiveFile().get().getAsFile()}")
+	}
 }
 
 // jcdksim build inputs are wired only when the consumer declares the
@@ -191,45 +199,49 @@ tasks.register('cinpoJar', CinpoJarTask) {
 // (ApduChannelFactory: "Unsupported runtime: ...").
 def prepareJcdksimSimulator = tasks.named('prepareJcdksimSimulator')
 def socketProviderJar = files(
-        layout.buildDirectory.file('cinpo-cache/jcdk/simulator/client/COMService/socketprovider.jar')
+		layout.buildDirectory.file('cinpo-cache/jcdk/simulator/client/COMService/socketprovider.jar')
 ).builtBy(prepareJcdksimSimulator)
 
 afterEvaluate {
-    // Only the main runtime scope decides. A jcdksim declaration on compileOnly,
-    // annotationProcessor, or a test configuration never triggers simulator
-    // preparation, so those builds never pay for an archive they do not run.
-    // The java plugin names the main source set's runtime classpath configuration
-    // "runtimeClasspath" (JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME).
-    def runtimeClasspathConfiguration = configurations.getByName('runtimeClasspath')
-    def runtimeScope = [runtimeClasspathConfiguration] + runtimeClasspathConfiguration.extendsFrom
-    boolean usesJcdksimRuntime = runtimeScope.any { configuration ->
-        configuration.dependencies.any { dependency ->
-            dependency.name != null && dependency.name.contains('cinpo-runtime-jcdksim')
-        }
-    }
-    if (usesJcdksimRuntime) {
-        tasks.withType(CinpoRunTask).configureEach {
-            classpath.from(socketProviderJar)
-            dependsOn prepareJcdksimSimulator
-        }
-        tasks.withType(CinpoJarTask).configureEach {
-            // The prepare plugin owns the platform-specific jcsl directory. The jar
-            // task only relocates that directory into the resource namespace
-            // JcdkSimAdapter reads. The property stays unset for slim builds so no
-            // simulator directory is ever demanded of them.
-            def configuredJcslDir = project.ext.configuredJcslDir
-            bundledSimulatorDirectory.set(configuredJcslDir)
-            runtimeClasspath.from(socketProviderJar)
-            dependsOn prepareJcdksimSimulator
-            from(providers.provider { socketProviderJar.collect { zipTree(it) } }) {
-                exclude 'META-INF/services/**'
-            }
-            from(configuredJcslDir) {
-                into "cinpo-simulator/${configuredJcslDir.get().asFile.name}"
-            }
-        }
-        tasks.withType(MergeCinpoServiceFilesTask).configureEach {
-            classpath.from(socketProviderJar)
-        }
-    }
+	// Only the main runtime scope decides. A jcdksim declaration on compileOnly,
+	// annotationProcessor, or a test configuration never triggers simulator
+	// preparation, so those builds never pay for an archive they do not run.
+	// The java plugin names the main source set's runtime classpath configuration
+	// "runtimeClasspath" (JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME).
+	def runtimeClasspathConfiguration = configurations.getByName('runtimeClasspath')
+	def runtimeScope = [runtimeClasspathConfiguration] + runtimeClasspathConfiguration.extendsFrom
+	boolean usesJcdksimRuntime = runtimeScope.any { configuration ->
+		configuration.dependencies.any { dependency ->
+			dependency.name != null && dependency.name.contains('cinpo-runtime-jcdksim')
+		}
+	}
+	if (usesJcdksimRuntime) {
+		tasks.withType(CinpoRunTask).configureEach {
+			classpath.from(socketProviderJar)
+			dependsOn prepareJcdksimSimulator
+		}
+		tasks.withType(CinpoJarTask).configureEach {
+			// The prepare plugin owns the platform-specific jcsl directory. The jar
+			// task only relocates that directory into the resource namespace
+			// JcdkSimAdapter reads. The property stays unset for slim builds so no
+			// simulator directory is ever demanded of them.
+			def configuredJcslDir = project.ext.configuredJcslDir
+			bundledSimulatorDirectory.set(configuredJcslDir)
+			runtimeClasspath.from(socketProviderJar)
+			dependsOn prepareJcdksimSimulator
+			from(providers.provider {
+				socketProviderJar.collect {
+					zipTree(it)
+				}
+			}) {
+				exclude 'META-INF/services/**'
+			}
+			from(configuredJcslDir) {
+				into "cinpo-simulator/${configuredJcslDir.get().asFile.name}"
+			}
+		}
+		tasks.withType(MergeCinpoServiceFilesTask).configureEach {
+			classpath.from(socketProviderJar)
+		}
+	}
 }

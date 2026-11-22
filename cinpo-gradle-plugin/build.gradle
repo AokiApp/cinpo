@@ -1,124 +1,124 @@
 plugins {
-    id 'java-library'
-    id 'groovy-gradle-plugin'
-    id 'maven-publish'
+	id 'java-library'
+	id 'groovy-gradle-plugin'
+	id 'maven-publish'
 }
 
 // The jar exposes app.aoki.cinpo (public) and
 // app.aoki.cinpo.prepare-java-card-tools (internal). Only the public ID gets a
 // marker; the helper is applied from this jar's classpath.
 gradlePlugin {
-    automatedPublishing = false
+	automatedPublishing = false
 }
 
 sourceSets {
-    main {
-        java {
-            srcDirs = ['src/main/java-gradle']
-        }
-        resources {
-            srcDirs = ['src/main/resources']
-        }
-    }
+	main {
+		java {
+			srcDirs = ['src/main/java-gradle']
+		}
+		resources {
+			srcDirs = ['src/main/resources']
+		}
+	}
 }
 
 dependencies {
-    implementation project(':cinpo-core')
+	implementation project(':cinpo-core')
 
-    // Oracle Java Card tool classes are intentionally compiled against directly.
-    // The Gradle plugin executes CAP generation in-process, without routing through
-    // converter/capgen CLI entry points, so these jars must be visible at framework
-    // compile time. The implementation also places CINPO-owned integration classes
-    // in selected com.sun.javacard.* packages to access package-private tool APIs
-    // without reflection; that makes compile-time type visibility non-negotiable.
-    compileOnly files(rootProject.layout.buildDirectory.file('cinpo-cache/jcdk/tools/lib/tools.jar'))
-            .builtBy(rootProject.tasks.named('prepareJavaCardTools'))
+	// Oracle Java Card tool classes are intentionally compiled against directly.
+	// The Gradle plugin executes CAP generation in-process, without routing through
+	// converter/capgen CLI entry points, so these jars must be visible at framework
+	// compile time. The implementation also places CINPO-owned integration classes
+	// in selected com.sun.javacard.* packages to access package-private tool APIs
+	// without reflection; that makes compile-time type visibility non-negotiable.
+	compileOnly files(rootProject.layout.buildDirectory.file('cinpo-cache/jcdk/tools/lib/tools.jar'))
+			.builtBy(rootProject.tasks.named('prepareJavaCardTools'))
 
-    // Oracle's socket terminal provider is also compiled against directly. It is
-    // intentionally not embedded in the framework artifact; end-user projects must
-    // provide their own EULA-covered copy on the runtime classpath.
-    compileOnly files(rootProject.layout.buildDirectory.file('cinpo-cache/jcdk/simulator/client/COMService/socketprovider.jar'))
-            .builtBy(rootProject.tasks.named('prepareJcdksimSimulator'))
+	// Oracle's socket terminal provider is also compiled against directly. It is
+	// intentionally not embedded in the framework artifact; end-user projects must
+	// provide their own EULA-covered copy on the runtime classpath.
+	compileOnly files(rootProject.layout.buildDirectory.file('cinpo-cache/jcdk/simulator/client/COMService/socketprovider.jar'))
+			.builtBy(rootProject.tasks.named('prepareJcdksimSimulator'))
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+	testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
+	testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
 }
 
 // The tool-loader test reads the prepared tools.jar path. It does not need the
 // Oracle classes at test runtime; the loader opens the jar itself.
 tasks.named('test') {
-    dependsOn rootProject.tasks.named('prepareJavaCardTools')
-    systemProperty 'cinpo.test.toolsJar',
-            rootProject.layout.buildDirectory.file('cinpo-cache/jcdk/tools/lib/tools.jar').get().asFile.absolutePath
+	dependsOn rootProject.tasks.named('prepareJavaCardTools')
+	systemProperty 'cinpo.test.toolsJar',
+			rootProject.layout.buildDirectory.file('cinpo-cache/jcdk/tools/lib/tools.jar').get().asFile.absolutePath
 }
 
 tasks.named('processResources') {
-    from(rootProject.file('LICENSE.md')) {
-        into 'META-INF/cinpo'
-        rename { 'CINPO-LICENSE.md' }
-    }
-    from(rootProject.file('THIRD_PARTY_NOTICES.md')) {
-        into 'META-INF/cinpo'
-    }
-    from(rootProject.file('third-party/licenses')) {
-        into 'META-INF/cinpo/third-party/globalplatformpro'
-    }
+	from(rootProject.file('LICENSE.md')) {
+		into 'META-INF/cinpo'
+		rename { 'CINPO-LICENSE.md' }
+	}
+	from(rootProject.file('THIRD_PARTY_NOTICES.md')) {
+		into 'META-INF/cinpo'
+	}
+	from(rootProject.file('third-party/licenses')) {
+		into 'META-INF/cinpo/third-party/globalplatformpro'
+	}
 }
 
 publishing {
-    publications {
-        pluginMaven(MavenPublication) {
-            artifactId = 'cinpo-gradle-plugin'
-            from components.java
-        }
+	publications {
+		pluginMaven(MavenPublication) {
+			artifactId = 'cinpo-gradle-plugin'
+			from components.java
+		}
 
-        pluginMarker(MavenPublication) {
-            groupId = 'app.aoki.cinpo'
-            artifactId = 'app.aoki.cinpo.gradle.plugin'
-            pom.packaging = 'pom'
-            pom.withXml {
-                def dependencyNode = asNode().appendNode('dependencies').appendNode('dependency')
-                dependencyNode.appendNode('groupId', 'app.aoki.cinpo')
-                dependencyNode.appendNode('artifactId', 'cinpo-gradle-plugin')
-                dependencyNode.appendNode('version', project.version.toString())
-            }
-        }
-    }
-    repositories {
-        maven {
-            name = 'githubPackages'
-            url = uri('https://maven.pkg.github.com/AokiApp/cinpo')
-            credentials {
-                username = providers.gradleProperty('gpr.user')
-                        .orElse(providers.environmentVariable('GITHUB_ACTOR'))
-                        .orNull
-                password = providers.gradleProperty('gpr.key')
-                        .orElse(providers.environmentVariable('GITHUB_TOKEN'))
-                        .orNull
-            }
-        }
-        maven {
-            name = 'staging'
-            url = rootProject.layout.buildDirectory.dir('staging-maven-repository')
-        }
-    }
-    publications.withType(MavenPublication).configureEach {
-        pom {
-            name = "CINPO ${artifactId}"
-            description = 'Java Card applet installation and provisioning framework.'
-            url = 'https://github.com/AokiApp/cinpo'
-            licenses {
-                license {
-                    name = 'Apache License 2.0'
-                    url = 'https://www.apache.org/licenses/LICENSE-2.0'
-                }
-            }
-            scm {
-                connection = 'scm:git:https://github.com/AokiApp/cinpo.git'
-                developerConnection = 'scm:git:ssh://git@github.com/AokiApp/cinpo.git'
-                url = 'https://github.com/AokiApp/cinpo'
-            }
-        }
-    }
+		pluginMarker(MavenPublication) {
+			groupId = 'app.aoki.cinpo'
+			artifactId = 'app.aoki.cinpo.gradle.plugin'
+			pom.packaging = 'pom'
+			pom.withXml {
+				def dependencyNode = asNode().appendNode('dependencies').appendNode('dependency')
+				dependencyNode.appendNode('groupId', 'app.aoki.cinpo')
+				dependencyNode.appendNode('artifactId', 'cinpo-gradle-plugin')
+				dependencyNode.appendNode('version', project.version.toString())
+			}
+		}
+	}
+	repositories {
+		maven {
+			name = 'githubPackages'
+			url = uri('https://maven.pkg.github.com/AokiApp/cinpo')
+			credentials {
+				username = providers.gradleProperty('gpr.user')
+						.orElse(providers.environmentVariable('GITHUB_ACTOR'))
+						.orNull
+				password = providers.gradleProperty('gpr.key')
+						.orElse(providers.environmentVariable('GITHUB_TOKEN'))
+						.orNull
+			}
+		}
+		maven {
+			name = 'staging'
+			url = rootProject.layout.buildDirectory.dir('staging-maven-repository')
+		}
+	}
+	publications.withType(MavenPublication).configureEach {
+		pom {
+			name = "CINPO ${artifactId}"
+			description = 'Java Card applet installation and provisioning framework.'
+			url = 'https://github.com/AokiApp/cinpo'
+			licenses {
+				license {
+					name = 'Apache License 2.0'
+					url = 'https://www.apache.org/licenses/LICENSE-2.0'
+				}
+			}
+			scm {
+				connection = 'scm:git:https://github.com/AokiApp/cinpo.git'
+				developerConnection = 'scm:git:ssh://git@github.com/AokiApp/cinpo.git'
+				url = 'https://github.com/AokiApp/cinpo'
+			}
+		}
+	}
 }

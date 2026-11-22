@@ -12,41 +12,41 @@ import java.util.logging.Logger;
  * Phase that initializes the APDU channel connection to the card runtime.
  *
  * <p>This phase:
+ *
  * <ol>
- *   <li>Reads the runtime identifier from the profile and resolves it to a registered adapter</li>
- *   <li>Creates an appropriate {@link ApduChannel} via {@link ApduChannelFactory}</li>
- *   <li>Stores the channel in the orchestrator for use by subsequent phases</li>
+ *   <li>Reads the runtime identifier from the profile and resolves it to a registered adapter
+ *   <li>Creates an appropriate {@link ApduChannel} via {@link ApduChannelFactory}
+ *   <li>Stores the channel in the orchestrator for use by subsequent phases
  * </ol>
  *
  * <h2>Runtime Support</h2>
+ *
  * The runtime identifier is resolved through {@link ApduChannelFactory}, which discovers the
- * adapters on the classpath. The bundled modules provide {@code jcdksim}, {@code jcardengine},
- * and {@code pcsc}; a project can add its own adapter through the SPI.
+ * adapters on the classpath. The bundled modules provide {@code jcdksim}, {@code jcardengine}, and
+ * {@code pcsc}; a project can add its own adapter through the SPI.
  *
  * <h2>Lifecycle</h2>
- * This phase should typically be the first phase in the orchestration sequence.
- * The APDU channel remains open until the orchestrator's run method completes,
- * at which point it is automatically closed.
+ *
+ * This phase should typically be the first phase in the orchestration sequence. The APDU channel
+ * remains open until the orchestrator's run method completes, at which point it is automatically
+ * closed.
  *
  * @see ApduChannelFactory
  * @see ApduChannel
  */
 public final class InitPhase implements Phase {
 
-    private static final Logger LOG = Logger.getLogger(InitPhase.class.getName());
- 
-    /**
-     * Creates a new InitPhase instance.
-     */
-    public InitPhase() {
-    }
+  private static final Logger LOG = Logger.getLogger(InitPhase.class.getName());
 
-    @Override
-    public void execute(Orchestrator orchestrator) throws IOException {
-        Profile profile = orchestrator.getProfile();
-        LOG.fine(() -> "Opening APDU channel for runtime: " + profile.runtime());
-        ApduChannel channel = ApduChannelFactory.create(profile);
-        orchestrator.setChannel(channel);
-        LOG.fine("APDU channel initialized");
-    }
+  /** Creates a new InitPhase instance. */
+  public InitPhase() {}
+
+  @Override
+  public void execute(Orchestrator orchestrator) throws IOException {
+    Profile profile = orchestrator.getProfile();
+    LOG.fine(() -> "Opening APDU channel for runtime: " + profile.runtime());
+    ApduChannel channel = ApduChannelFactory.create(profile);
+    orchestrator.setChannel(channel);
+    LOG.fine("APDU channel initialized");
+  }
 }

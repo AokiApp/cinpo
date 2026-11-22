@@ -21,6 +21,23 @@ jobs:
       - uses: actions/checkout@v6
       - run: ./scripts/check-version.sh
 
+  style:
+    name: Style checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+      - run: chmod +x ./gradlew ./scripts/extract_vendor.sh
+      - run: ./scripts/extract_vendor.sh
+        env:
+          VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
+      - name: Check root modules
+        run: ./gradlew spotlessCheck checkstyleMain checkstyleTest
+
   test:
     name: Unit tests
     # Fork pull requests do not receive the vendor secret. The version check

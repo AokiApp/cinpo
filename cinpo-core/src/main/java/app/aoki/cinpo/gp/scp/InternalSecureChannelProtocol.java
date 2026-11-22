@@ -4,15 +4,12 @@ import app.aoki.cinpo.apdu.ApduChannel;
 import app.aoki.cinpo.apdu.CommandApdu;
 import app.aoki.cinpo.apdu.ResponseApdu;
 
-/**
- * Internal SCP strategy contract behind {@link SecureChannelSession}.
- */
+/** Internal SCP strategy contract behind {@link SecureChannelSession}. */
 interface InternalSecureChannelProtocol {
 
-    void authenticate(ApduChannel channel);
+  void authenticate(ApduChannel channel);
 
-    ResponseApdu transmit(ApduChannel channel, CommandApdu capdu);
+  ResponseApdu transmit(ApduChannel channel, CommandApdu capdu);
 
-    default void close() {
-    }
+  default void close() {}
 }

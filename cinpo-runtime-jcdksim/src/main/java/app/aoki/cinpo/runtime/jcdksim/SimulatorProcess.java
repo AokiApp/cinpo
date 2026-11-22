@@ -15,257 +15,266 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Manages the lifecycle of an Oracle jcsl simulator process.
- * <p>
- * This class handles:
+ *
+ * <p>This class handles:
+ *
  * <ul>
- *   <li>Ephemeral port allocation via ServerSocket(0)</li>
- *   <li>Process startup and management</li>
- *   <li>Socket-based readiness detection</li>
- *   <li>Graceful shutdown with destroy() → destroyForcibly() fallback</li>
+ *   <li>Ephemeral port allocation via ServerSocket(0)
+ *   <li>Process startup and management
+ *   <li>Socket-based readiness detection
+ *   <li>Graceful shutdown with destroy() → destroyForcibly() fallback
  * </ul>
  */
 final class SimulatorProcess implements AutoCloseable {
 
-    private static final String LOOPBACK_HOST = "127.0.0.1";
-    private static final long STARTUP_TIMEOUT_MILLIS = 10_000L;
-    private static final long SHUTDOWN_TIMEOUT_MILLIS = 2_000L;
+  private static final String LOOPBACK_HOST = "127.0.0.1";
+  private static final long STARTUP_TIMEOUT_MILLIS = 10_000L;
+  private static final long SHUTDOWN_TIMEOUT_MILLIS = 2_000L;
 
-    private final Path executable;
-    private final long startupTimeoutMillis;
-    private Process process;
-    private boolean ownsProcess;
-    private Integer port;
-    private final ByteArrayOutputStream outputCapture = new ByteArrayOutputStream();
-    private Thread outputDrainer;
+  private final Path executable;
+  private final long startupTimeoutMillis;
+  private Process process;
+  private boolean ownsProcess;
+  private Integer port;
+  private final ByteArrayOutputStream outputCapture = new ByteArrayOutputStream();
+  private Thread outputDrainer;
 
-    /**
-     * Create a simulator process manager.
-     *
-     * @param executable path to the jcsl executable
-     */
-    SimulatorProcess(Path executable) {
-        this(executable, STARTUP_TIMEOUT_MILLIS);
+  /**
+   * Create a simulator process manager.
+   *
+   * @param executable path to the jcsl executable
+   */
+  SimulatorProcess(Path executable) {
+    this(executable, STARTUP_TIMEOUT_MILLIS);
+  }
+
+  SimulatorProcess(Path executable, long startupTimeoutMillis) {
+    this.executable = Objects.requireNonNull(executable);
+    if (startupTimeoutMillis <= 0) {
+      throw new IllegalArgumentException("startupTimeoutMillis must be positive");
+    }
+    this.startupTimeoutMillis = startupTimeoutMillis;
+  }
+
+  /**
+   * Ensure the simulator is ready for connections.
+   *
+   * <p>This method will:
+   *
+   * <ol>
+   *   <li>Check if the simulator is already reachable (e.g., externally managed)
+   *   <li>Allocate an ephemeral port if needed
+   *   <li>Start the simulator process if not already running
+   *   <li>Wait for the simulator to become ready via socket connection
+   * </ol>
+   */
+  void ensureReady() {
+    if (process != null && process.isAlive()) {
+      // Reconnecting to the simulator this instance started, for example after
+      // reset() dropped the card session. Ownership must survive that, or close()
+      // would leave the simulator running.
+      waitForSimulatorReady();
+      return;
     }
 
-    SimulatorProcess(Path executable, long startupTimeoutMillis) {
-        this.executable = Objects.requireNonNull(executable);
-        if (startupTimeoutMillis <= 0) {
-            throw new IllegalArgumentException("startupTimeoutMillis must be positive");
-        }
-        this.startupTimeoutMillis = startupTimeoutMillis;
+    if (isSimulatorReachable()) {
+      ownsProcess = false;
+      return;
     }
 
-    /**
-     * Ensure the simulator is ready for connections.
-     * <p>
-     * This method will:
-     * <ol>
-     *   <li>Check if the simulator is already reachable (e.g., externally managed)</li>
-     *   <li>Allocate an ephemeral port if needed</li>
-     *   <li>Start the simulator process if not already running</li>
-     *   <li>Wait for the simulator to become ready via socket connection</li>
-     * </ol>
-     */
-    void ensureReady() {
-        if (process != null && process.isAlive()) {
-            // Reconnecting to the simulator this instance started, for example after
-            // reset() dropped the card session. Ownership must survive that, or close()
-            // would leave the simulator running.
-            waitForSimulatorReady();
-            return;
-        }
-
-        if (isSimulatorReachable()) {
-            ownsProcess = false;
-            return;
-        }
-
-        if (port == null) {
-            port = allocateEphemeralPort();
-        }
-
-        process = startSimulatorProcess();
-        ownsProcess = true;
-
-        try {
-            waitForSimulatorReady();
-        } catch (RuntimeException | Error startupFailure) {
-            stopOwnedSimulator();
-            throw startupFailure;
-        }
+    if (port == null) {
+      port = allocateEphemeralPort();
     }
 
-    /**
-     * Get the port number the simulator is listening on.
-     *
-     * @return the simulator port
-     * @throws IllegalStateException if the port has not been allocated
-     */
-    int getPort() {
-        if (port == null) {
-            throw new IllegalStateException("Simulator port has not been allocated yet");
-        }
-        return port;
+    process = startSimulatorProcess();
+    ownsProcess = true;
+
+    try {
+      waitForSimulatorReady();
+    } catch (RuntimeException | Error startupFailure) {
+      stopOwnedSimulator();
+      throw startupFailure;
     }
+  }
 
-    @Override
-    public void close() {
-        stopOwnedSimulator();
+  /**
+   * Get the port number the simulator is listening on.
+   *
+   * @return the simulator port
+   * @throws IllegalStateException if the port has not been allocated
+   */
+  int getPort() {
+    if (port == null) {
+      throw new IllegalStateException("Simulator port has not been allocated yet");
     }
+    return port;
+  }
 
-    private Process startSimulatorProcess() {
-        ProcessBuilder processBuilder = createSimulatorProcessBuilder(port);
+  @Override
+  public void close() {
+    stopOwnedSimulator();
+  }
 
-        try {
-            Process proc = processBuilder.start();
-            outputCapture.reset();
-            outputDrainer = drainAsync(proc.getInputStream(), outputCapture);
-            return proc;
-        } catch (IOException e) {
-            throw new IllegalStateException(
-                    "Failed to start Oracle JCDK simulator using " + executable, e);
-        }
+  private Process startSimulatorProcess() {
+    ProcessBuilder processBuilder = createSimulatorProcessBuilder(port);
+
+    try {
+      Process proc = processBuilder.start();
+      outputCapture.reset();
+      outputDrainer = drainAsync(proc.getInputStream(), outputCapture);
+      return proc;
+    } catch (IOException e) {
+      throw new IllegalStateException(
+          "Failed to start Oracle JCDK simulator using " + executable, e);
     }
+  }
 
-    ProcessBuilder createSimulatorProcessBuilder(int simulatorPort) {
-        ProcessBuilder processBuilder = new ProcessBuilder(
-                executable.toAbsolutePath().toString(),
-                "-p=" + simulatorPort);
-        Path executableParent = executable.toAbsolutePath().getParent();
-        if (executableParent != null) {
-            processBuilder.directory(executableParent.toFile());
-            prependNativeLibraryPath(processBuilder.environment(), executableParent);
-        }
-        processBuilder.redirectInput(ProcessBuilder.Redirect.PIPE);
-        // Merge stderr → stdout so we capture everything jcsl emits
-        processBuilder.redirectErrorStream(true);
-        processBuilder.redirectOutput(ProcessBuilder.Redirect.PIPE);
-        return processBuilder;
+  ProcessBuilder createSimulatorProcessBuilder(int simulatorPort) {
+    ProcessBuilder processBuilder =
+        new ProcessBuilder(executable.toAbsolutePath().toString(), "-p=" + simulatorPort);
+    Path executableParent = executable.toAbsolutePath().getParent();
+    if (executableParent != null) {
+      processBuilder.directory(executableParent.toFile());
+      prependNativeLibraryPath(processBuilder.environment(), executableParent);
     }
+    processBuilder.redirectInput(ProcessBuilder.Redirect.PIPE);
+    // Merge stderr → stdout so we capture everything jcsl emits
+    processBuilder.redirectErrorStream(true);
+    processBuilder.redirectOutput(ProcessBuilder.Redirect.PIPE);
+    return processBuilder;
+  }
 
-    /**
-     * Point the simulator process at the shared libraries shipped next to its executable.
-     * Windows resolves DLLs through {@code PATH} (semicolon separated); ELF platforms use
-     * {@code LD_LIBRARY_PATH} (colon separated).
-     */
-    static void prependNativeLibraryPath(Map<String, String> environment, Path libraryDirectory) {
-        boolean windows = JcdkSimPlatform.isWindows();
-        String variable = windows ? "PATH" : "LD_LIBRARY_PATH";
-        String separator = windows ? ";" : ":";
-        String libPath = libraryDirectory.toAbsolutePath().toString();
-        String existing = environment.get(variable);
-        if (existing != null && !existing.isBlank()) {
-            environment.put(variable, libPath + separator + existing);
-        } else {
-            environment.put(variable, libPath);
-        }
+  /**
+   * Point the simulator process at the shared libraries shipped next to its executable. Windows
+   * resolves DLLs through {@code PATH} (semicolon separated); ELF platforms use {@code
+   * LD_LIBRARY_PATH} (colon separated).
+   */
+  static void prependNativeLibraryPath(Map<String, String> environment, Path libraryDirectory) {
+    boolean windows = JcdkSimPlatform.isWindows();
+    String variable = windows ? "PATH" : "LD_LIBRARY_PATH";
+    String separator = windows ? ";" : ":";
+    String libPath = libraryDirectory.toAbsolutePath().toString();
+    String existing = environment.get(variable);
+    if (existing != null && !existing.isBlank()) {
+      environment.put(variable, libPath + separator + existing);
+    } else {
+      environment.put(variable, libPath);
     }
+  }
 
-    private void waitForSimulatorReady() {
-        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(startupTimeoutMillis);
-        while (System.nanoTime() < deadline) {
-            if (isSimulatorReachable()) {
-                return;
-            }
-            if (process != null && !process.isAlive()) {
-                awaitOutputDrainer();
-                int exitCode = process.exitValue();
-                String output = outputCapture.toString(StandardCharsets.UTF_8).strip();
-                String diagnostic = "Oracle JCDK simulator terminated with exit code " + exitCode
-                        + " before becoming ready.";
-                if (!output.isEmpty()) {
-                    diagnostic += "\noutput:\n" + output;
-                }
-                throw new IllegalStateException(diagnostic);
-            }
-            sleepQuietly(100L);
-        }
-
+  private void waitForSimulatorReady() {
+    long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(startupTimeoutMillis);
+    while (System.nanoTime() < deadline) {
+      if (isSimulatorReachable()) {
+        return;
+      }
+      if (process != null && !process.isAlive()) {
+        awaitOutputDrainer();
+        int exitCode = process.exitValue();
         String output = outputCapture.toString(StandardCharsets.UTF_8).strip();
-        String msg = "Oracle JCDK simulator did not become ready within " + startupTimeoutMillis + " ms.";
+        String diagnostic =
+            "Oracle JCDK simulator terminated with exit code "
+                + exitCode
+                + " before becoming ready.";
         if (!output.isEmpty()) {
-            msg += "\noutput (so far):\n" + output;
+          diagnostic += "\noutput:\n" + output;
         }
-        throw new IllegalStateException(msg);
+        throw new IllegalStateException(diagnostic);
+      }
+      sleepQuietly(100L);
     }
 
-    private boolean isSimulatorReachable() {
-        if (port == null) {
-            return false;
-        }
+    String output = outputCapture.toString(StandardCharsets.UTF_8).strip();
+    String msg =
+        "Oracle JCDK simulator did not become ready within " + startupTimeoutMillis + " ms.";
+    if (!output.isEmpty()) {
+      msg += "\noutput (so far):\n" + output;
+    }
+    throw new IllegalStateException(msg);
+  }
 
-        try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(LOOPBACK_HOST, port), 200);
-            return true;
-        } catch (IOException e) {
-            return false;
-        }
+  private boolean isSimulatorReachable() {
+    if (port == null) {
+      return false;
     }
 
-    private void stopOwnedSimulator() {
-        if (!ownsProcess || process == null) {
-            process = null;
-            port = null;
-            ownsProcess = false;
-            outputDrainer = null;
-            return;
-        }
+    try (Socket socket = new Socket()) {
+      socket.connect(new InetSocketAddress(LOOPBACK_HOST, port), 200);
+      return true;
+    } catch (IOException e) {
+      return false;
+    }
+  }
 
-        process.destroy();
-        try {
-            if (!process.waitFor(SHUTDOWN_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
-                process.destroyForcibly();
-                process.waitFor(SHUTDOWN_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            process.destroyForcibly();
-        } finally {
-            process = null;
-            port = null;
-            ownsProcess = false;
-            outputDrainer = null;
-        }
+  private void stopOwnedSimulator() {
+    if (!ownsProcess || process == null) {
+      process = null;
+      port = null;
+      ownsProcess = false;
+      outputDrainer = null;
+      return;
     }
 
-    private static int allocateEphemeralPort() {
-        try (ServerSocket serverSocket = new ServerSocket(0)) {
-            return serverSocket.getLocalPort();
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to allocate an ephemeral port for Oracle JCDK simulator", e);
-        }
+    process.destroy();
+    try {
+      if (!process.waitFor(SHUTDOWN_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
+        process.destroyForcibly();
+        process.waitFor(SHUTDOWN_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      process.destroyForcibly();
+    } finally {
+      process = null;
+      port = null;
+      ownsProcess = false;
+      outputDrainer = null;
     }
+  }
 
-    private void awaitOutputDrainer() {
-        if (outputDrainer == null) {
-            return;
-        }
-        try {
-            outputDrainer.join(500);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+  private static int allocateEphemeralPort() {
+    try (ServerSocket serverSocket = new ServerSocket(0)) {
+      return serverSocket.getLocalPort();
+    } catch (IOException e) {
+      throw new IllegalStateException(
+          "Failed to allocate an ephemeral port for Oracle JCDK simulator", e);
     }
+  }
 
-    private static Thread drainAsync(InputStream source, OutputStream sink) {
-        Thread t = new Thread(() -> {
-            try {
+  private void awaitOutputDrainer() {
+    if (outputDrainer == null) {
+      return;
+    }
+    try {
+      outputDrainer.join(500);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  private static Thread drainAsync(InputStream source, OutputStream sink) {
+    Thread t =
+        new Thread(
+            () -> {
+              try {
                 source.transferTo(sink);
-            } catch (IOException ignored) {
+              } catch (IOException ignored) {
                 // Stream closed when process terminates
-            }
-        }, "simulator-output-drainer");
-        t.setDaemon(true);
-        t.start();
-        return t;
-    }
+              }
+            },
+            "simulator-output-drainer");
+    t.setDaemon(true);
+    t.start();
+    return t;
+  }
 
-    private static void sleepQuietly(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while waiting for Oracle JCDK simulator startup", e);
-        }
+  private static void sleepQuietly(long millis) {
+    try {
+      Thread.sleep(millis);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException(
+          "Interrupted while waiting for Oracle JCDK simulator startup", e);
     }
+  }
 }

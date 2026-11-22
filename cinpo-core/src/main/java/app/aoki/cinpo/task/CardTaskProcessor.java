@@ -23,88 +23,99 @@ import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 
 /**
- * Build-time processor that validates and indexes {@link CardTaskDef} classes into META-INF/cinpo/<kind>.
+ * Build-time processor that validates and indexes {@link CardTaskDef} classes into
+ * META-INF/cinpo/<kind>.
  */
 @SupportedAnnotationTypes("app.aoki.cinpo.task.CardTaskDef")
 @SupportedSourceVersion(SourceVersion.RELEASE_21)
 public final class CardTaskProcessor extends AbstractProcessor {
 
-    private static final String CARD_TASK = "app.aoki.cinpo.task.CardTask";
+  private static final String CARD_TASK = "app.aoki.cinpo.task.CardTask";
 
-    private final Map<String, List<String>> kindToFqcns = new LinkedHashMap<>();
-    private boolean written;
+  private final Map<String, List<String>> kindToFqcns = new LinkedHashMap<>();
+  private boolean written;
 
-    @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        for (Element element : roundEnv.getElementsAnnotatedWith(CardTaskDef.class)) {
-            if (!(element instanceof TypeElement typeElement)) {
-                continue;
-            }
-            CardTaskDef annotation = typeElement.getAnnotation(CardTaskDef.class);
-            if (annotation == null || !isValidTask(typeElement)) {
-                continue;
-            }
-            String fqcn = processingEnv.getElementUtils().getBinaryName(typeElement).toString();
-            kindToFqcns.computeIfAbsent(annotation.value(), ignored -> new ArrayList<>()).add(fqcn);
-        }
-
-        if (roundEnv.processingOver() && !written) {
-            written = true;
-            writeIndexes();
-        }
-        return true;
+  @Override
+  public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+    for (Element element : roundEnv.getElementsAnnotatedWith(CardTaskDef.class)) {
+      if (!(element instanceof TypeElement typeElement)) {
+        continue;
+      }
+      CardTaskDef annotation = typeElement.getAnnotation(CardTaskDef.class);
+      if (annotation == null || !isValidTask(typeElement)) {
+        continue;
+      }
+      String fqcn = processingEnv.getElementUtils().getBinaryName(typeElement).toString();
+      kindToFqcns.computeIfAbsent(annotation.value(), ignored -> new ArrayList<>()).add(fqcn);
     }
 
-    private boolean isValidTask(TypeElement typeElement) {
-        String fqcn = typeElement.getQualifiedName().toString();
-        TypeElement cardTask = processingEnv.getElementUtils().getTypeElement(CARD_TASK);
-        if (cardTask == null || !processingEnv.getTypeUtils().isSubtype(typeElement.asType(), cardTask.asType())) {
-            error(typeElement, "@CardTaskDef class must extend " + CARD_TASK + ": " + fqcn);
-            return false;
-        }
-        if (!hasPublicNoArgConstructor(typeElement)) {
-            error(typeElement, "@CardTaskDef class must declare a public no-argument constructor: " + fqcn);
-            return false;
-        }
-        return true;
+    if (roundEnv.processingOver() && !written) {
+      written = true;
+      writeIndexes();
     }
+    return true;
+  }
 
-    private boolean hasPublicNoArgConstructor(TypeElement typeElement) {
-        List<ExecutableElement> constructors = ElementFilter.constructorsIn(typeElement.getEnclosedElements());
-        if (constructors.isEmpty()) {
-            return typeElement.getModifiers().contains(Modifier.PUBLIC);
-        }
-        return constructors.stream()
-                .anyMatch(constructor -> constructor.getParameters().isEmpty()
-                        && constructor.getModifiers().contains(Modifier.PUBLIC));
+  private boolean isValidTask(TypeElement typeElement) {
+    String fqcn = typeElement.getQualifiedName().toString();
+    TypeElement cardTask = processingEnv.getElementUtils().getTypeElement(CARD_TASK);
+    if (cardTask == null
+        || !processingEnv.getTypeUtils().isSubtype(typeElement.asType(), cardTask.asType())) {
+      error(typeElement, "@CardTaskDef class must extend " + CARD_TASK + ": " + fqcn);
+      return false;
     }
+    if (!hasPublicNoArgConstructor(typeElement)) {
+      error(
+          typeElement, "@CardTaskDef class must declare a public no-argument constructor: " + fqcn);
+      return false;
+    }
+    return true;
+  }
 
-    private void error(Element element, String message) {
-        if (element == null) {
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message);
-        } else {
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message, element);
-        }
+  private boolean hasPublicNoArgConstructor(TypeElement typeElement) {
+    List<ExecutableElement> constructors =
+        ElementFilter.constructorsIn(typeElement.getEnclosedElements());
+    if (constructors.isEmpty()) {
+      return typeElement.getModifiers().contains(Modifier.PUBLIC);
     }
+    return constructors.stream()
+        .anyMatch(constructor ->
+            constructor.getParameters().isEmpty()
+                && constructor.getModifiers().contains(Modifier.PUBLIC));
+  }
 
-    private void writeIndexes() {
-        for (Map.Entry<String, List<String>> entry : kindToFqcns.entrySet()) {
-            List<String> fqcns = entry.getValue().stream()
-                    .distinct()
-                    .sorted(Comparator.naturalOrder())
-                    .toList();
-            try {
-                FileObject file = processingEnv.getFiler().createResource(
-                        StandardLocation.CLASS_OUTPUT, "", "META-INF/cinpo/" + entry.getKey());
-                try (Writer writer = file.openWriter()) {
-                    for (String fqcn : fqcns) {
-                        writer.write(fqcn);
-                        writer.write('\n');
-                    }
-                }
-            } catch (IOException e) {
-                error(null, "Failed to write CINPO task index for kind '" + entry.getKey() + "': " + e.getMessage());
-            }
-        }
+  private void error(Element element, String message) {
+    if (element == null) {
+      processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message);
+    } else {
+      processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message, element);
     }
+  }
+
+  private void writeIndexes() {
+    for (Map.Entry<String, List<String>> entry : kindToFqcns.entrySet()) {
+      List<String> fqcns =
+          entry.getValue().stream().distinct().sorted(Comparator.naturalOrder()).toList();
+      try {
+        FileObject file =
+            processingEnv
+                .getFiler()
+                .createResource(
+                    StandardLocation.CLASS_OUTPUT, "", "META-INF/cinpo/" + entry.getKey());
+        try (Writer writer = file.openWriter()) {
+          for (String fqcn : fqcns) {
+            writer.write(fqcn);
+            writer.write('\n');
+          }
+        }
+      } catch (IOException e) {
+        error(
+            null,
+            "Failed to write CINPO task index for kind '"
+                + entry.getKey()
+                + "': "
+                + e.getMessage());
+      }
+    }
+  }
 }

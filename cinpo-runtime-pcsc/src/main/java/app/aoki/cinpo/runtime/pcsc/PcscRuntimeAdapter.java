@@ -7,25 +7,25 @@ import app.aoki.cinpo.orchestrator.phase.InstallPhase;
 import app.aoki.cinpo.runtime.RuntimeAdapter;
 
 /**
- * {@code runtime: pcsc} — PC/SC physical card reader. Applets are installed from CAP
- * artifacts over the GlobalPlatform secure channel.
+ * {@code runtime: pcsc} — PC/SC physical card reader. Applets are installed from CAP artifacts over
+ * the GlobalPlatform secure channel.
  */
 public final class PcscRuntimeAdapter implements RuntimeAdapter {
 
-    public static final String NAME = "pcsc";
+  public static final String NAME = "pcsc";
 
-    @Override
-    public String name() {
-        return NAME;
-    }
+  @Override
+  public String name() {
+    return NAME;
+  }
 
-    @Override
-    public ApduChannel createChannel(Profile profile) {
-        return new PcscAdapter(profile.pcsc()).createChannel();
-    }
+  @Override
+  public ApduChannel createChannel(Profile profile) {
+    return new PcscAdapter(profile.pcsc()).createChannel();
+  }
 
-    @Override
-    public Phase createInstallPhase(Profile profile) {
-        return new InstallPhase();
-    }
+  @Override
+  public Phase createInstallPhase(Profile profile) {
+    return new InstallPhase();
+  }
 }
