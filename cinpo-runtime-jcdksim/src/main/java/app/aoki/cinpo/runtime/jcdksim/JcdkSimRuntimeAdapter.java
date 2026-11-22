@@ -7,25 +7,25 @@ import app.aoki.cinpo.orchestrator.phase.InstallPhase;
 import app.aoki.cinpo.runtime.RuntimeAdapter;
 
 /**
- * {@code runtime: jcdksim} — Oracle JCDK simulator. Applets are installed from CAP
- * artifacts over the GlobalPlatform secure channel.
+ * {@code runtime: jcdksim} — Oracle JCDK simulator. Applets are installed from CAP artifacts over
+ * the GlobalPlatform secure channel.
  */
 public final class JcdkSimRuntimeAdapter implements RuntimeAdapter {
 
-    public static final String NAME = "jcdksim";
+  public static final String NAME = "jcdksim";
 
-    @Override
-    public String name() {
-        return NAME;
-    }
+  @Override
+  public String name() {
+    return NAME;
+  }
 
-    @Override
-    public ApduChannel createChannel(Profile profile) {
-        return new JcdkSimAdapter().createChannel();
-    }
+  @Override
+  public ApduChannel createChannel(Profile profile) {
+    return new JcdkSimAdapter().createChannel();
+  }
 
-    @Override
-    public Phase createInstallPhase(Profile profile) {
-        return new InstallPhase();
-    }
+  @Override
+  public Phase createInstallPhase(Profile profile) {
+    return new InstallPhase();
+  }
 }

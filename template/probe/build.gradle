@@ -1,111 +1,113 @@
 plugins {
-    id 'java'
-    alias(libs.plugins.cinpo)
-    alias(libs.plugins.spotless)
-    id 'checkstyle'
+	id 'java'
+	alias(libs.plugins.cinpo)
+	alias(libs.plugins.spotless)
+	id 'checkstyle'
 }
 
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
 }
 
 checkstyle {
-    toolVersion = libs.versions.checkstyle.get()
-    configFile = file('config/checkstyle/checkstyle.xml')
+	toolVersion = libs.versions.checkstyle.get()
+	configFile = file('config/checkstyle/checkstyle.xml')
 }
 
 tasks.withType(Checkstyle).configureEach {
-    exclude { it.file.toPath().startsWith(layout.buildDirectory.get().asFile.toPath()) }
+	exclude {
+		it.file.toPath().startsWith(layout.buildDirectory.get().asFile.toPath())
+	}
 }
 
 spotless {
-    java {
-        target 'host/**/*.java', 'applet/**/*.java'
-        googleJavaFormat()
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
-    groovyGradle {
-        target '*.gradle', 'gradle/**/*.gradle'
-        greclipse()
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
-    format 'markdown', {
-        target '*.md'
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
-    format 'yaml', {
-        target '*.yml', '*.yaml', 'profile/**/*.yml', 'profile/**/*.yaml'
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
+	java {
+		target 'host/**/*.java', 'applet/**/*.java'
+		googleJavaFormat()
+		trimTrailingWhitespace()
+		endWithNewline()
+	}
+	groovyGradle {
+		target '*.gradle', 'gradle/**/*.gradle'
+		greclipse()
+		trimTrailingWhitespace()
+		endWithNewline()
+	}
+	format 'markdown', {
+		target '*.md'
+		trimTrailingWhitespace()
+		endWithNewline()
+	}
+	format 'yaml', {
+		target '*.yml', '*.yaml', 'profile/**/*.yml', 'profile/**/*.yaml'
+		trimTrailingWhitespace()
+		endWithNewline()
+	}
 }
 
 def githubPackagesUser = providers.gradleProperty('gpr.user')
-        .orElse(providers.environmentVariable('GITHUB_ACTOR'))
+		.orElse(providers.environmentVariable('GITHUB_ACTOR'))
 def githubPackagesKey = providers.gradleProperty('gpr.key')
-        .orElse(providers.environmentVariable('GITHUB_TOKEN'))
+		.orElse(providers.environmentVariable('GITHUB_TOKEN'))
 def hasGithubPackagesCredentials = githubPackagesUser.isPresent() && githubPackagesKey.isPresent()
 def cinpoRepository = providers.gradleProperty('cinpoRepository').orNull
 
 repositories {
-    if (cinpoRepository) {
-        maven {
-            name = 'cinpoLocal'
-            url = uri(cinpoRepository)
-            content {
-                includeGroup 'app.aoki.cinpo'
-            }
-        }
-    }
-    if (hasGithubPackagesCredentials) {
-        maven {
-            name = 'githubPackages'
-            url = uri('https://maven.pkg.github.com/AokiApp/cinpo')
-            credentials {
-                username = githubPackagesUser.get()
-                password = githubPackagesKey.get()
-            }
-            content {
-                includeGroup 'app.aoki.cinpo'
-            }
-        }
-    }
-    maven {
-        name = 'githubPages'
-        url = uri('https://AokiApp.github.io/cinpo')
-        content {
-            includeGroup 'app.aoki.cinpo'
-        }
-    }
-    mavenCentral()
+	if (cinpoRepository) {
+		maven {
+			name = 'cinpoLocal'
+			url = uri(cinpoRepository)
+			content {
+				includeGroup 'app.aoki.cinpo'
+			}
+		}
+	}
+	if (hasGithubPackagesCredentials) {
+		maven {
+			name = 'githubPackages'
+			url = uri('https://maven.pkg.github.com/AokiApp/cinpo')
+			credentials {
+				username = githubPackagesUser.get()
+				password = githubPackagesKey.get()
+			}
+			content {
+				includeGroup 'app.aoki.cinpo'
+			}
+		}
+	}
+	maven {
+		name = 'githubPages'
+		url = uri('https://AokiApp.github.io/cinpo')
+		content {
+			includeGroup 'app.aoki.cinpo'
+		}
+	}
+	mavenCentral()
 }
 
 dependencies {
-    implementation libs.cinpo.core
-    implementation libs.cinpo.runtime.jcdksim
-    implementation libs.cinpo.runtime.jcardengine
-    implementation libs.cinpo.runtime.pcsc
-    implementation libs.snakeyaml
+	implementation libs.cinpo.core
+	implementation libs.cinpo.runtime.jcdksim
+	implementation libs.cinpo.runtime.jcardengine
+	implementation libs.cinpo.runtime.pcsc
+	implementation libs.snakeyaml
 }
 
 sourceSets {
-    main {
-        java.srcDirs = ['host']
-        resources {
-            srcDirs = ['host']
-            exclude '**/*.java'
-        }
-    }
+	main {
+		java.srcDirs = ['host']
+		resources {
+			srcDirs = ['host']
+			exclude '**/*.java'
+		}
+	}
 }
 
 // `build` runs cinpoTest through the Gradle test lifecycle. This template only
 // defines the probe kind, so run that instead of the default provision+test flow.
 tasks.named('cinpoTest') {
-    description = 'Runs the probe against the configured card.'
-    args = ['write', '--task=probe']
+	description = 'Runs the probe against the configured card.'
+	args = ['write', '--task=probe']
 }

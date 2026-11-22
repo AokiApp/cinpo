@@ -1,52 +1,52 @@
 pluginManagement {
-    repositories {
-        def cinpoRepository = providers.gradleProperty('cinpoRepository').orNull
-        if (cinpoRepository) {
-            maven {
-                name = 'cinpoLocal'
-                url = uri(cinpoRepository)
-                content {
-                    includeGroup 'app.aoki.cinpo'
-                }
-            }
-        }
+	repositories {
+		def cinpoRepository = providers.gradleProperty('cinpoRepository').orNull
+		if (cinpoRepository) {
+			maven {
+				name = 'cinpoLocal'
+				url = uri(cinpoRepository)
+				content {
+					includeGroup 'app.aoki.cinpo'
+				}
+			}
+		}
 
-        def githubPackagesUser = providers.gradleProperty('gpr.user')
-                .orElse(providers.environmentVariable('GITHUB_ACTOR'))
-        def githubPackagesKey = providers.gradleProperty('gpr.key')
-                .orElse(providers.environmentVariable('GITHUB_TOKEN'))
+		def githubPackagesUser = providers.gradleProperty('gpr.user')
+				.orElse(providers.environmentVariable('GITHUB_ACTOR'))
+		def githubPackagesKey = providers.gradleProperty('gpr.key')
+				.orElse(providers.environmentVariable('GITHUB_TOKEN'))
 
-        if (githubPackagesUser.isPresent() && githubPackagesKey.isPresent()) {
-            maven {
-                name = 'githubPackages'
-                url = uri('https://maven.pkg.github.com/AokiApp/cinpo')
-                credentials {
-                    username = githubPackagesUser.get()
-                    password = githubPackagesKey.get()
-                }
-                content {
-                    includeGroup 'app.aoki.cinpo'
-                }
-            }
-        }
-        maven {
-            name = 'githubPages'
-            url = uri('https://AokiApp.github.io/cinpo')
-            content {
-                includeGroup 'app.aoki.cinpo'
-            }
-        }
-        maven {
-            name = 'javacardPro'
-            url = uri('https://mvn.javacard.pro/maven/')
-        }
-        maven {
-            name = 'javacardProSnapshots'
-            url = uri('https://mvn.javacard.pro/maven/SNAPSHOTS/')
-        }
-        gradlePluginPortal()
-        mavenCentral()
-    }
+		if (githubPackagesUser.isPresent() && githubPackagesKey.isPresent()) {
+			maven {
+				name = 'githubPackages'
+				url = uri('https://maven.pkg.github.com/AokiApp/cinpo')
+				credentials {
+					username = githubPackagesUser.get()
+					password = githubPackagesKey.get()
+				}
+				content {
+					includeGroup 'app.aoki.cinpo'
+				}
+			}
+		}
+		maven {
+			name = 'githubPages'
+			url = uri('https://AokiApp.github.io/cinpo')
+			content {
+				includeGroup 'app.aoki.cinpo'
+			}
+		}
+		maven {
+			name = 'javacardPro'
+			url = uri('https://mvn.javacard.pro/maven/')
+		}
+		maven {
+			name = 'javacardProSnapshots'
+			url = uri('https://mvn.javacard.pro/maven/SNAPSHOTS/')
+		}
+		gradlePluginPortal()
+		mavenCentral()
+	}
 }
 
 rootProject.name = 'cinpo-template'

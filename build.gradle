@@ -1,94 +1,96 @@
 plugins {
-    id 'base'
-    alias(libs.plugins.spotless)
+	id 'base'
+	alias(libs.plugins.spotless)
 }
 
 def cinpoVersion = libs.versions.cinpo.get()
 
 allprojects {
-    group = 'app.aoki.cinpo'
-    version = cinpoVersion
+	group = 'app.aoki.cinpo'
+	version = cinpoVersion
 }
 
 repositories {
-    mavenCentral()
+	mavenCentral()
 }
 
 spotless {
-    // Root project files. Subproject Java/Groovy sources are configured below.
-    // template/ is an independent build with its own configuration.
-    groovyGradle {
-        target '*.gradle', 'cinpo-*/**/*.gradle', 'gradle/**/*.gradle'
-        targetExclude 'template/**', 'build/**', '.gradle/**', 'vendor/**'
-        greclipse()
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
-    format 'markdown', {
-        target '*.md', '.github/**/*.md', 'docs/**/*.md'
-        targetExclude 'template/**', 'build/**', '.gradle/**', 'vendor/**', 'CHANGELOG.md'
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
-    format 'yaml', {
-        target '*.yml', '*.yaml', '.github/**/*.yml', '.github/**/*.yaml'
-        targetExclude 'template/**', 'build/**', '.gradle/**', 'vendor/**'
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
+	// Root project files. Subproject Java/Groovy sources are configured below.
+	// template/ is an independent build with its own configuration.
+	groovyGradle {
+		target '*.gradle', 'cinpo-*/**/*.gradle', 'gradle/**/*.gradle'
+		targetExclude 'template/**', 'build/**', '.gradle/**', 'vendor/**'
+		greclipse()
+		trimTrailingWhitespace()
+		endWithNewline()
+	}
+	format 'markdown', {
+		target '*.md', '.github/**/*.md', 'docs/**/*.md'
+		targetExclude 'template/**', 'build/**', '.gradle/**', 'vendor/**', 'CHANGELOG.md'
+		trimTrailingWhitespace()
+		endWithNewline()
+	}
+	format 'yaml', {
+		target '*.yml', '*.yaml', '.github/**/*.yml', '.github/**/*.yaml'
+		targetExclude 'template/**', 'build/**', '.gradle/**', 'vendor/**'
+		trimTrailingWhitespace()
+		endWithNewline()
+	}
 }
 
 subprojects {
-    apply plugin: 'com.diffplug.spotless'
+	apply plugin: 'com.diffplug.spotless'
 
-    plugins.withId('java') {
-        apply plugin: 'checkstyle'
+	plugins.withId('java') {
+		apply plugin: 'checkstyle'
 
-        java {
-            toolchain {
-                languageVersion = JavaLanguageVersion.of(21)
-            }
-        }
+		java {
+			toolchain {
+				languageVersion = JavaLanguageVersion.of(21)
+			}
+		}
 
-        checkstyle {
-            toolVersion = libs.versions.checkstyle.get()
-            configFile = rootProject.file('config/checkstyle/checkstyle.xml')
-        }
+		checkstyle {
+			toolVersion = libs.versions.checkstyle.get()
+			configFile = rootProject.file('config/checkstyle/checkstyle.xml')
+		}
 
-        tasks.withType(Checkstyle).configureEach {
-            exclude { it.file.toPath().startsWith(layout.buildDirectory.get().asFile.toPath()) }
-        }
+		tasks.withType(Checkstyle).configureEach {
+			exclude {
+				it.file.toPath().startsWith(layout.buildDirectory.get().asFile.toPath())
+			}
+		}
 
-        test {
-            useJUnitPlatform()
-        }
-    }
+		test {
+			useJUnitPlatform()
+		}
+	}
 
-    spotless {
-        java {
-            target 'src/*/java/**/*.java', 'src/*/java-cli/**/*.java', 'src/*/java-gradle/**/*.java'
-            googleJavaFormat()
-            trimTrailingWhitespace()
-            endWithNewline()
-        }
-    }
+	spotless {
+		java {
+			target 'src/*/java/**/*.java', 'src/*/java-cli/**/*.java', 'src/*/java-gradle/**/*.java'
+			googleJavaFormat()
+			trimTrailingWhitespace()
+			endWithNewline()
+		}
+	}
 
-    tasks.withType(org.gradle.api.tasks.bundling.AbstractArchiveTask).configureEach {
-        preserveFileTimestamps = false
-        reproducibleFileOrder = true
-    }
+	tasks.withType(org.gradle.api.tasks.bundling.AbstractArchiveTask).configureEach {
+		preserveFileTimestamps = false
+		reproducibleFileOrder = true
+	}
 
-    repositories {
-        maven {
-            name = 'javacardPro'
-            url = uri('https://mvn.javacard.pro/maven/')
-        }
-        maven {
-            name = 'javacardProSnapshots'
-            url = uri('https://mvn.javacard.pro/maven/SNAPSHOTS/')
-        }
-        mavenCentral()
-    }
+	repositories {
+		maven {
+			name = 'javacardPro'
+			url = uri('https://mvn.javacard.pro/maven/')
+		}
+		maven {
+			name = 'javacardProSnapshots'
+			url = uri('https://mvn.javacard.pro/maven/SNAPSHOTS/')
+		}
+		mavenCentral()
+	}
 }
 
 // Prepare the Oracle Java Card toolchain for the framework build itself. Vendor

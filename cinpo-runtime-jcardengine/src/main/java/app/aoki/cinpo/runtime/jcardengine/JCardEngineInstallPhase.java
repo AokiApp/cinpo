@@ -7,27 +7,25 @@ import app.aoki.cinpo.orchestrator.Phase;
 import java.io.IOException;
 import java.util.logging.Logger;
 
-/**
- * Phase that installs applets into a fresh JCardEngine runtime by class name.
- */
+/** Phase that installs applets into a fresh JCardEngine runtime by class name. */
 public final class JCardEngineInstallPhase implements Phase {
 
-    private static final Logger LOG = Logger.getLogger(JCardEngineInstallPhase.class.getName());
+  private static final Logger LOG = Logger.getLogger(JCardEngineInstallPhase.class.getName());
 
-    public JCardEngineInstallPhase() {
+  public JCardEngineInstallPhase() {}
+
+  @Override
+  public void execute(Orchestrator orchestrator) throws IOException {
+    ApduChannel channel = orchestrator.requireChannel();
+    if (!(channel instanceof JCardEngineAdapter.JCardEngineChannel jcardengineChannel)) {
+      throw new IllegalStateException(
+          "JCardEngineInstallPhase requires a JCardEngine APDU channel but got: "
+              + channel.getClass().getName());
     }
 
-    @Override
-    public void execute(Orchestrator orchestrator) throws IOException {
-        ApduChannel channel = orchestrator.requireChannel();
-        if (!(channel instanceof JCardEngineAdapter.JCardEngineChannel jcardengineChannel)) {
-            throw new IllegalStateException(
-                    "JCardEngineInstallPhase requires a JCardEngine APDU channel but got: "
-                            + channel.getClass().getName());
-        }
-
-        AppletManifest manifest = orchestrator.getManifest();
-        LOG.fine(() -> "Installing " + manifest.applets().size() + " applets into fresh JCardEngine runtime");
-        jcardengineChannel.install(manifest);
-    }
+    AppletManifest manifest = orchestrator.getManifest();
+    LOG.fine(() ->
+        "Installing " + manifest.applets().size() + " applets into fresh JCardEngine runtime");
+    jcardengineChannel.install(manifest);
+  }
 }

@@ -11,10 +11,9 @@ import java.nio.file.Path;
  * <p>Used by {@link CinpoRunTaskTest} as the main class of the spawned process.
  */
 public final class WorkingDirectoryRecorder {
-    private WorkingDirectoryRecorder() {
-    }
+  private WorkingDirectoryRecorder() {}
 
-    public static void main(String[] args) throws IOException {
-        Files.writeString(Path.of(args[0]), System.getProperty("user.dir"), StandardCharsets.UTF_8);
-    }
+  public static void main(String[] args) throws IOException {
+    Files.writeString(Path.of(args[0]), System.getProperty("user.dir"), StandardCharsets.UTF_8);
+  }
 }
