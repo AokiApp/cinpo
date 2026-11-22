@@ -43,10 +43,8 @@ publishing {
             url = 'https://github.com/AokiApp/cinpo'
             licenses {
                 license {
-                    name = 'AokiApp Normative Application License - Tight 1.0.1'
-                    url = 'https://github.com/AokiApp/cinpo/blob/main/LICENSE.md'
-                    distribution = 'manual'
-                    comments = 'Source-available license; this is not an OSI-approved open-source license.'
+                    name = 'Apache License 2.0'
+                    url = 'https://www.apache.org/licenses/LICENSE-2.0'
                 }
             }
             scm {
