@@ -1,5 +1,7 @@
 [versions]
 cinpo = "0.5.3" # x-release-please-version
+spotless = "8.11.0"
+checkstyle = "14.4.0"
 snakeyaml = "2.2"
 
 [libraries]
@@ -11,3 +13,4 @@ snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
 
 [plugins]
 cinpo = { id = "app.aoki.cinpo", version.ref = "cinpo" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

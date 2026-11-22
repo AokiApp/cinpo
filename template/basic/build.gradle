@@ -1,11 +1,47 @@
 plugins {
     id 'java'
     alias(libs.plugins.cinpo)
+    alias(libs.plugins.spotless)
+    id 'checkstyle'
 }
 
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+checkstyle {
+    toolVersion = libs.versions.checkstyle.get()
+    configFile = file('config/checkstyle/checkstyle.xml')
+}
+
+tasks.withType(Checkstyle).configureEach {
+    exclude '**/generated/**'
+}
+
+spotless {
+    java {
+        target 'host/**/*.java', 'applet/**/*.java'
+        googleJavaFormat()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    groovyGradle {
+        target '*.gradle', 'gradle/**/*.gradle'
+        greclipse()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    format 'markdown', {
+        target '*.md'
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    format 'yaml', {
+        target '*.yml', '*.yaml', 'profile/**/*.yml', 'profile/**/*.yaml'
+        trimTrailingWhitespace()
+        endWithNewline()
     }
 }
 

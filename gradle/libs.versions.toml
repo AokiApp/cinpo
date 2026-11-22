@@ -1,2 +1,7 @@
 [versions]
 cinpo = "0.5.3" # x-release-please-version
+spotless = "8.11.0"
+checkstyle = "14.4.0"
+
+[plugins]
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
