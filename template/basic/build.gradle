@@ -17,7 +17,7 @@ checkstyle {
 }
 
 tasks.withType(Checkstyle).configureEach {
-    exclude '**/generated/**'
+    exclude { it.file.toPath().startsWith(layout.buildDirectory.get().asFile.toPath()) }
 }
 
 spotless {
