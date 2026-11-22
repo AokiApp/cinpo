@@ -5,14 +5,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      apply_spotless:
-        description: 'Run spotlessApply, commit, and push the result to the selected branch'
-        type: boolean
-        default: false
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -28,7 +23,6 @@ jobs:
 
   style:
     name: Style checks
-    if: github.event_name != 'workflow_dispatch' || inputs.apply_spotless != true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -37,56 +31,12 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
-      - run: chmod +x ./gradlew
+      - run: chmod +x ./gradlew ./scripts/extract_vendor.sh
+      - run: ./scripts/extract_vendor.sh
+        env:
+          VENDOR_PASSWORD: ${{ secrets.VENDOR_PASSWORD }}
       - name: Check root modules
         run: ./gradlew spotlessCheck checkstyleMain checkstyleTest
-      - name: Check templates
-        run: |
-          set -euo pipefail
-          for template in template/basic template/authenticated template/probe; do
-            echo "::group::style $template"
-            chmod +x "$template/gradlew"
-            (cd "$template" && ./gradlew spotlessCheck checkstyleMain checkstyleTest)
-            echo "::endgroup::"
-          done
-
-  apply_spotless:
-    name: Apply Spotless
-    if: github.event_name == 'workflow_dispatch' && inputs.apply_spotless == true
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.ref }}
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-      - uses: gradle/actions/setup-gradle@v6
-      - run: chmod +x ./gradlew
-      - name: Apply Spotless to root modules
-        run: ./gradlew spotlessApply
-      - name: Apply Spotless to templates
-        run: |
-          set -euo pipefail
-          for template in template/basic template/authenticated template/probe; do
-            echo "::group::spotlessApply $template"
-            chmod +x "$template/gradlew"
-            (cd "$template" && ./gradlew spotlessApply)
-            echo "::endgroup::"
-          done
-      - name: Commit and push changes
-        run: |
-          set -euo pipefail
-          if git diff --quiet; then
-            echo "No Spotless changes to commit."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "chore: apply Spotless formatting"
-          git push
 
   test:
     name: Unit tests
