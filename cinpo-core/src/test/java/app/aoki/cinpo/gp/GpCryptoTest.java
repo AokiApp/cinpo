@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import app.aoki.cinpo.util.Util;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -32,9 +33,19 @@ class GpCryptoTest {
    * <p>Key: 2B7E1516 28AED2A6 ABF71588 09CF4F3C <br>
    * Msg: (empty) <br>
    * CMAC: BB1D6929 E9593728 7FA37D12 9B756746
+   *
+   * <p>What it does: It computes the AES-CMAC of a zero-length message with the NIST SP 800-38B D.1
+   * key and compares the result with the published 16-byte MAC.
+   *
+   * <p>What it confirms: It confirms that the zero-length path produces the exact MAC BB1D6929
+   * E9593728 7FA37D12 9B756746, which requires both subkeys K1 and K2.
+   *
+   * <p>Benefit: It detects drift in the CMAC subkey derivation or final-block padding, because no
+   * other input length can hide a fault behind this vector.
    */
+  @DisplayName("CMAC of an empty message should match NIST SP 800-38B D.1")
   @Test
-  void cmacNistTestVector_Empty() throws GeneralSecurityException {
+  void cmacNistVectorEmpty() throws GeneralSecurityException {
     byte[] key = hex("2B7E1516 28AED2A6 ABF71588 09CF4F3C");
     byte[] message = new byte[0];
     byte[] expected = hex("BB1D6929 E9593728 7FA37D12 9B756746");
@@ -53,9 +64,19 @@ class GpCryptoTest {
    * <p>Key: 2B7E1516 28AED2A6 ABF71588 09CF4F3C <br>
    * Msg: 6BC1BEE2 2E409F96 E93D7E11 7393172A <br>
    * CMAC: 070A16B4 6B4D4144 F79BDD9D D04A287C
+   *
+   * <p>What it does: It computes the AES-CMAC of one complete 16-byte block with the NIST D.2 key
+   * and compares the full 16-byte result with the published MAC.
+   *
+   * <p>What it confirms: It confirms that the K1 path, used when the message ends on a block
+   * boundary, yields 070A16B4 6B4D4144 F79BDD9D D04A287C.
+   *
+   * <p>Benefit: It separates a K1 regression from a K2 regression: the empty-message vector needs
+   * K2, whereas this vector needs only K1.
    */
+  @DisplayName("CMAC of a complete 16-byte message should match NIST SP 800-38B D.2")
   @Test
-  void cmacNistTestVector_OneBlock() throws GeneralSecurityException {
+  void cmacNistVectorOneBlock() throws GeneralSecurityException {
     byte[] key = hex("2B7E1516 28AED2A6 ABF71588 09CF4F3C");
     byte[] message = hex("6BC1BEE2 2E409F96 E93D7E11 7393172A");
     byte[] expected = hex("070A16B4 6B4D4144 F79BDD9D D04A287C");
@@ -75,9 +96,20 @@ class GpCryptoTest {
    * Msg: 6BC1BEE2 2E409F96 E93D7E11 7393172A AE2D8A57 1E03AC9C 9EB76FAC 45AF8E51 30C81C46 A35CE411
    * <br>
    * CMAC: DFA66747 DE9AE630 30CA3261 1497C827
+   *
+   * <p>What it does: It computes the AES-CMAC of the 40-byte NIST D.3 message and compares the
+   * result with the published MAC.
+   *
+   * <p>What it confirms: It confirms that the incomplete final block is padded with 0x80 and
+   * processed with K2, producing DFA66747 DE9AE630 30CA3261 1497C827.
+   *
+   * <p>Benefit: It catches a padding or subkey-selection error that the complete-block vectors
+   * cannot expose.
    */
+  @DisplayName(
+      "CMAC of a 40-byte message with an incomplete final block should match NIST SP 800-38B D.3")
   @Test
-  void cmacNistTestVector_IncompleteBlock() throws GeneralSecurityException {
+  void cmacNistVectorPartialBlock() throws GeneralSecurityException {
     byte[] key = hex("2B7E1516 28AED2A6 ABF71588 09CF4F3C");
     byte[] message =
         hex(
@@ -101,9 +133,20 @@ class GpCryptoTest {
    * Msg: 6BC1BEE2 2E409F96 E93D7E11 7393172A AE2D8A57 1E03AC9C 9EB76FAC 45AF8E51 30C81C46 A35CE411
    * E5FBC119 1A0A52EF F69F2445 DF4F9B17 AD2B417B E66C3710 <br>
    * CMAC: 51F0BEBF 7E3B9D92 FC497417 79363CFE
+   *
+   * <p>What it does: It computes the AES-CMAC of the 64-byte NIST D.4 message and compares the
+   * result with the published MAC.
+   *
+   * <p>What it confirms: It confirms that CBC-MAC chaining across four complete blocks produces
+   * 51F0BEBF 7E3B9D92 FC497417 79363CFE.
+   *
+   * <p>Benefit: It catches an error that appears only after more than one AES block has been
+   * chained.
    */
+  @DisplayName(
+      "CMAC of a 64-byte message with four complete blocks should match NIST SP 800-38B D.4")
   @Test
-  void cmacNistTestVector_MultipleBlocks() throws GeneralSecurityException {
+  void cmacNistVectorMultiBlock() throws GeneralSecurityException {
     byte[] key = hex("2B7E1516 28AED2A6 ABF71588 09CF4F3C");
     byte[] message =
         hex(
@@ -123,7 +166,18 @@ class GpCryptoTest {
    *
    * <p>SCP03 Amendment D Section 6.2.4 specifies: "The eight most significant bytes are
    * considered."
+   *
+   * <p>What it does: It computes a full 16-byte CMAC, copies its first eight bytes, and checks that
+   * copy against the expected truncation.
+   *
+   * <p>What it confirms: It confirms that the full MAC is 16 bytes and that the truncated value is
+   * 070A16B4 6B4D4144, the leading half of the D.2 vector.
+   *
+   * <p>Benefit: It protects the SCP03 C-MAC contract: a trailing-half truncation or a wrong MAC
+   * length would produce invalid card commands.
    */
+  @DisplayName(
+      "Truncating a full CMAC to eight bytes should keep the eight most significant bytes required by SCP03")
   @Test
   void cmacTruncationForScp03() throws GeneralSecurityException {
     byte[] key = hex("2B7E1516 28AED2A6 ABF71588 09CF4F3C");
@@ -143,12 +197,23 @@ class GpCryptoTest {
   // ─── GF(2^128) doubling tests (doubleLu) ─────────────────────────────
 
   /**
-   * Test GF(2^128) doubling with zero block.
+   * Check GF(2^128) doubling with zero block.
    *
    * <p>Zero doubled should remain zero (no XOR with 0x87).
+   *
+   * <p>What it does: It encrypts a zero block with a zero AES key to obtain L, checks that L
+   * constant, and computes the CMAC of one 16-byte message, which exercises the K1 derivation path.
+   *
+   * <p>What it confirms: It confirms that L equals 66E94BD4EF8A2C3B884CFA59CA342B2E and that CMAC
+   * returns 16 bytes for a complete block.
+   *
+   * <p>Benefit: It pins the AES output that feeds the GF(2^128) doubling code, so a regression in
+   * the encryption or in L is caught where the doubling starts.
    */
+  @DisplayName(
+      "CMAC with an all-zero AES key and a full block should produce a 16-byte result after deriving L")
   @Test
-  void doubleLu_ZeroBlock() throws GeneralSecurityException {
+  void doubleLuZeroBlock() throws GeneralSecurityException {
     // Use CMAC internals to test doubleLu: encrypt zero block, derive K1
     byte[] key = new byte[16];
     byte[] message = new byte[16]; // Complete block triggers K1 path
@@ -172,12 +237,24 @@ class GpCryptoTest {
   }
 
   /**
-   * Test GF(2^128) doubling with MSB = 0 (no polynomial reduction).
+   * Check GF(2^128) doubling with MSB = 0 (no polynomial reduction).
    *
    * <p>If the most significant bit is 0, doubling is just a left shift.
+   *
+   * <p>What it does: It encrypts a zero block with the key 00000000 00000000 00000000 00000001,
+   * reads the most significant bit of the resulting L, and computes the CMAC of a complete 16-byte
+   * block.
+   *
+   * <p>What it confirms: It confirms that the derived L can be inspected for its most significant
+   * bit and that CMAC still returns a 16-byte result for that key.
+   *
+   * <p>Benefit: none beyond a length check: the MSB flag is computed but never asserted, so the
+   * only failure this test can detect is a CMAC output that is not 16 bytes. Pinning the MSB-zero
+   * branch would need a reference MAC for this key.
    */
+  @DisplayName("CMAC of a full block with the single-one AES key should return a 16-byte result")
   @Test
-  void doubleLu_MsbZero() throws GeneralSecurityException {
+  void doubleLuMsbZero() throws GeneralSecurityException {
     // Use a block starting with 0x7F (MSB = 0)
     // Input:  7FFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF
     // Output: FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE (left shift, no XOR)
@@ -200,12 +277,24 @@ class GpCryptoTest {
   }
 
   /**
-   * Test GF(2^128) doubling with MSB = 1 (requires XOR with 0x87).
+   * Check GF(2^128) doubling with MSB = 1 (requires XOR with 0x87).
    *
    * <p>If the most significant bit is 1, the result is (L << 1) XOR 0x87.
+   *
+   * <p>What it does: It checks the L value and its most significant bit for the NIST D.1 key, then
+   * compares the CMAC of an empty message with the published MAC.
+   *
+   * <p>What it confirms: It confirms L = 7DF76B0C 1AB899B3 3E42F047 B91B546F with MSB zero and CMAC
+   * = BB1D6929 E9593728 7FA37D12 9B756746, which requires the MSB-one doubling path when K2 is
+   * derived.
+   *
+   * <p>Benefit: It detects a subkey derivation that omits the 0x87 reduction, because that error
+   * changes the empty-message MAC.
    */
+  @DisplayName(
+      "CMAC of an empty message with the NIST D.1 key should match the published vector while L has MSB zero")
   @Test
-  void doubleLu_MsbOne() throws GeneralSecurityException {
+  void doubleLuMsbOne() throws GeneralSecurityException {
     // Use a block starting with 0x80 (MSB = 1)
     // The NIST test vectors exercise this: in Example 1 (empty message),
     // K2 is derived from K1 via doubling, and one of them has MSB=1
@@ -234,14 +323,26 @@ class GpCryptoTest {
   }
 
   /**
-   * Test GF(2^128) doubling with all-ones block (boundary case).
+   * Check GF(2^128) doubling with all-ones block (boundary case).
    *
    * <p>Input: FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF <br>
    * Output: FFFFFFFF FFFFFFFF FFFFFFFF FFFFFF79 <br>
    * (left shift gives FFFFFFFE, then XOR 0x87 = 0xFE XOR 0x87 = 0x79)
+   *
+   * <p>What it does: It computes the CMAC of an empty message with an all-ones AES key twice and
+   * checks the length and equality of the two results.
+   *
+   * <p>What it confirms: It confirms that the output is a well-formed 16-byte block and that
+   * repeated calls with the same key and message produce identical bytes. The all-ones doubling
+   * shown above is documentation; this test does not call the private doubling routine.
+   *
+   * <p>Benefit: It catches a nondeterministic result caused by shared mutable state. No published
+   * vector exists for this key, so the test does not pin a MAC value.
    */
+  @DisplayName(
+      "CMAC with an all-ones key and an empty message should return 16 bytes and repeat the same result")
   @Test
-  void doubleLu_AllOnes() throws GeneralSecurityException {
+  void doubleLuAllOnes() throws GeneralSecurityException {
     // We can't directly call doubleLu (it's private), but we can test it
     // indirectly by using a key that produces L = 0xFFFF...FFFF
     // However, finding such a key is not practical without inverting AES.
@@ -261,12 +362,23 @@ class GpCryptoTest {
   }
 
   /**
-   * Test that doubleLu handles carry propagation correctly.
+   * Check that doubleLu handles carry propagation correctly.
    *
    * <p>Verify that left-shift carries propagate through all 16 bytes.
+   *
+   * <p>What it does: It computes the CMAC of a 22-byte message whose incomplete final block forces
+   * use of K2, which is derived by doubling K1.
+   *
+   * <p>What it confirms: It confirms that the output is 16 bytes for a message that reaches the
+   * K1-to-K2 carry.
+   *
+   * <p>Benefit: none without a reference MAC: no expected value is asserted, so a wrong K2 would
+   * pass. A vector assertion is needed to test the carry itself.
    */
+  @DisplayName(
+      "CMAC of a 22-byte message with the NIST D.1 key should return 16 bytes through the K2 path")
   @Test
-  void doubleLu_CarryPropagation() throws GeneralSecurityException {
+  void doubleLuCarryPropagation() throws GeneralSecurityException {
     // Use NIST vector where we know the intermediate values
     // K1 = FBEED618 35713366 7C85E08F 7236A8DE (from D.1)
     // K2 = F7DDAC30 6AE266CC F90BC11E E46D513B
@@ -291,9 +403,20 @@ class GpCryptoTest {
    * Test ISO 9797 Method 2 padding with empty data (AES block size).
    *
    * <p>Empty data should pad to: 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+   *
+   * <p>What it does: It pads an empty input to the AES block size and inspects all 16 resulting
+   * bytes.
+   *
+   * <p>What it confirms: It confirms length 16 and content 80 00 ... 00, with 0x80 in byte 0 and
+   * zeros afterwards.
+   *
+   * <p>Benefit: It pins the minimal padding case, the boundary where an implementation may wrongly
+   * skip the marker block.
    */
+  @DisplayName(
+      "ISO 9797-1 Method 2 padding of empty data with a 16-byte block should produce one 0x80 marker followed by zeros")
   @Test
-  void padIso9797Method2_Empty_Aes() {
+  void padIso9797EmptyAes() {
     byte[] input = new byte[0];
     byte[] padded = GpCrypto.padIso9797Method2(input, 16);
 
@@ -309,9 +432,19 @@ class GpCryptoTest {
    *
    * <p>Input: 42 <br>
    * Output: 42 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+   *
+   * <p>What it does: It pads the single byte 42 to 16 bytes and checks the prefix and the padding
+   * bytes.
+   *
+   * <p>What it confirms: It confirms the result starts with 42 80 and has 14 zero bytes.
+   *
+   * <p>Benefit: It catches an implementation that overwrites the first data byte instead of
+   * appending the marker.
    */
+  @DisplayName(
+      "ISO 9797-1 Method 2 padding of one byte should preserve the data and append a 0x80 marker")
   @Test
-  void padIso9797Method2_OneByte() {
+  void padIso9797OneByte() {
     byte[] input = hex("42");
     byte[] padded = GpCrypto.padIso9797Method2(input, 16);
 
@@ -327,9 +460,20 @@ class GpCryptoTest {
    * Test ISO 9797 Method 2 padding with 15 bytes (almost full block).
    *
    * <p>15 bytes + 0x80 = 16 bytes (exactly one block, no additional padding).
+   *
+   * <p>What it does: It pads 15 bytes to one 16-byte block and checks that the data is preserved
+   * and the final byte is 0x80.
+   *
+   * <p>What it confirms: It confirms that no extra block is added when 15 data bytes plus the
+   * marker exactly fill the block.
+   *
+   * <p>Benefit: It guards the boundary between one block and two blocks, where an off-by-one error
+   * would add an unnecessary block.
    */
+  @DisplayName(
+      "ISO 9797-1 Method 2 padding of 15 bytes should place the 0x80 marker in the last byte of the block")
   @Test
-  void padIso9797Method2_AlmostFullBlock() {
+  void padIso9797AlmostFullBlock() {
     byte[] input = new byte[15];
     for (int i = 0; i < 15; i++) {
       input[i] = (byte) (i + 1);
@@ -348,9 +492,19 @@ class GpCryptoTest {
    * Test ISO 9797 Method 2 padding with exactly 16 bytes (one full block).
    *
    * <p>16 bytes of data require an additional block: data + 80 00...00
+   *
+   * <p>What it does: It pads a full 16-byte block and checks that the first block is unchanged
+   * while the second block begins with 0x80.
+   *
+   * <p>What it confirms: It confirms padded length 32, byte 16 equal to 0x80, and zero bytes
+   * through index 31.
+   *
+   * <p>Benefit: It catches an implementation that omits the marker block for block-aligned input.
    */
+  @DisplayName(
+      "ISO 9797-1 Method 2 padding of exactly 16 bytes should add a second block with a 0x80 marker")
   @Test
-  void padIso9797Method2_ExactlyOneBlock() {
+  void padIso9797ExactBlock() {
     byte[] input = new byte[16];
     for (int i = 0; i < 16; i++) {
       input[i] = (byte) (i + 1);
@@ -372,9 +526,20 @@ class GpCryptoTest {
    * Test ISO 9797 Method 2 padding with various lengths (0 to 32 bytes).
    *
    * <p>Verify padding works correctly for all lengths in range.
+   *
+   * <p>What it does: It pads inputs of lengths 0 through 32 bytes and checks length, preserved
+   * data, marker position, and zero fill for each length.
+   *
+   * <p>What it confirms: It confirms that the padded length is the next multiple of 16 and that
+   * 0x80 sits directly after the original data at every length.
+   *
+   * <p>Benefit: It replaces a single sample with a sweep, so a length-specific boundary bug cannot
+   * hide between two tested cases.
    */
+  @DisplayName(
+      "ISO 9797-1 Method 2 padding for every length from 0 to 32 bytes should follow the same block rule")
   @Test
-  void padIso9797Method2_VariousLengths() {
+  void padIso9797VariousLengths() {
     for (int len = 0; len <= 32; len++) {
       byte[] input = new byte[len];
       for (int i = 0; i < len; i++) {
@@ -409,9 +574,18 @@ class GpCryptoTest {
    * Test ISO 9797 Method 2 padding with 3DES block size (8 bytes).
    *
    * <p>Verify padding works for SCP02 (3DES uses 8-byte blocks).
+   *
+   * <p>What it does: It pads a five-byte input using the 3DES block size of eight bytes.
+   *
+   * <p>What it confirms: It confirms the 8-byte result is exactly 01 02 03 04 05 80 00 00.
+   *
+   * <p>Benefit: It verifies that the block-size parameter is used, so the SCP02 path cannot
+   * silently inherit the AES 16-byte block size.
    */
+  @DisplayName(
+      "ISO 9797-1 Method 2 padding of five bytes with an 8-byte block should produce 01 02 03 04 05 80 00 00")
   @Test
-  void padIso9797Method2_ThreeDesBlockSize() {
+  void padIso9797DesBlockSize() {
     byte[] input = hex("01 02 03 04 05");
     byte[] padded = GpCrypto.padIso9797Method2(input, 8);
 
@@ -424,9 +598,21 @@ class GpCryptoTest {
 
   // ─── Padding removal tests ───────────────────────────────────────────
 
-  /** Test ISO 9797 Method 2 padding removal round-trip (empty data). */
+  /**
+   * Test ISO 9797 Method 2 padding removal round-trip (empty data).
+   *
+   * <p>What it does: It pads an empty array, removes the padding, and compares the result with the
+   * original.
+   *
+   * <p>What it confirms: It confirms the round trip preserves a zero-length payload.
+   *
+   * <p>Benefit: It catches an unpadding implementation that emits a marker byte when there is no
+   * payload.
+   */
+  @DisplayName(
+      "Removing ISO 9797-1 Method 2 padding from a padded empty message should return empty data")
   @Test
-  void removeIso9797Method2Padding_Empty() {
+  void unpadIso9797Empty() {
     byte[] original = new byte[0];
     byte[] padded = GpCrypto.padIso9797Method2(original, 16);
     byte[] unpadded = GpCrypto.removeIso9797Method2Padding(padded);
@@ -435,9 +621,20 @@ class GpCryptoTest {
         original, unpadded, "Round-trip padding/unpadding should preserve empty data");
   }
 
-  /** Test ISO 9797 Method 2 padding removal round-trip (1 byte). */
+  /**
+   * Test ISO 9797 Method 2 padding removal round-trip (1 byte).
+   *
+   * <p>What it does: It pads the byte 42, removes the padding, and compares the result with the
+   * original.
+   *
+   * <p>What it confirms: It confirms the round trip preserves the one-byte payload 42.
+   *
+   * <p>Benefit: It catches an off-by-one error that would drop the last payload byte.
+   */
+  @DisplayName(
+      "Removing ISO 9797-1 Method 2 padding from a padded single byte should return that byte")
   @Test
-  void removeIso9797Method2Padding_OneByte() {
+  void unpadIso9797OneByte() {
     byte[] original = hex("42");
     byte[] padded = GpCrypto.padIso9797Method2(original, 16);
     byte[] unpadded = GpCrypto.removeIso9797Method2Padding(padded);
@@ -446,9 +643,21 @@ class GpCryptoTest {
         original, unpadded, "Round-trip padding/unpadding should preserve 1-byte data");
   }
 
-  /** Test ISO 9797 Method 2 padding removal round-trip (15 bytes). */
+  /**
+   * Test ISO 9797 Method 2 padding removal round-trip (15 bytes).
+   *
+   * <p>What it does: It pads a 15-byte payload that exactly fills a block with the marker, then
+   * removes the padding.
+   *
+   * <p>What it confirms: It confirms the round trip preserves all 15 payload bytes.
+   *
+   * <p>Benefit: It checks the boundary where the marker is the last byte, so an incorrect marker
+   * scan cannot pass.
+   */
+  @DisplayName(
+      "Removing ISO 9797-1 Method 2 padding from a padded 15-byte message should return all 15 bytes")
   @Test
-  void removeIso9797Method2Padding_AlmostFullBlock() {
+  void unpadIso9797AlmostFullBlock() {
     byte[] original = new byte[15];
     for (int i = 0; i < 15; i++) {
       original[i] = (byte) (i + 1);
@@ -461,9 +670,20 @@ class GpCryptoTest {
         original, unpadded, "Round-trip padding/unpadding should preserve 15-byte data");
   }
 
-  /** Test ISO 9797 Method 2 padding removal round-trip (16 bytes). */
+  /**
+   * Test ISO 9797 Method 2 padding removal round-trip (16 bytes).
+   *
+   * <p>What it does: It pads a 16-byte payload into two blocks, then removes the padding.
+   *
+   * <p>What it confirms: It confirms the round trip preserves all 16 payload bytes.
+   *
+   * <p>Benefit: It catches an implementation that mistakes a full payload block for a padding
+   * block.
+   */
+  @DisplayName(
+      "Removing ISO 9797-1 Method 2 padding from a padded 16-byte message should return all 16 bytes")
   @Test
-  void removeIso9797Method2Padding_ExactlyOneBlock() {
+  void unpadIso9797FullBlock() {
     byte[] original = new byte[16];
     for (int i = 0; i < 16; i++) {
       original[i] = (byte) (i + 1);
@@ -476,9 +696,20 @@ class GpCryptoTest {
         original, unpadded, "Round-trip padding/unpadding should preserve 16-byte data");
   }
 
-  /** Test ISO 9797 Method 2 padding removal round-trip (various lengths). */
+  /**
+   * Test ISO 9797 Method 2 padding removal round-trip (various lengths).
+   *
+   * <p>What it does: It pads and then unpads payloads of lengths 0 through 32 bytes.
+   *
+   * <p>What it confirms: It confirms that every length returns the exact original bytes.
+   *
+   * <p>Benefit: It covers each block boundary in one sweep, so a length-specific truncation is
+   * detected.
+   */
+  @DisplayName(
+      "Removing ISO 9797-1 Method 2 padding for lengths from 0 to 32 bytes should restore every payload")
   @Test
-  void removeIso9797Method2Padding_VariousLengths() {
+  void unpadIso9797VariousLengths() {
     for (int len = 0; len <= 32; len++) {
       byte[] original = new byte[len];
       for (int i = 0; i < len; i++) {
@@ -498,9 +729,19 @@ class GpCryptoTest {
    * Test padding removal with invalid padding (no 0x80 marker).
    *
    * <p>Should throw IllegalStateException.
+   *
+   * <p>What it does: It passes a 16-byte block of zeros to the unpadding method and captures the
+   * exception.
+   *
+   * <p>What it confirms: It confirms an IllegalStateException is thrown and its message names
+   * invalid ISO 9797 Method 2 padding.
+   *
+   * <p>Benefit: It prevents malformed input from being accepted as an empty payload.
    */
+  @DisplayName(
+      "Removing padding from a block without a 0x80 marker should throw IllegalStateException")
   @Test
-  void removeIso9797Method2Padding_NoPaddingMarker() {
+  void unpadIso9797NoMarker() {
     byte[] invalid = hex("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00");
 
     IllegalStateException exception =
@@ -518,9 +759,19 @@ class GpCryptoTest {
    * Test padding removal with malformed padding (non-zero before 0x80).
    *
    * <p>Should throw IllegalStateException.
+   *
+   * <p>What it does: It passes a 16-byte block whose bytes before any marker are nonzero and
+   * captures the exception.
+   *
+   * <p>What it confirms: It confirms an IllegalStateException is thrown with the invalid-padding
+   * message.
+   *
+   * <p>Benefit: It catches a lenient parser that would treat arbitrary bytes as valid padding.
    */
+  @DisplayName(
+      "Removing padding with nonzero bytes before the 0x80 marker should throw IllegalStateException")
   @Test
-  void removeIso9797Method2Padding_MalformedPadding() {
+  void unpadIso9797Malformed() {
     byte[] malformed = hex("01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10");
 
     IllegalStateException exception =
@@ -539,9 +790,20 @@ class GpCryptoTest {
    *
    * <p>Data: 01 02 03 80 00 00 00 00 00 00 00 00 00 00 00 FF <br>
    * The 0xFF at the end means the final 0x80 search will fail.
+   *
+   * <p>What it does: It passes a block with 0x80 in the middle and 0xFF as the final byte, then
+   * captures the exception.
+   *
+   * <p>What it confirms: It confirms an IllegalStateException is thrown with the invalid-padding
+   * message.
+   *
+   * <p>Benefit: It catches a marker search that stops at the first 0x80 without validating the
+   * trailing bytes.
    */
+  @DisplayName(
+      "Removing padding whose 0x80 marker is followed by 0xFF should throw IllegalStateException")
   @Test
-  void removeIso9797Method2Padding_PaddingMarkerWrongPosition() {
+  void unpadIso9797WrongMarker() {
     byte[] invalid = hex("01 02 03 80 00 00 00 00 00 00 00 00 00 00 00 FF");
 
     IllegalStateException exception =
@@ -559,9 +821,19 @@ class GpCryptoTest {
    * Test padding removal with all-zero block (edge case).
    *
    * <p>An all-zero block has no 0x80 marker and should fail.
+   *
+   * <p>What it does: It passes a 16-byte block of zeros to the unpadding method and captures the
+   * exception.
+   *
+   * <p>What it confirms: It confirms an IllegalStateException is thrown with the invalid-padding
+   * message.
+   *
+   * <p>Benefit: It documents the all-zero edge case, but its input and assertion overlap with the
+   * no-marker case, so it adds no coverage beyond that case.
    */
+  @DisplayName("Removing padding from an all-zero block should throw IllegalStateException")
   @Test
-  void removeIso9797Method2Padding_AllZeros() {
+  void unpadIso9797AllZeros() {
     byte[] allZeros = new byte[16];
 
     IllegalStateException exception =
@@ -580,9 +852,18 @@ class GpCryptoTest {
    *
    * <p>Input: 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 <br>
    * Should return empty array.
+   *
+   * <p>What it does: It passes a block made of the 0x80 marker followed by zeros to the unpadding
+   * method.
+   *
+   * <p>What it confirms: It confirms the result has length zero.
+   *
+   * <p>Benefit: It catches an implementation that returns the marker itself as payload.
    */
+  @DisplayName(
+      "Removing padding from a block containing only the 0x80 marker should return an empty array")
   @Test
-  void removeIso9797Method2Padding_OnlyPaddingMarker() {
+  void unpadIso9797OnlyMarker() {
     byte[] onlyMarker = hex("80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00");
     byte[] unpadded = GpCrypto.removeIso9797Method2Padding(onlyMarker);
 
@@ -594,9 +875,18 @@ class GpCryptoTest {
 
   // ─── XOR utility tests ────────────────────────────────────────────────
 
-  /** Test XOR with equal-length arrays. */
+  /**
+   * Test XOR with equal-length arrays.
+   *
+   * <p>What it does: It XORs 01 02 03 04 with 05 06 07 08 and checks every output byte.
+   *
+   * <p>What it confirms: It confirms the result is 04 04 04 0C.
+   *
+   * <p>Benefit: It pins the basic arithmetic used by CMAC subkey derivation.
+   */
+  @DisplayName("XOR of two equal-length arrays should produce the byte-wise difference")
   @Test
-  void xor_EqualLength() {
+  void xorEqualLength() {
     byte[] left = hex("01 02 03 04");
     byte[] right = hex("05 06 07 08");
     byte[] expected = hex("04 04 04 0C"); // 0x01^0x05=0x04, etc.
@@ -606,9 +896,19 @@ class GpCryptoTest {
     assertArrayEquals(expected, result, "XOR should produce correct result");
   }
 
-  /** Test XOR with different-length arrays (should throw exception). */
+  /**
+   * Test XOR with different-length arrays (should throw exception).
+   *
+   * <p>What it does: It XORs a four-byte array with a three-byte array and captures the exception.
+   *
+   * <p>What it confirms: It confirms an IllegalArgumentException is thrown and the message mentions
+   * equal length.
+   *
+   * <p>Benefit: It catches a loop that would silently read past the shorter array.
+   */
+  @DisplayName("XOR of arrays with different lengths should throw IllegalArgumentException")
   @Test
-  void xor_UnequalLength() {
+  void xorUnequalLength() {
     byte[] left = hex("01 02 03 04");
     byte[] right = hex("05 06 07");
 
@@ -623,9 +923,18 @@ class GpCryptoTest {
         "Exception message should indicate length mismatch");
   }
 
-  /** Test XOR with zero (identity property). */
+  /**
+   * Test XOR with zero (identity property).
+   *
+   * <p>What it does: It XORs 01 02 03 04 with four zero bytes.
+   *
+   * <p>What it confirms: It confirms the result equals the input byte for byte.
+   *
+   * <p>Benefit: It checks the identity property that callers rely on when masking with zero.
+   */
+  @DisplayName("XOR of data with a zero array should return the original data")
   @Test
-  void xor_WithZero() {
+  void xorWithZero() {
     byte[] data = hex("01 02 03 04");
     byte[] zero = new byte[4];
 
@@ -634,9 +943,18 @@ class GpCryptoTest {
     assertArrayEquals(data, result, "XOR with zero should return original data");
   }
 
-  /** Test XOR is commutative (A XOR B = B XOR A). */
+  /**
+   * Test XOR is commutative (A XOR B = B XOR A).
+   *
+   * <p>What it does: It XORs two arrays in both orders and compares the results.
+   *
+   * <p>What it confirms: It confirms A XOR B equals B XOR A for the chosen bytes.
+   *
+   * <p>Benefit: It catches an implementation that treats the two operands asymmetrically.
+   */
+  @DisplayName("XOR should give the same result regardless of operand order")
   @Test
-  void xor_Commutative() {
+  void xorCommutative() {
     byte[] a = hex("01 02 03 04");
     byte[] b = hex("05 06 07 08");
 
@@ -646,9 +964,18 @@ class GpCryptoTest {
     assertArrayEquals(ab, ba, "XOR should be commutative");
   }
 
-  /** Test XOR self-cancellation (A XOR A = 0). */
+  /**
+   * Test XOR self-cancellation (A XOR A = 0).
+   *
+   * <p>What it does: It XORs 01 02 03 04 with itself.
+   *
+   * <p>What it confirms: It confirms every output byte is zero.
+   *
+   * <p>Benefit: It checks the cancellation property that makes XOR safe for clearing masked values.
+   */
+  @DisplayName("XOR of an array with itself should return all zero bytes")
   @Test
-  void xor_SelfCancellation() {
+  void xorSelfCancellation() {
     byte[] data = hex("01 02 03 04");
     byte[] zero = new byte[4];
 
@@ -663,9 +990,18 @@ class GpCryptoTest {
    * Test AES-ECB encryption produces correct output.
    *
    * <p>Uses NIST test vector for AES-128 ECB mode.
+   *
+   * <p>What it does: It encrypts the NIST FIPS 197 Appendix C.1 plaintext with the matching AES-128
+   * key.
+   *
+   * <p>What it confirms: It confirms the ciphertext is 69C4E0D86A7B0430D8CDB78070B4C55A.
+   *
+   * <p>Benefit: It adds an independent standard vector to the CMAC vectors, so a shared bug in the
+   * AES wrapper cannot hide behind CMAC results alone.
    */
+  @DisplayName("AES-ECB encryption of the FIPS 197 plaintext should match the published ciphertext")
   @Test
-  void aesEcbEncrypt_KnownVector() throws GeneralSecurityException {
+  void aesEcbKnownVector() throws GeneralSecurityException {
     // NIST FIPS 197 Appendix C.1
     byte[] key = hex("000102030405060708090A0B0C0D0E0F");
     byte[] plaintext = hex("00112233445566778899AABBCCDDEEFF");
@@ -677,9 +1013,20 @@ class GpCryptoTest {
         expectedCiphertext, ciphertext, "AES-ECB encryption should match NIST test vector");
   }
 
-  /** Test AES-CBC encryption with zero IV. */
+  /**
+   * Test AES-CBC encryption with zero IV.
+   *
+   * <p>What it does: It encrypts one 16-byte block with an all-zero IV.
+   *
+   * <p>What it confirms: It confirms the ciphertext is 16 bytes and is not equal to the plaintext.
+   *
+   * <p>Benefit: It catches an implementation that returns the plaintext or a wrong-length buffer.
+   * It does not pin a reference ciphertext, so a wrong but well-formed encryption can pass.
+   */
+  @DisplayName(
+      "AES-CBC encryption with a zero IV should produce a 16-byte ciphertext that differs from the plaintext")
   @Test
-  void aesCbcEncrypt_ZeroIv() throws GeneralSecurityException {
+  void aesCbcZeroIv() throws GeneralSecurityException {
     byte[] key = hex("2B7E1516 28AED2A6 ABF71588 09CF4F3C");
     byte[] iv = new byte[16];
     byte[] plaintext = hex("6BC1BEE2 2E409F96 E93D7E11 7393172A");
@@ -690,9 +1037,19 @@ class GpCryptoTest {
     assertFalse(Arrays.equals(plaintext, ciphertext), "Ciphertext should differ from plaintext");
   }
 
-  /** Test AES-CBC encryption and decryption round-trip. */
+  /**
+   * Test AES-CBC encryption and decryption round-trip.
+   *
+   * <p>What it does: It encrypts and then decrypts a 32-byte message with the same key and IV.
+   *
+   * <p>What it confirms: It confirms the decrypted bytes equal the original plaintext.
+   *
+   * <p>Benefit: It catches mismatched padding or IV handling between the encrypt and decrypt paths.
+   */
+  @DisplayName(
+      "AES-CBC decryption of an encrypted 32-byte message should restore the original plaintext")
   @Test
-  void aesCbcEncryptDecrypt_RoundTrip() throws GeneralSecurityException {
+  void aesCbcRoundTrip() throws GeneralSecurityException {
     byte[] key = hex("2B7E1516 28AED2A6 ABF71588 09CF4F3C");
     byte[] iv = hex("00010203 04050607 08090A0B 0C0D0E0F");
     byte[] plaintext =
@@ -704,9 +1061,21 @@ class GpCryptoTest {
     assertArrayEquals(plaintext, decrypted, "AES-CBC round-trip should preserve plaintext");
   }
 
-  /** Test AES-CBC single block encryption (used for ICV derivation). */
+  /**
+   * Test AES-CBC single block encryption (used for ICV derivation).
+   *
+   * <p>What it does: It encrypts a 16-byte block whose final byte is 0x01 using the single-block
+   * helper.
+   *
+   * <p>What it confirms: It confirms the result is 16 bytes and differs from the input block.
+   *
+   * <p>Benefit: It checks that the ICV derivation path invokes the cipher; a reference vector would
+   * be needed to pin the value.
+   */
+  @DisplayName(
+      "AES-CBC single-block encryption of a counter block should yield a 16-byte ICV different from the input")
   @Test
-  void aesCbcEncryptSingleBlock_IcvDerivation() throws GeneralSecurityException {
+  void aesCbcIcvDerivation() throws GeneralSecurityException {
     byte[] key = hex("2B7E1516 28AED2A6 ABF71588 09CF4F3C");
     byte[] block = new byte[16];
     block[15] = 0x01; // Counter = 1

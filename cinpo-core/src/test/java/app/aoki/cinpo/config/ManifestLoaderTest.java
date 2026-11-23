@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -14,8 +15,19 @@ class ManifestLoaderTest {
 
   @TempDir Path tempDir;
 
+  /**
+   * Loads the manifest helper written with the current cinpo.applet.v1 schema identifier.
+   *
+   * <p>This test checks the parsed base package, package name, SDK and API versions, applet list,
+   * and the absence of companion bundles when the manifest has no warningPath entry.
+   *
+   * <p>Benefit: this is the happy path the other manifest tests build on, so it gives a clear
+   * baseline when the parser changes.
+   */
   @Test
-  void load_AcceptsCurrentCinpoSchemaWithoutWarningPath() throws IOException {
+  @DisplayName(
+      "Loading a manifest with the current schema should populate the expected fields without a warningPath entry")
+  void loadsCurrentSchema() throws IOException {
     Path manifestFile = writeManifest("cinpo.applet.v1");
 
     AppletManifest manifest = ManifestLoader.load(manifestFile);
@@ -29,8 +41,19 @@ class ManifestLoaderTest {
     assertEquals(0, manifest.companionBundles().size());
   }
 
+  /**
+   * Loads a manifest that declares one companion bundle with relative jar and exports paths.
+   *
+   * <p>This test checks the parsed bundle id and paths, and that resolveJar and resolveExports
+   * anchor those paths at the directory that holds the manifest.
+   *
+   * <p>Benefit: companion bundles are shared between projects, so a wrong base directory would
+   * break a build only after the manifest moved; this test fixes the anchor explicitly.
+   */
   @Test
-  void load_LoadsCompanionBundles() throws IOException {
+  @DisplayName(
+      "Loading a manifest with a companion bundle should resolve its jar and exports at the manifest directory")
+  void loadsCompanionBundles() throws IOException {
     Path manifestFile = tempDir.resolve("manifest.yaml");
     Files.createDirectories(
         tempDir.resolve("vendor/globalplatform/org.globalplatform-1.7/exports"));
@@ -79,8 +102,19 @@ class ManifestLoaderTest {
             .endsWith("vendor/globalplatform/org.globalplatform-1.7/exports"));
   }
 
+  /**
+   * Loads a manifest that declares two companion bundles with the same id.
+   *
+   * <p>This test checks that loading throws IllegalArgumentException and that the message names the
+   * duplicate companion bundle id.
+   *
+   * <p>Benefit: duplicate ids make bundle lookup ambiguous, so an early error that names the id
+   * keeps the failure next to the manifest that caused it.
+   */
   @Test
-  void load_RejectsDuplicateCompanionBundleIds() throws IOException {
+  @DisplayName(
+      "Loading a manifest with two companion bundles sharing an id should fail with a named error")
+  void rejectsDuplicateBundleIds() throws IOException {
     Path manifestFile = tempDir.resolve("manifest.yaml");
     Files.writeString(
         manifestFile,
@@ -117,8 +151,19 @@ class ManifestLoaderTest {
     assertTrue(exception.getMessage().contains("Duplicate companion bundle id"));
   }
 
+  /**
+   * Loads a manifest from a temporary directory path where no file exists.
+   *
+   * <p>This test checks that the call throws IOException and that the message includes the absolute
+   * path of the missing file.
+   *
+   * <p>Benefit: a missing manifest is a common setup mistake, so naming the path in the error lets
+   * the user fix it without tracing the loader's call stack.
+   */
   @Test
-  void load_RejectsMissingManifestFile() {
+  @DisplayName(
+      "Loading a manifest from a path that does not exist should throw an IOException naming that path")
+  void rejectsMissingManifest() {
     Path missing = tempDir.resolve("missing.yaml");
 
     IOException exception = assertThrows(IOException.class, () -> ManifestLoader.load(missing));

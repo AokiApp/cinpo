@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -82,8 +83,16 @@ class PhaseExecutionTest {
             List.of());
   }
 
+  /**
+   * Runs the orchestrator with its default phase sequence and records each phase that executes.
+   *
+   * <p>Verifies that init, install, and provision run in that exact order. This keeps the default
+   * CLI path observable, so a change that drops or reorders a phase fails here instead of reaching
+   * users as a silently different installation flow.
+   */
+  @DisplayName("Default run executes init, install, and provision phases in order")
   @Test
-  void defaultRun_ExecutesInitInstallProvisionPhases() throws IOException {
+  void runsDefaultPhasesInOrder() throws IOException {
     // Given: orchestrator with default phases (init → install → provision)
     List<String> executedPhases = new ArrayList<>();
     List<Phase> phases =
@@ -101,8 +110,16 @@ class PhaseExecutionTest {
     assertEquals(List.of("Init", "Install", "TaskKind[provision]"), executedPhases);
   }
 
+  /**
+   * Runs the orchestrator with the phases selected by the --test flag and records them.
+   *
+   * <p>Verifies that provisioning is followed by a test phase. This pins the flag's contract:
+   * turning on --test adds test execution without removing the installation and provisioning work
+   * that the test phase depends on.
+   */
+  @DisplayName("With the --test flag, the test phase runs after provisioning")
   @Test
-  void withTestFlag_ExecutesProvisionAndTestPhases() throws IOException {
+  void runsTestPhaseWithFlag() throws IOException {
     // Given: orchestrator with --test flag (init → install → provision → test)
     List<String> executedPhases = new ArrayList<>();
     List<Phase> phases =
@@ -122,8 +139,15 @@ class PhaseExecutionTest {
         List.of("Init", "Install", "TaskKind[provision]", "TaskKind[test]"), executedPhases);
   }
 
+  /**
+   * Runs the orchestrator with one custom task kind and records the phases that execute.
+   *
+   * <p>Verifies that the custom kind produces its own phase after install. This guards the --task
+   * wiring, so a user-supplied task kind cannot be silently ignored.
+   */
+  @DisplayName("With a custom task kind, the orchestrator runs the matching phase")
   @Test
-  void withCustomTaskKind_ExecutesCorrectPhase() throws IOException {
+  void runsCustomTaskKindPhase() throws IOException {
     // Given: orchestrator with --task=custom (init → install → custom)
     List<String> executedPhases = new ArrayList<>();
     List<Phase> phases =
@@ -141,8 +165,16 @@ class PhaseExecutionTest {
     assertEquals(List.of("Init", "Install", "TaskKind[custom]"), executedPhases);
   }
 
+  /**
+   * Runs the orchestrator with two task kinds and records the order of execution.
+   *
+   * <p>Verifies that foo and bar phases run in the order the kinds were supplied. This makes
+   * argument order meaningful, so repeated --task flags behave predictably rather than depending on
+   * set iteration.
+   */
+  @DisplayName("With multiple task kinds, the orchestrator runs each phase in the given order")
   @Test
-  void withMultipleTaskKinds_ExecutesInOrder() throws IOException {
+  void runsTaskKindsInOrder() throws IOException {
     // Given: orchestrator with --task=foo --task=bar (init → install → foo → bar)
     List<String> executedPhases = new ArrayList<>();
     List<Phase> phases =
@@ -161,8 +193,16 @@ class PhaseExecutionTest {
     assertEquals(List.of("Init", "Install", "TaskKind[foo]", "TaskKind[bar]"), executedPhases);
   }
 
+  /**
+   * Runs the orchestrator with the phase list produced by --skip-install and records it.
+   *
+   * <p>Verifies that the install phase is absent while init and provisioning still run. This
+   * protects the escape hatch used when a card is already installed, where an unexpected reinstall
+   * would overwrite existing applets.
+   */
+  @DisplayName("With --skip-install, the orchestrator omits the install phase")
   @Test
-  void withSkipInstall_SkipsInstallPhase() throws IOException {
+  void skipsInstallPhase() throws IOException {
     // Given: orchestrator with --skip-install (init → provision only)
     List<String> executedPhases = new ArrayList<>();
     List<Phase> phases =
@@ -180,8 +220,16 @@ class PhaseExecutionTest {
     assertFalse(executedPhases.contains("Install"));
   }
 
+  /**
+   * Runs four named phases in a fixed order and records when each one executes.
+   *
+   * <p>Verifies that the orchestrator preserves the order of the phase list it was given. This
+   * separates ordering from phase selection, so a regression in the loop that drives phases is
+   * diagnosed by a focused failure.
+   */
+  @DisplayName("The orchestrator runs phases in the order they were supplied")
   @Test
-  void phaseExecutionOrder_IsPreserved() throws IOException {
+  void preservesPhaseOrder() throws IOException {
     // Given: orchestrator with phases in specific order
     List<String> executedPhases = new ArrayList<>();
     List<Phase> phases =
@@ -200,8 +248,16 @@ class PhaseExecutionTest {
     assertEquals(List.of("Phase1", "Phase2", "Phase3", "Phase4"), executedPhases);
   }
 
+  /**
+   * Runs a phase that reads the task arguments from the orchestrator and asserts on them.
+   *
+   * <p>Verifies that the arguments passed to the constructor are reachable from the phase and still
+   * carry the --flag value. This is the contract task phases rely on to make CLI options visible at
+   * execution time.
+   */
+  @DisplayName("The orchestrator passes configured task arguments to each phase")
   @Test
-  void withTaskArguments_PhaseReceivesArguments() throws IOException {
+  void passesTaskArgumentsToPhase() throws IOException {
     // Given: orchestrator with task arguments
     TaskArguments taskArgs = new TaskArguments(List.of("--flag", "value"));
     List<Phase> phases =
@@ -219,8 +275,16 @@ class PhaseExecutionTest {
     orchestrator.run();
   }
 
+  /**
+   * Runs a phase that inspects the default task arguments of an orchestrator built without them.
+   *
+   * <p>Verifies that the default is an empty, non-null argument set. This catches a regression
+   * where a task phase would receive null and fail at runtime instead of seeing a harmless empty
+   * value.
+   */
+  @DisplayName("Without explicit task arguments, the orchestrator supplies empty arguments")
   @Test
-  void emptyTaskArguments_DefaultsToEmpty() throws IOException {
+  void defaultsTaskArgumentsToEmpty() throws IOException {
     // Given: orchestrator without explicit task arguments
     List<Phase> phases =
         List.of(orchestrator -> {
@@ -235,8 +299,16 @@ class PhaseExecutionTest {
     orchestrator.run();
   }
 
+  /**
+   * Runs an orchestrator whose second phase throws, with a third phase behind it.
+   *
+   * <p>Verifies that the IOException propagates and the third phase never executes. This is the
+   * failure contract: a half-installed card must not be modified further after a phase reports an
+   * error.
+   */
+  @DisplayName("A failing phase stops the orchestrator before later phases run")
   @Test
-  void phaseFailure_StopsExecution() {
+  void stopsAfterPhaseFailure() {
     // Given: orchestrator with failing phase
     List<String> executedPhases = new ArrayList<>();
     List<Phase> phases =
@@ -261,9 +333,14 @@ class PhaseExecutionTest {
   /**
    * Integration test simulating the actual CLI phase construction logic. This mirrors
    * WriteCommand.buildPhaseList() behavior.
+   *
+   * <p>Builds the default CLI phase list and checks its types. Verifies that it contains exactly
+   * InitPhase, InstallPhase, and TaskKindPhase in that order. This keeps the mirror of
+   * WriteCommand.buildPhaseList() aligned with the default run path.
    */
+  @DisplayName("Default CLI construction builds init, install, and provision phases")
   @Test
-  void cliPhaseConstruction_DefaultBehavior() {
+  void buildsDefaultCliPhases() {
     // Given: CLI default behavior
     List<Phase> phases = buildPhasesLikeCli("jcdksim", false, List.of(), false);
 
@@ -274,8 +351,15 @@ class PhaseExecutionTest {
     assertTrue(phases.get(2) instanceof TaskKindPhase);
   }
 
+  /**
+   * Builds the CLI phase list with the --test flag and checks its phase types.
+   *
+   * <p>Verifies that init, install, and two task-kind phases are produced. This confirms the flag
+   * adds a test phase at construction time, before any card is touched.
+   */
+  @DisplayName("CLI construction with --test adds a test phase after provisioning")
   @Test
-  void cliPhaseConstruction_WithTestFlag() {
+  void buildsCliTestPhases() {
     // Given: CLI with --test flag
     List<Phase> phases = buildPhasesLikeCli("jcdksim", true, List.of(), false);
 
@@ -287,8 +371,15 @@ class PhaseExecutionTest {
     assertTrue(phases.get(3) instanceof TaskKindPhase);
   }
 
+  /**
+   * Builds the CLI phase list with two --task values and checks its phase types.
+   *
+   * <p>Verifies that each custom kind becomes a TaskKindPhase after init and install. This checks
+   * the construction step that turns repeated CLI options into phases.
+   */
+  @DisplayName("CLI construction with custom task kinds adds one phase per kind")
   @Test
-  void cliPhaseConstruction_WithCustomTaskKinds() {
+  void buildsCliCustomTaskPhases() {
     // Given: CLI with --task=foo --task=bar
     List<Phase> phases = buildPhasesLikeCli("jcdksim", false, List.of("foo", "bar"), false);
 
@@ -300,8 +391,16 @@ class PhaseExecutionTest {
     assertTrue(phases.get(3) instanceof TaskKindPhase);
   }
 
+  /**
+   * Builds the CLI phase list with --skip-install and checks its phase types.
+   *
+   * <p>Verifies that only InitPhase and TaskKindPhase remain and no InstallPhase is present. This
+   * ensures the flag is applied while constructing the list, not by skipping work inside an install
+   * phase.
+   */
+  @DisplayName("CLI construction with --skip-install omits the install phase")
   @Test
-  void cliPhaseConstruction_WithSkipInstall() {
+  void buildsCliPhasesWithoutInstall() {
     // Given: CLI with --skip-install
     List<Phase> phases = buildPhasesLikeCli("jcdksim", false, List.of("provision"), true);
 
@@ -312,8 +411,17 @@ class PhaseExecutionTest {
     assertFalse(phases.stream().anyMatch(p -> p instanceof InstallPhase));
   }
 
+  /**
+   * Builds the CLI phase list for the jcardengine runtime and checks the install phase type.
+   *
+   * <p>Verifies that the list uses JCardEngineInstallPhase instead of the generic InstallPhase.
+   * This protects runtime-specific installation, which would otherwise install the wrong component
+   * set on that runtime.
+   */
+  @DisplayName(
+      "CLI construction with the jcardengine runtime uses the dedicated JCardEngine install phase")
   @Test
-  void cliPhaseConstruction_WithJCardEngineRuntime_UsesDedicatedInstallPhase() {
+  void usesRuntimeSpecificInstallPhase() {
     List<Phase> phases = buildPhasesLikeCli("jcardengine", false, List.of(), false);
 
     assertEquals(3, phases.size());
