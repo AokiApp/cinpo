@@ -35,6 +35,7 @@
 
     <!-- Naming -->
     <module name="TypeName"/>
+    <module name="MethodName"/>
     <module name="MemberName"/>
     <module name="ParameterName"/>
     <module name="LocalVariableName"/>
