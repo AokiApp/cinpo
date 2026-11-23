@@ -105,15 +105,15 @@ class ManifestLoaderTest {
   /**
    * Loads a manifest that declares two companion bundles with the same id.
    *
-   * <p>This test checks that loading throws IllegalArgumentException and that the message names the
-   * duplicate companion bundle id.
+   * <p>This test checks that loading throws IllegalArgumentException and that the message reports a
+   * duplicate companion bundle id. It does not assert which id is named.
    *
-   * <p>Benefit: duplicate ids make bundle lookup ambiguous, so an early error that names the id
-   * keeps the failure next to the manifest that caused it.
+   * <p>Benefit: duplicate ids make bundle lookup ambiguous, so an early error that reports the
+   * duplicate keeps the failure next to the manifest that caused it.
    */
   @Test
   @DisplayName(
-      "Loading a manifest with two companion bundles sharing an id should fail with a named error")
+      "Loading a manifest with two companion bundles sharing an id should report a duplicate id")
   void rejectsDuplicateBundleIds() throws IOException {
     Path manifestFile = tempDir.resolve("manifest.yaml");
     Files.writeString(
