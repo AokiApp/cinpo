@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import app.aoki.cinpo.util.Util;
 import java.util.Arrays;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -21,8 +22,19 @@ import org.junit.jupiter.api.Test;
  */
 class Scp03CryptoFunctionsTest {
 
+  /**
+   * Computes AES-CMAC with the RFC 4493 key over messages of zero, one, two and a half, and four
+   * blocks, and compares each result with the published digest.
+   *
+   * <p>This checks the CMAC implementation against all four published examples, including the
+   * subkey derivation used for the incomplete final block.
+   *
+   * <p>Benefit: a CMAC error would corrupt every key derived from it, so this test catches the
+   * problem at its source.
+   */
+  @DisplayName("AES-CMAC matches the four RFC 4493 known-answer vectors.")
   @Test
-  void cmac_rfc4493Examples() throws Exception {
+  void matchesRfcCmacVectors() throws Exception {
     byte[] key = Util.parseHex("2b7e151628aed2a6abf7158809cf4f3c");
 
     // Empty message
@@ -50,8 +62,19 @@ class Scp03CryptoFunctionsTest {
   }
 
   // NIST SP 800-38A §F.2.1 — AES-128 CBC
+  /**
+   * Encrypts four plaintext blocks with AES-128 CBC using the NIST SP 800-38A key and IV and
+   * compares the ciphertext with the published vector.
+   *
+   * <p>This checks the engine primitive used by the SCP03 implementation against a standard
+   * known-answer test.
+   *
+   * <p>Benefit: a cipher regression is separated from errors in the key derivation built on top of
+   * it.
+   */
+  @DisplayName("AES-CBC encryption matches the NIST SP 800-38A F.2.1 vector.")
   @Test
-  void aesCbcEncrypt_nistF21Vector() throws Exception {
+  void matchesAesCbcVector() throws Exception {
     byte[] key = Util.parseHex("2b7e151628aed2a6abf7158809cf4f3c");
     byte[] iv = Util.parseHex("000102030405060708090a0b0c0d0e0f");
     byte[] pt =
@@ -62,8 +85,19 @@ class Scp03CryptoFunctionsTest {
         Util.toHex(GpCrypto.aesCbcEncrypt(key, iv, pt)));
   }
 
+  /**
+   * Derives S-ENC, S-MAC and S-RMAC from a fixed base key and host and card challenges, and
+   * compares each result with an independently computed value.
+   *
+   * <p>This checks the counter-mode KDF with the CMAC PRF, including the constants 0x04, 0x06 and
+   * 0x07 and the 0x0080 length field.
+   *
+   * <p>Benefit: a second implementation catches a wrong constant or byte order before the keys are
+   * used to protect real APDUs.
+   */
+  @DisplayName("Session key derivation matches the reference for S-ENC, S-MAC and S-RMAC.")
   @Test
-  void sessionKeyDerivation_matchesReference() throws Exception {
+  void derivesSessionKeys() throws Exception {
     byte[] key = Util.parseHex("404142434445464748494A4B4C4D4E4F");
     byte[] context =
         Util.concat(Util.parseHex("0001020304050607"), Util.parseHex("08090A0B0C0D0E0F"));
@@ -73,8 +107,19 @@ class Scp03CryptoFunctionsTest {
     assertEquals("F034ED3222D3466EE1531F3FA3561DEF", Util.toHex(kdf(key, 0x07, 0x0080, context)));
   }
 
+  /**
+   * Derives the card cryptogram and the host cryptogram from the S-MAC key with constants 0x00 and
+   * 0x01, and compares the first eight CMAC bytes with the reference values.
+   *
+   * <p>This checks the S8 cryptogram derivation with L set to 0x0040 and the assignment of the
+   * constants to the card and host roles.
+   *
+   * <p>Benefit: a swapped card/host constant is caught by a reference value instead of surfacing
+   * during authentication with a card.
+   */
+  @DisplayName("Card and host cryptograms match the reference in S8 mode.")
   @Test
-  void cardAndHostCryptograms_matchReference() throws Exception {
+  void derivesCardAndHostCryptograms() throws Exception {
     byte[] key = Util.parseHex("404142434445464748494A4B4C4D4E4F");
     byte[] context =
         Util.concat(Util.parseHex("0001020304050607"), Util.parseHex("08090A0B0C0D0E0F"));
@@ -88,8 +133,18 @@ class Scp03CryptoFunctionsTest {
   }
 
   // S16 mode (Amendment D §6.2; 16-byte challenges/cryptograms)
+  /**
+   * Derives both 16-byte cryptograms in S16 mode from the S-MAC key and compares them with the
+   * reference values.
+   *
+   * <p>This checks the Amendment D S16 variant, where L is 0x0080 and the full CMAC output is used
+   * instead of its first eight bytes.
+   *
+   * <p>Benefit: protects S16 cards, where truncating the cryptogram would break authentication.
+   */
+  @DisplayName("S16 mode cryptograms match the reference.")
   @Test
-  void s16Cryptograms_matchReference() throws Exception {
+  void derivesS16Cryptograms() throws Exception {
     byte[] key = Util.parseHex("404142434445464748494A4B4C4D4E4F");
     byte[] context =
         Util.concat(
@@ -103,8 +158,19 @@ class Scp03CryptoFunctionsTest {
   }
 
   // Amendment D §6.2.2.1: pseudo-random card challenge, context = seq‖invoker_AID
+  /**
+   * Derives the pseudo-random card cryptogram with a sequence number and invoker AID as context,
+   * and compares the first eight bytes with the reference value.
+   *
+   * <p>This checks the Amendment D branch where the card generates the challenge rather than the
+   * host, with L set to 0x0040 for S8 mode.
+   *
+   * <p>Benefit: covers the authentication path used when the card, not the host, chooses the
+   * challenge.
+   */
+  @DisplayName("S8 pseudo-random card challenge derivation matches the reference.")
   @Test
-  void pseudoRandomCardChallenge_s8_matchesReference() throws Exception {
+  void derivesS8PseudoRandomCryptogram() throws Exception {
     // S8 (field = 8 bytes): L = 0x0040, 64 bits
     byte[] key = Util.parseHex("404142434445464748494A4B4C4D4E4F");
     byte[] context = Util.concat(new byte[] {0x00, 0x00, 0x01}, Util.parseHex("A000000151000000"));
@@ -112,8 +178,19 @@ class Scp03CryptoFunctionsTest {
         "86C8BD65FA1044EE", Util.toHex(Arrays.copyOfRange(kdf(key, 0x02, 0x0040, context), 0, 8)));
   }
 
+  /**
+   * Derives the pseudo-random card cryptogram in S16 mode with a sequence number and invoker AID as
+   * context, and compares the full 16 bytes with the reference value.
+   *
+   * <p>This checks the same Amendment D branch with L set to 0x0080 and no truncation of the CMAC
+   * output.
+   *
+   * <p>Benefit: covers S16 cards that generate their own challenge, where a wrong length field
+   * would produce a different cryptogram.
+   */
+  @DisplayName("S16 pseudo-random card challenge derivation matches the reference.")
   @Test
-  void pseudoRandomCardChallenge_s16_matchesReference() throws Exception {
+  void derivesS16PseudoRandomCryptogram() throws Exception {
     // S16 (field = 16 bytes): L = 0x0080, 128 bits
     byte[] key = Util.parseHex("404142434445464748494A4B4C4D4E4F");
     byte[] context = Util.concat(new byte[] {0x00, 0x00, 0x01}, Util.parseHex("A000000151000000"));

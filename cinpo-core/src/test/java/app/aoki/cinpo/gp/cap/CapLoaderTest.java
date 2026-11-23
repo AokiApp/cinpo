@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -38,8 +39,18 @@ class CapLoaderTest {
 
   @TempDir Path tempDir;
 
+  /**
+   * Reads a CAP archive whose entries are stored out of order and with a small block size.
+   *
+   * <p>Verifies that the components are concatenated in canonical order, wrapped with C4 and its
+   * length, then split into blocks no larger than the requested size, with the first and last
+   * blocks checked explicitly. This protects the byte stream sent to the card, where order and
+   * framing determine whether the applet loads at all.
+   */
+  @DisplayName(
+      "Reading a CAP file concatenates components in canonical order, wraps them in C4, and splits them into blocks")
   @Test
-  void readCapFile_ConcatenatesCanonicalComponents_WrapsC4AndSplitsBlocks() throws IOException {
+  void concatenatesWrapsAndSplitsCap() throws IOException {
     Map<String, byte[]> components = minimalComponents();
     Path capFile =
         writeCapFile(
@@ -75,8 +86,16 @@ class CapLoaderTest {
         lastBlock);
   }
 
+  /**
+   * Reads a CAP archive and inspects the metadata exposed by CapPackage.
+   *
+   * <p>Verifies the package AID, major and minor versions, and the single applet AID. This makes
+   * the registry's view of a CAP file explicit, so a metadata parsing regression is caught before
+   * applet selection depends on it.
+   */
+  @DisplayName("Reading a CAP file parses the package and applet AIDs")
   @Test
-  void readCapFile_ParsesPackageAndAppletAids() throws IOException {
+  void parsesPackageAndAppletAids() throws IOException {
     Path capFile = writeCapFile("metadata.cap", minimalComponents(), COMPONENT_ORDER);
 
     CapPackage capPackage = CapLoader.readCapFile(capFile, 255);
@@ -89,8 +108,16 @@ class CapLoaderTest {
     assertArrayEquals(hex("A0 00 00 01 51 01"), capPackage.appletAids().get(0));
   }
 
+  /**
+   * Reads a CAP archive and mutates the arrays and lists returned by its accessors.
+   *
+   * <p>Verifies that package AID, load file data, and load blocks are returned as defensive copies
+   * and that the block list rejects modification. This prevents a caller from changing what will be
+   * sent to the card after the package is parsed.
+   */
+  @DisplayName("CapPackage accessors return defensive copies of arrays and lists")
   @Test
-  void capPackage_AccessorsDefensivelyCopyArraysAndLists() throws IOException {
+  void copiesPackageArraysDefensively() throws IOException {
     Path capFile = writeCapFile("defensive.cap", minimalComponents(), COMPONENT_ORDER);
     CapPackage capPackage = CapLoader.readCapFile(capFile, 255);
 
@@ -109,8 +136,17 @@ class CapLoaderTest {
         UnsupportedOperationException.class, () -> capPackage.loadBlocks().add(new byte[] {0x01}));
   }
 
+  /**
+   * Reads a CAP archive with Export.cap and Descriptor.cap removed.
+   *
+   * <p>Verifies that the remaining components are still concatenated in canonical order, load
+   * blocks and metadata stay available, and no exception is raised. This covers partial CAP files
+   * produced by toolchains that omit optional components.
+   */
+  @DisplayName(
+      "Reading a CAP file with missing components concatenates only the components that are present")
   @Test
-  void readCapFile_ToleratesMissingComponentsAndConcatenatesPresentOnes() throws IOException {
+  void toleratesMissingComponents() throws IOException {
     Map<String, byte[]> components = new LinkedHashMap<>(minimalComponents());
     components.remove("Export.cap");
     components.remove("Descriptor.cap");
@@ -125,8 +161,15 @@ class CapLoaderTest {
     assertEquals(1, capPackage.appletAids().size());
   }
 
+  /**
+   * Reads a CAP archive with Applet.cap removed.
+   *
+   * <p>Verifies that the load data is still produced and that the applet AID list is empty rather
+   * than null. This pins the behavior for library CAP files, which contain no applet to select.
+   */
+  @DisplayName("A CAP file without Applet.cap still loads and reports no applet AIDs")
   @Test
-  void readCapFile_MissingAppletComponent_StillLoadsAndReturnsNoAppletAids() throws IOException {
+  void loadsWithoutAppletComponent() throws IOException {
     Map<String, byte[]> components = new LinkedHashMap<>(minimalComponents());
     components.remove("Applet.cap");
     Path capFile = writeCapFile("missing-applet.cap", components, COMPONENT_ORDER);
@@ -139,8 +182,16 @@ class CapLoaderTest {
     assertEquals(List.of(), capPackage.appletAids());
   }
 
+  /**
+   * Reads a CAP archive that contains none of the recognized components.
+   *
+   * <p>Verifies that reading fails with an IOException whose message names the missing known
+   * components. This gives users an actionable error instead of an empty load stream that would be
+   * sent to the card.
+   */
+  @DisplayName("Reading an archive with no known CAP components fails with a clear error")
   @Test
-  void readCapFile_RejectsArchiveWithoutKnownComponents() throws IOException {
+  void rejectsUnknownComponents() throws IOException {
     Path capFile = writeCapFile("empty.cap", Map.of(), List.of());
 
     IOException exception =
@@ -148,16 +199,31 @@ class CapLoaderTest {
     assertTrue(exception.getMessage().contains("No known CAP components found"));
   }
 
+  /**
+   * Attempts to read a CAP file with block sizes 0 and 256.
+   *
+   * <p>Verifies that both values are rejected with IllegalArgumentException before the file is
+   * opened. This keeps framing logic from failing later with an obscure error during installation.
+   */
+  @DisplayName("Reading a CAP file with a block size of 0 or 256 is rejected")
   @Test
-  void readCapFile_RejectsInvalidBlockSize() {
+  void rejectsInvalidBlockSize() {
     Path capFile = tempDir.resolve("unused.cap");
 
     assertThrows(IllegalArgumentException.class, () -> CapLoader.readCapFile(capFile, 0));
     assertThrows(IllegalArgumentException.class, () -> CapLoader.readCapFile(capFile, 256));
   }
 
+  /**
+   * Reads a CAP archive whose Header.cap and Applet.cap hold truncated metadata.
+   *
+   * <p>Verifies that metadata is reported as unavailable while load blocks are still produced. This
+   * keeps loading usable for CAP files whose metadata a parser cannot understand, instead of
+   * failing the whole installation.
+   */
+  @DisplayName("Reading a CAP file with unparseable metadata still produces load blocks")
   @Test
-  void readCapFile_ToleratesUnparseableMetadataButStillLoadsBlocks() throws IOException {
+  void loadsWithUnparseableMetadata() throws IOException {
     Map<String, byte[]> components = minimalComponents();
     components.put("Header.cap", hex("01 00 04 00 00 00 00"));
     components.put("Applet.cap", hex("03 00 02 01 04"));

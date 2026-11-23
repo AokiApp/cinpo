@@ -11,11 +11,23 @@ import app.aoki.cinpo.config.AppletManifest;
 import app.aoki.cinpo.config.Profile;
 import app.aoki.cinpo.config.ScpConfig;
 import java.util.List;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class CardTaskLoaderTest {
 
+  /**
+   * Loads card tasks from a task context built with a stub channel, manifest, profile, and task
+   * arguments.
+   *
+   * <p>This test checks that the loaded task receives the same channel, manifest, profile, and task
+   * arguments, and that its secure channel profile is present.
+   *
+   * <p>Benefit: the tasks inherit these fields from the context, so this test catches a loader path
+   * that silently drops one of them.
+   */
   @Test
+  @DisplayName("Loading card tasks should populate the inherited context fields on the loaded task")
   void populatesInheritedDependencyFields() {
     ApduChannel channel = new StubChannel();
     AppletManifest manifest =

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -19,8 +20,22 @@ class CinpoJavaCardToolLoaderTest {
 
   private static final String TOOLS_JAR_PROPERTY = "cinpo.test.toolsJar";
 
+  /**
+   * Asserts that the plugin classloader cannot load an Oracle converter class, then opens {@link
+   * CinpoJavaCardToolLoader} and checks that the bridge and Oracle classes load together in its own
+   * loader.
+   *
+   * <p>Confirms the isolation contract documented on this class: the vendor classes are visible
+   * only through the loader created from the tested {@code tools.jar}, and the bridge shares that
+   * loader so the two see the same classes.
+   *
+   * <p>Benefit: prevents a daemon from leaking one project's Java Card SDK into another, or the
+   * bridge from failing at runtime because it was defined by a different loader than the Oracle
+   * classes it wraps.
+   */
   @Test
-  void oracleClassesLiveOnlyInTheIsolatedLoader() throws Exception {
+  @DisplayName("Oracle Java Card classes load only in the isolated loader alongside the bridge")
+  void isolatesOracleToolClasses() throws Exception {
     Path toolsJar = Path.of(System.getProperty(TOOLS_JAR_PROPERTY, ""));
     assertTrue(Files.isRegularFile(toolsJar), "tools.jar not found: " + toolsJar);
 

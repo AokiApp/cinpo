@@ -16,6 +16,7 @@ import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 import org.gradle.api.Project;
 import org.gradle.testfixtures.ProjectBuilder;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -27,8 +28,21 @@ class CinpoJarTaskTest {
 
   @TempDir Path tempDirectory;
 
+  /**
+   * Builds an appliance JAR from two classpath roots that contain the same class and from a root
+   * carrying module descriptors, JVM classes and signature files, then inspects the resulting
+   * archive.
+   *
+   * <p>Confirms the three assembly rules named in the class documentation: classpath order picks
+   * the first copy of a class, hostile metadata is filtered out, and the manifest carries the
+   * expected main class, module name and version with a fixed entry timestamp.
+   *
+   * <p>Benefit: prevents a stale dependency from winning the class lookup, or a bundled {@code
+   * module-info.class} or stale signature file from changing how the JVM loads the appliance.
+   */
   @Test
-  void keepsFirstClasspathEntryAndDropsHostileMetadata() throws Exception {
+  @DisplayName("The first classpath entry wins and hostile metadata is dropped from the JAR")
+  void keepsFirstEntryDropsMetadata() throws Exception {
     Path projectDirectory = tempDirectory.resolve("project");
     Path classes = projectDirectory.resolve("classes");
     write(classes.resolve("example/first.txt"), "first");
@@ -66,8 +80,19 @@ class CinpoJarTaskTest {
     }
   }
 
+  /**
+   * Packages service descriptors whose file names end in {@code .SF} and {@code .DSA} together with
+   * a real top-level signature file, then lists the archive entries.
+   *
+   * <p>Confirms that signature filtering looks at the path, so a service descriptor that merely
+   * looks like a signature file survives while a genuine top-level signature file is removed.
+   *
+   * <p>Benefit: prevents an over-broad suffix filter from deleting service provider descriptors and
+   * silently disabling a discovery-based feature of the appliance.
+   */
   @Test
-  void keepsServiceEntriesWhoseNameLooksLikeASignatureFile() throws Exception {
+  @DisplayName("Signature-like service descriptors are kept while real signatures are removed")
+  void keepsServiceSignatureLikeNames() throws Exception {
     Path projectDirectory = tempDirectory.resolve("project");
     Path dependency = projectDirectory.resolve("dependency");
     write(dependency.resolve("META-INF/services/com.example.SF"), "com.example.Impl");
@@ -85,8 +110,20 @@ class CinpoJarTaskTest {
     }
   }
 
+  /**
+   * Packages signature-like resources in a data directory and in a nested META-INF directory, plus
+   * signature files at the top level of META-INF and in a lowercase meta-inf directory, then lists
+   * the archive entries.
+   *
+   * <p>Confirms that filtering is limited to the top level of META-INF and leaves similarly named
+   * resources in other locations untouched.
+   *
+   * <p>Benefit: prevents an application resource stored under a {@code .SF} name from being lost,
+   * or a lowercase {@code meta-inf} directory from smuggling a stale signature into the appliance.
+   */
   @Test
-  void keepsSignatureLikeResourcesOutsideTopLevelMetaInf() throws Exception {
+  @DisplayName("Resources outside top-level META-INF survive while signatures are dropped")
+  void keepsNestedSignatureResources() throws Exception {
     Path projectDirectory = tempDirectory.resolve("project");
     Path dependency = projectDirectory.resolve("dependency");
     write(dependency.resolve("data/example.SF"), "resource");
@@ -112,8 +149,19 @@ class CinpoJarTaskTest {
     }
   }
 
+  /**
+   * Packages SF, DSA, RSA, upper- and lowercase EC signature files at the top level of META-INF
+   * together with an EC-named service descriptor, then lists the archive entries.
+   *
+   * <p>Confirms that every supported signature metadata type, including the EC variant, is filtered
+   * while a service descriptor with the same suffix is retained.
+   *
+   * <p>Benefit: prevents a signed dependency from leaving one signature type behind and causing JAR
+   * verification to fail at load time, without sacrificing service descriptors.
+   */
   @Test
-  void dropsEverySignatureMetadataTypeIncludingEc() throws Exception {
+  @DisplayName("Every signature metadata type including EC is removed while services remain")
+  void dropsAllSignatureTypes() throws Exception {
     Path projectDirectory = tempDirectory.resolve("project");
     Path dependency = projectDirectory.resolve("dependency");
     write(dependency.resolve("META-INF/EXAMPLE.SF"), "signature");
@@ -137,8 +185,19 @@ class CinpoJarTaskTest {
     }
   }
 
+  /**
+   * Puts a jcdksim runtime artifact on the task's runtime classpath without providing a simulator,
+   * then calls {@code copy()} on the task and captures the result.
+   *
+   * <p>Confirms that this invalid combination is rejected with {@link IllegalStateException} rather
+   * than producing an appliance JAR that cannot run.
+   *
+   * <p>Benefit: gives a build author an immediate, explicit failure instead of a packaged runtime
+   * that crashes only when a user launches it.
+   */
   @Test
-  void failsWhenJcdksimIsOnTheClasspathWithoutASimulator() throws IOException {
+  @DisplayName("A jcdksim runtime on the classpath without a simulator makes the JAR task fail")
+  void rejectsJcdksimWithoutSimulator() throws IOException {
     Path projectDirectory = tempDirectory.resolve("project");
     Path runtimeJar = projectDirectory.resolve("cinpo-runtime-jcdksim-0.5.1.jar");
     write(runtimeJar, "runtime");

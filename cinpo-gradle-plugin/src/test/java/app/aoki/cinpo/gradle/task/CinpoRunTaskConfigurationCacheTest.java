@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.GradleRunner;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -20,7 +21,19 @@ class CinpoRunTaskConfigurationCacheTest {
 
   @TempDir Path tempDirectory;
 
+  /**
+   * Runs a TestKit build twice with {@code --configuration-cache}, recording the working directory
+   * observed by the task, and checks the cache messages and the recorded path on both runs.
+   *
+   * <p>Confirms the contract stated on this class: the task neither reads {@code Task.project} at
+   * execution time nor prevents the configuration cache from being stored and reused.
+   *
+   * <p>Benefit: prevents a regression that silently disables configuration-cache reuse for every
+   * build using the plugin, or that makes the task observe the wrong working directory when the
+   * configuration is replayed from the cache.
+   */
   @Test
+  @DisplayName("The run task executes correctly and the configuration cache is stored then reused")
   void runsWithConfigurationCache() throws Exception {
     Path projectDirectory = Files.createDirectories(tempDirectory.resolve("project"));
     Path observedWorkingDirectory = tempDirectory.resolve("observed-working-directory.txt");
