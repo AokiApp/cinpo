@@ -57,15 +57,15 @@ class ApduChannelFactoryTest {
    * Creates an install phase with the unsupported runtime name jcardsim.
    *
    * <p>This test checks that the factory throws IllegalArgumentException and that the message names
-   * the bad value, lists the available runtimes, and tells the user to add a matching
-   * implementation.
+   * the bad value, mentions available runtimes with one known name, and tells the user to add a
+   * matching implementation. It does not verify the complete list of registered runtimes.
    *
-   * <p>Benefit: jcardsim is a plausible name that users may try, so a precise error here avoids a
-   * guess about which runtimes are actually supported.
+   * <p>Benefit: jcardsim is a plausible name that users may try, so an error naming a real runtime
+   * gives the user a concrete alternative instead of a guess.
    */
   @Test
   @DisplayName(
-      "Creating an install phase for an unknown runtime should fail and list the available runtimes")
+      "Creating an install phase for an unknown runtime should fail with a message naming one known alternative")
   void rejectsUnknownRuntime() {
     IllegalArgumentException e =
         assertThrows(

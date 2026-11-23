@@ -44,15 +44,15 @@ class ManifestLoaderTest {
   /**
    * Loads a manifest that declares one companion bundle with relative jar and exports paths.
    *
-   * <p>This test checks the parsed bundle id and paths, and that resolveJar and resolveExports
-   * anchor those paths at the directory that holds the manifest.
+   * <p>This test checks the parsed bundle id and fields, and that resolveJar and resolveExports
+   * produce paths ending with the configured relative paths when given the manifest directory.
    *
-   * <p>Benefit: companion bundles are shared between projects, so a wrong base directory would
-   * break a build only after the manifest moved; this test fixes the anchor explicitly.
+   * <p>Benefit: companion bundles are shared between projects, so a wrong resolved path would break
+   * a build only after the manifest moved; this test keeps the resolved suffix visible.
    */
   @Test
   @DisplayName(
-      "Loading a manifest with a companion bundle should resolve its jar and exports at the manifest directory")
+      "Loading a manifest with a companion bundle should resolve its jar and exports to paths ending with the configured relative paths")
   void loadsCompanionBundles() throws IOException {
     Path manifestFile = tempDir.resolve("manifest.yaml");
     Files.createDirectories(

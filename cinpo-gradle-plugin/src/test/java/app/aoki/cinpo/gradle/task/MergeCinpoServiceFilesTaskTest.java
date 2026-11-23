@@ -38,8 +38,9 @@ class MergeCinpoServiceFilesTaskTest {
    * <p>This checks that collectServiceLines preserves every line in order, including comments and
    * blank lines, instead of parsing or normalizing the file.
    *
-   * <p>Benefit: dropping a comment or a blank line would change the provider list read by
-   * ServiceLoader at runtime; this test pins the collected content to the source lines.
+   * <p>Benefit: it pins the collected content to the source lines, so a collector that parses or
+   * drops lines is caught even though ServiceLoader ignores comments and blank lines when it loads
+   * providers.
    */
   @DisplayName("Service file lines pass through unchanged, including comments and blank lines.")
   @Test
