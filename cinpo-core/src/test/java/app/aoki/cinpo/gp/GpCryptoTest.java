@@ -197,9 +197,7 @@ class GpCryptoTest {
   // ─── GF(2^128) doubling tests (doubleLu) ─────────────────────────────
 
   /**
-   * Check GF(2^128) doubling with zero block.
-   *
-   * <p>Zero doubled should remain zero (no XOR with 0x87).
+   * Computes L with an all-zero AES key and checks the CMAC of a complete block.
    *
    * <p>What it does: It encrypts a zero block with a zero AES key to obtain L, checks that L
    * constant, and computes the CMAC of one 16-byte message, which exercises the K1 derivation path.
@@ -208,7 +206,8 @@ class GpCryptoTest {
    * returns 16 bytes for a complete block.
    *
    * <p>Benefit: It pins the AES output that feeds the GF(2^128) doubling code, so a regression in
-   * the encryption or in L is caught where the doubling starts.
+   * the encryption or in L is caught where the doubling starts. It does not assert the derived K1
+   * value.
    */
   @DisplayName(
       "CMAC with an all-zero AES key and a full block should produce a 16-byte result after deriving L")
@@ -362,21 +361,19 @@ class GpCryptoTest {
   }
 
   /**
-   * Check that doubleLu handles carry propagation correctly.
+   * Computes the CMAC of a 24-byte message whose final block is incomplete.
    *
-   * <p>Verify that left-shift carries propagate through all 16 bytes.
+   * <p>What it does: It computes the CMAC with the NIST D.1 key and a 24-byte message, so the
+   * implementation derives K2 from K1 for the final block.
    *
-   * <p>What it does: It computes the CMAC of a 22-byte message whose incomplete final block forces
-   * use of K2, which is derived by doubling K1.
-   *
-   * <p>What it confirms: It confirms that the output is 16 bytes for a message that reaches the
-   * K1-to-K2 carry.
+   * <p>What it confirms: It confirms that the result is 16 bytes for this input. It does not assert
+   * a reference MAC value.
    *
    * <p>Benefit: none without a reference MAC: no expected value is asserted, so a wrong K2 would
    * pass. A vector assertion is needed to test the carry itself.
    */
   @DisplayName(
-      "CMAC of a 22-byte message with the NIST D.1 key should return 16 bytes through the K2 path")
+      "CMAC of a 24-byte message with the NIST D.1 key should return 16 bytes through the K2 path")
   @Test
   void doubleLuCarryPropagation() throws GeneralSecurityException {
     // Use NIST vector where we know the intermediate values
@@ -388,7 +385,7 @@ class GpCryptoTest {
 
     byte[] key = hex("2B7E1516 28AED2A6 ABF71588 09CF4F3C");
 
-    // Test with 32-byte message (2 blocks, incomplete triggers K2 usage)
+    // Test with a 24-byte message: one full block plus eight bytes, so K2 is used
     byte[] message = hex("6BC1BEE2 2E409F96 E93D7E11 7393172A " + "AE2D8A57 1E03AC9C");
     byte[] cmac = GpCrypto.cmac(key, message);
 
@@ -756,20 +753,17 @@ class GpCryptoTest {
   }
 
   /**
-   * Test padding removal with malformed padding (non-zero before 0x80).
+   * Passes a 16-byte block with no padding marker to padding removal.
    *
-   * <p>Should throw IllegalStateException.
-   *
-   * <p>What it does: It passes a 16-byte block whose bytes before any marker are nonzero and
-   * captures the exception.
+   * <p>What it does: It passes 16 nonzero bytes and captures the exception.
    *
    * <p>What it confirms: It confirms an IllegalStateException is thrown with the invalid-padding
    * message.
    *
-   * <p>Benefit: It catches a lenient parser that would treat arbitrary bytes as valid padding.
+   * <p>Benefit: It catches a parser that accepts a full block with no 0x80 marker as valid input.
    */
   @DisplayName(
-      "Removing padding with nonzero bytes before the 0x80 marker should throw IllegalStateException")
+      "Removing padding from a block with no 0x80 marker should throw IllegalStateException")
   @Test
   void unpadIso9797Malformed() {
     byte[] malformed = hex("01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10");

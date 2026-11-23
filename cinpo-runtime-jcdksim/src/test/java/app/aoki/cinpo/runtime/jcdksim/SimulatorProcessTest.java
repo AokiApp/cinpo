@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -16,8 +17,18 @@ final class SimulatorProcessTest {
 
   // The fixture is a /bin/sh script that stays alive; there is no equally simple
   // long-running batch equivalent, so the teardown path is covered on POSIX only.
+  /**
+   * Starts a fixture simulator that never reports ready and waits for the readiness timeout.
+   *
+   * <p>Verifies that ensureReady throws after the timeout, that the spawned process is no longer
+   * alive, and that getPort rejects the failed startup state.
+   *
+   * <p>Benefit: without this test, a leaked simulator process could keep its PID file or port in
+   * use and break the next run.
+   */
   @DisabledOnOs(OS.WINDOWS)
   @Test
+  @DisplayName("A simulator that never becomes ready is stopped when startup times out")
   void startupTimeoutStopsOwnedProcess() throws Exception {
     Path runtimeDir = Files.createTempDirectory("cinpo-jcsl-timeout");
     Path pidFile = runtimeDir.resolve("jcsl.pid");
@@ -41,8 +52,18 @@ final class SimulatorProcessTest {
         "failed startup should reset allocated process state");
   }
 
+  /**
+   * Creates a simulator process builder and inspects its environment and working directory.
+   *
+   * <p>Verifies that the runtime directory comes first in PATH on Windows or LD_LIBRARY_PATH
+   * elsewhere, and that the builder runs from that directory.
+   *
+   * <p>Benefit: without this test, a stale system simulator library could load instead of the
+   * bundled one and cause native failures that are hard to reproduce.
+   */
   @Test
-  void processBuilderPrependsSimulatorDirectoryToNativeLibraryPath() throws Exception {
+  @DisplayName("The simulator directory is first on the native library path")
+  void builderPrependsSimulatorDirectory() throws Exception {
     Path runtimeDir = Files.createTempDirectory("cinpo-jcsl-runtime");
     Path executable = runtimeDir.resolve(JcdkSimPlatform.simulatorExecutableName());
     Files.writeString(executable, "#!/bin/sh\nexit 0\n");

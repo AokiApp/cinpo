@@ -19,14 +19,14 @@ class ManifestLoaderTest {
    * Loads the manifest helper written with the current cinpo.applet.v1 schema identifier.
    *
    * <p>This test checks the parsed base package, package name, SDK and API versions, applet list,
-   * and the absence of companion bundles when the manifest has no warningPath entry.
+   * and an empty companion bundle list when the manifest declares no bundles.
    *
    * <p>Benefit: this is the happy path the other manifest tests build on, so it gives a clear
    * baseline when the parser changes.
    */
   @Test
   @DisplayName(
-      "Loading a manifest with the current schema should populate the expected fields without a warningPath entry")
+      "Loading a manifest with the current schema should populate the expected fields with no companion bundles")
   void loadsCurrentSchema() throws IOException {
     Path manifestFile = writeManifest("cinpo.applet.v1");
 

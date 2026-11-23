@@ -84,13 +84,13 @@ class PhaseExecutionTest {
   }
 
   /**
-   * Runs the orchestrator with its default phase sequence and records each phase that executes.
+   * Runs the orchestrator with a supplied list of tracking phases and records their execution.
    *
-   * <p>Verifies that init, install, and provision run in that exact order. This keeps the default
-   * CLI path observable, so a change that drops or reorders a phase fails here instead of reaching
-   * users as a silently different installation flow.
+   * <p>Verifies that init, install, and provision tracking phases execute in the order they were
+   * supplied. This isolates the orchestrator's ordering loop from CLI phase selection, so a
+   * reordering regression is reported by this test rather than by a CLI-level test.
    */
-  @DisplayName("Default run executes init, install, and provision phases in order")
+  @DisplayName("Supplied init, install, and provision phases execute in that order")
   @Test
   void runsDefaultPhasesInOrder() throws IOException {
     // Given: orchestrator with default phases (init → install → provision)
@@ -111,13 +111,13 @@ class PhaseExecutionTest {
   }
 
   /**
-   * Runs the orchestrator with the phases selected by the --test flag and records them.
+   * Runs the orchestrator with four supplied tracking phases, including provision and test.
    *
-   * <p>Verifies that provisioning is followed by a test phase. This pins the flag's contract:
-   * turning on --test adds test execution without removing the installation and provisioning work
-   * that the test phase depends on.
+   * <p>Verifies that the test phase follows provisioning and that neither the install nor the
+   * provision phase is dropped. This keeps the expected phase sequence for a run that includes
+   * testing visible without depending on CLI flag parsing.
    */
-  @DisplayName("With the --test flag, the test phase runs after provisioning")
+  @DisplayName("A supplied provision phase is followed by a test phase, with install still present")
   @Test
   void runsTestPhaseWithFlag() throws IOException {
     // Given: orchestrator with --test flag (init → install → provision → test)
@@ -140,12 +140,12 @@ class PhaseExecutionTest {
   }
 
   /**
-   * Runs the orchestrator with one custom task kind and records the phases that execute.
+   * Runs the orchestrator with a supplied tracking phase named for a custom task kind.
    *
-   * <p>Verifies that the custom kind produces its own phase after install. This guards the --task
-   * wiring, so a user-supplied task kind cannot be silently ignored.
+   * <p>Verifies that the custom phase executes after install. This shows that the orchestrator runs
+   * any supplied phase, including one named for a task kind chosen outside the CLI defaults.
    */
-  @DisplayName("With a custom task kind, the orchestrator runs the matching phase")
+  @DisplayName("A supplied custom task-kind phase runs after the install phase")
   @Test
   void runsCustomTaskKindPhase() throws IOException {
     // Given: orchestrator with --task=custom (init → install → custom)
@@ -166,13 +166,12 @@ class PhaseExecutionTest {
   }
 
   /**
-   * Runs the orchestrator with two task kinds and records the order of execution.
+   * Runs the orchestrator with two supplied tracking phases named for task kinds.
    *
-   * <p>Verifies that foo and bar phases run in the order the kinds were supplied. This makes
-   * argument order meaningful, so repeated --task flags behave predictably rather than depending on
-   * set iteration.
+   * <p>Verifies that foo runs before bar. This fixes the order of the supplied phase list as the
+   * contract for repeated task kinds, independently of how the CLI collects those kinds.
    */
-  @DisplayName("With multiple task kinds, the orchestrator runs each phase in the given order")
+  @DisplayName("Two supplied task-kind phases run in the order they were supplied")
   @Test
   void runsTaskKindsInOrder() throws IOException {
     // Given: orchestrator with --task=foo --task=bar (init → install → foo → bar)
@@ -194,13 +193,13 @@ class PhaseExecutionTest {
   }
 
   /**
-   * Runs the orchestrator with the phase list produced by --skip-install and records it.
+   * Runs the orchestrator with a supplied phase list that has no install phase.
    *
-   * <p>Verifies that the install phase is absent while init and provisioning still run. This
-   * protects the escape hatch used when a card is already installed, where an unexpected reinstall
-   * would overwrite existing applets.
+   * <p>Verifies that init and provision still run and that no install phase appears in the
+   * execution log. This separates the orchestrator's behavior on a shortened phase list from the
+   * CLI flag that produces that list.
    */
-  @DisplayName("With --skip-install, the orchestrator omits the install phase")
+  @DisplayName("A supplied phase list without install runs init and provision only")
   @Test
   void skipsInstallPhase() throws IOException {
     // Given: orchestrator with --skip-install (init → provision only)
@@ -251,9 +250,9 @@ class PhaseExecutionTest {
   /**
    * Runs a phase that reads the task arguments from the orchestrator and asserts on them.
    *
-   * <p>Verifies that the arguments passed to the constructor are reachable from the phase and still
-   * carry the --flag value. This is the contract task phases rely on to make CLI options visible at
-   * execution time.
+   * <p>Verifies that the arguments passed to the constructor are reachable from the phase and
+   * report the {@code --flag} option as present. This is the contract task phases rely on to detect
+   * which CLI flags were supplied at execution time.
    */
   @DisplayName("The orchestrator passes configured task arguments to each phase")
   @Test
@@ -352,12 +351,14 @@ class PhaseExecutionTest {
   }
 
   /**
-   * Builds the CLI phase list with the --test flag and checks its phase types.
+   * Builds the CLI phase list with the --test option and checks its phase types.
    *
-   * <p>Verifies that init, install, and two task-kind phases are produced. This confirms the flag
-   * adds a test phase at construction time, before any card is touched.
+   * <p>Verifies that the list has four entries: init, install, and two TaskKindPhase instances. The
+   * assertions check the count and types only; they do not distinguish which task kind each phase
+   * carries. This keeps the phase shape of a test-enabled build observable.
    */
-  @DisplayName("CLI construction with --test adds a test phase after provisioning")
+  @DisplayName(
+      "CLI construction with --test builds four phases: init, install, and two task-kind phases")
   @Test
   void buildsCliTestPhases() {
     // Given: CLI with --test flag
@@ -374,10 +375,12 @@ class PhaseExecutionTest {
   /**
    * Builds the CLI phase list with two --task values and checks its phase types.
    *
-   * <p>Verifies that each custom kind becomes a TaskKindPhase after init and install. This checks
-   * the construction step that turns repeated CLI options into phases.
+   * <p>Verifies that init and install are followed by two TaskKindPhase instances. The assertions
+   * check the count and types only; they do not verify which kind each phase carries. This keeps
+   * the phase shape of a multi-task build observable.
    */
-  @DisplayName("CLI construction with custom task kinds adds one phase per kind")
+  @DisplayName(
+      "CLI construction with two task kinds builds init, install, and two task-kind phases")
   @Test
   void buildsCliCustomTaskPhases() {
     // Given: CLI with --task=foo --task=bar
