@@ -93,7 +93,7 @@ class PhaseExecutionTest {
   @DisplayName("Supplied init, install, and provision phases execute in that order")
   @Test
   void runsDefaultPhasesInOrder() throws IOException {
-    // Given: orchestrator with default phases (init → install → provision)
+    // Given: supplied tracking phases (init → install → provision)
     List<String> executedPhases = new ArrayList<>();
     List<Phase> phases =
         List.of(
@@ -120,7 +120,7 @@ class PhaseExecutionTest {
   @DisplayName("A supplied provision phase is followed by a test phase, with install still present")
   @Test
   void runsTestPhaseWithFlag() throws IOException {
-    // Given: orchestrator with --test flag (init → install → provision → test)
+    // Given: supplied tracking phases (init → install → provision → test)
     List<String> executedPhases = new ArrayList<>();
     List<Phase> phases =
         List.of(
@@ -148,7 +148,7 @@ class PhaseExecutionTest {
   @DisplayName("A supplied custom task-kind phase runs after the install phase")
   @Test
   void runsCustomTaskKindPhase() throws IOException {
-    // Given: orchestrator with --task=custom (init → install → custom)
+    // Given: supplied tracking phases (init → install → custom)
     List<String> executedPhases = new ArrayList<>();
     List<Phase> phases =
         List.of(
@@ -174,7 +174,7 @@ class PhaseExecutionTest {
   @DisplayName("Two supplied task-kind phases run in the order they were supplied")
   @Test
   void runsTaskKindsInOrder() throws IOException {
-    // Given: orchestrator with --task=foo --task=bar (init → install → foo → bar)
+    // Given: supplied tracking phases (init → install → foo → bar)
     List<String> executedPhases = new ArrayList<>();
     List<Phase> phases =
         List.of(
@@ -202,7 +202,7 @@ class PhaseExecutionTest {
   @DisplayName("A supplied phase list without install runs init and provision only")
   @Test
   void skipsInstallPhase() throws IOException {
-    // Given: orchestrator with --skip-install (init → provision only)
+    // Given: supplied tracking phases (init → provision only)
     List<String> executedPhases = new ArrayList<>();
     List<Phase> phases =
         List.of(
