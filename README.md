@@ -4,8 +4,9 @@
 
 **Spring Boot for JavaCard — annotation-driven applet installation and provisioning.**
 
-[![Release](https://github.com/AokiApp/cinpo/actions/workflows/release.yml/badge.svg)](https://github.com/AokiApp/cinpo/actions/workflows/release.yml)
-[![License](https://img.shields.io/badge/License-Apache--2.0?labelColor=30363d)](LICENSE.md)
+[![Made by AokiApp](https://img.shields.io/badge/Made%20by-AokiApp-black?style=flat)](https://aoki.app)
+[![GitHub version](https://badge.fury.io/gh/AokiApp%2Fcinpo.svg)](https://badge.fury.io/gh/AokiApp%2Fcinpo)
+[![](https://img.shields.io/badge/CINPO-%E3%81%97%E3%82%93%E3%81%BD-yellow?style=flat)](https://github.com/AokiApp/cinpo)
 
 [Getting Started](#getting-started) · [Templates](#templates) · [Writing Tasks](#writing-tasks)
 
@@ -227,6 +228,10 @@ public final class LoadSelectedRecord extends CardTask {
 ```
 
 For the full guide — discovery internals, dependency fields, resources, complete examples — see [docs/tasks.md](docs/tasks.md).
+
+## Pronunciation
+
+CINPO is pronounced 「しんぽ」, which means progress in Japanese.
 
 ## License
 
