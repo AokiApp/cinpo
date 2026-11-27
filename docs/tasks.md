@@ -2,6 +2,8 @@
 
 A task is a small Java program that CINPO runs on the host side of the APDU link — against the simulator during development, or against a physical card in production. Tasks are how you turn "the applet is installed" into actual card state.
 
+This page covers what CINPO owns: the task lifecycle, the arguments, and the configuration a task receives. The bytes it sends are ISO 7816-4 and GlobalPlatform, which CINPO only implements faithfully — those types are documented separately in [Standard host APIs](host-std-api.md).
+
 ## What you can build with tasks
 
 - **Provision credentials at install time** — set a PIN, store keys, issue a certificate and write it to the applet. The default `provision` kind runs after installation.
@@ -62,10 +64,10 @@ At compile time, an annotation processor validates every `@CardTaskDef` class an
 
 | Field | Type | What it is | Typical use |
 |-------|------|-----------|-------------|
-| `channel` | `ApduChannel` | Live channel to the card/simulator | Talking to the applet |
+| `channel` | [`ApduChannel`](host-std-api.md#apdu-exchange) | Live channel to the card/simulator | Talking to the applet |
 | `manifest` | `AppletManifest` | Parsed `manifest.yaml` | Looping over applets, reading AIDs |
 | `profile` | `Profile` | Active runtime profile | Conditional logic per environment |
-| `secureChannelProfile` | `SecureChannelProfile` | SCP key material from the profile | Opening your own secure sessions |
+| `secureChannelProfile` | [`SecureChannelProfile`](host-std-api.md#globalplatform-secure-channel) | SCP key material from the profile | Opening your own secure sessions |
 | `taskArguments` | `TaskArguments` | Raw arguments after `--` | Template-specific selectors |
 
 ### Passing arguments
@@ -90,18 +92,19 @@ public void run() {
 
 ### Failure model
 
-An exception from `run()` aborts the pipeline and the command exits with a non-zero status. Make your checks explicit — fail fast with `IllegalStateException`:
+An exception from `run()` aborts the pipeline and the command exits with a non-zero status. Make your checks explicit — fail fast with `IllegalStateException`, and do not catch one to continue with the next task:
 
 ```java
-private void transmitOk(CommandApdu command) {
-    ResponseApdu response = channel.transmit(command);
-    if (response.sw() != 0x9000) {
-        throw new IllegalStateException("APDU failed: SW=%04X".formatted(response.sw()));
+@Override
+public void run() {
+    if (!taskArguments.hasFlag("confirm")) {
+        throw new IllegalStateException("refusing to write to the card without --confirm");
     }
+    // ...
 }
 ```
 
-Retrying is usually wrong for APDU commands — a failing status word means the card rejected the command, not that the transport hiccuped.
+A card's rejection is not an exception, though: it arrives as a status word, so checking SW1/SW2 is the task's job. How to do that, and why retrying a failed APDU is usually wrong, is in [checking status words](host-std-api.md#checking-status-words).
 
 ### Bundling data with `host/`
 
@@ -109,62 +112,7 @@ Non-Java files under `host/` are packaged as classpath resources (useful for fix
 
 ## API reference
 
-### `app.aoki.cinpo.apdu.ApduChannel`
-
-Interface. The live connection to the card/simulator. Never instantiate; use the inherited `channel` field.
-
-| Method | Description |
-|--------|-------------|
-| `ResponseApdu transmit(CommandApdu capdu)` | Send an APDU command; returns the full response (data + SW1/SW2). |
-| `void reset()` | Reset the transport/session state ("cold restart"). Persistent card data is preserved. |
-| `void close()` | Release runtime resources. |
-
-### `app.aoki.cinpo.apdu.CommandApdu`
-
-Value type for an outgoing APDU.
-
-- Constructors: `CommandApdu(int cla, int ins, int p1, int p2)`, `(int cla, int ins, int p1, int p2, byte[] data)`, `(int cla, int ins, int p1, int p2, byte[] data, Integer le)`
-- Accessors: `cla()`, `ins()`, `p1()`, `p2()` (each `int`), `data()` (`byte[]`), `le()` (`Integer`)
-
-### `app.aoki.cinpo.apdu.ResponseApdu`
-
-Value type for an incoming APDU response.
-
-| Member | Description |
-|--------|-------------|
-| `data()` | Response data, `byte[]` |
-| `sw()` | Status word `SW1 << 8 \| SW2`, as an `int` (e.g. `0x9000`) |
-| `sw1()` / `sw2()` | Split status bytes |
-| `toBytes()` | Raw response bytes |
-| `toHexString()` | Hex representation |
-| `ResponseApdu.fromBytes(byte[])` / `fromHexString(String)` | Static constructors |
-
-### `app.aoki.cinpo.apdu.Iso7816Commands`
-
-Static factories for ISO 7816-4 commands and constants.
-
-| Constant | Value | Constant | Value |
-|----------|-------|----------|-------|
-| `INS_VERIFY` | `0x20` | `INS_PUT_DATA` | `0xDA` |
-| `INS_CHANGE_REFERENCE_DATA` | `0x24` | `INS_READ_BINARY` | `0xB0` |
-| `INS_GET_CHALLENGE` | `0x84` | `INS_SELECT` | `0xA4` |
-| `INS_GET_DATA` | `0xCA` | `INS_UPDATE_BINARY` | `0xD6` |
-
-`SELECT_OPTION_RETURN_NO_DATA = 0x0C`, `SELECT_OPTION_RETURN_FCI_TEMPLATE = 0x04`, `SELECT_OPTION_FIRST_OR_ONLY_OCCURRENCE = 0x00`, `SELECT_METHOD_BY_DF_NAME = 0x04`.
-
-| Method | Builds |
-|--------|--------|
-| `selectDf(byte[] dfName)` / `selectDf(byte[] dfName, int selectOptions[, Integer le])` | SELECT by DF name |
-| `selectEf(int fileId[, boolean requestFci[, Integer le]])` | SELECT element file |
-| `readBinary(int offset, int le)` | INS `0xB0` |
-| `readBinaryBySfi(int sfi, int offset, int le)` | INS `0xB0` via SFI |
-| `updateBinary(int offset, byte[] data)` | INS `0xD6` |
-| `updateBinaryBySfi(int sfi, int offset, byte[] data)` | INS `0xD6` via SFI |
-| `verify(int referenceDataNumber, byte[] verificationData)` | INS `0x20` |
-| `changeReferenceData(int referenceDataNumber, byte[] newReferenceData)` | INS `0x24` |
-| `getChallenge(int le)` | INS `0x84` |
-| `getData(int tag[, Integer le])` | INS `0xCA` |
-| `putData(int tag, byte[] value)` | INS `0xDA` |
+These are CINPO's own types: how a manifest, a profile, a secure channel configuration, task arguments and a task class are represented. The ISO 7816-4 and GlobalPlatform types a task transmits with — `ApduChannel`, `CommandApdu`, `ResponseApdu`, `Iso7816Commands`, `SecureChannelProfile`, `SecureChannelSession` — are in [Standard host APIs](host-std-api.md).
 
 ### `app.aoki.cinpo.config.AppletManifest`
 
@@ -197,7 +145,7 @@ Record describing a profile (`profile/<name>.yaml`).
 
 ### `app.aoki.cinpo.config.ScpConfig`
 
-Record; carries the profile-declared SCP configuration. `toSecureChannelProfile()` turns it into a runtime `SecureChannelProfile`.
+Record; carries the profile-declared SCP configuration. `toSecureChannelProfile()` turns it into a runtime [`SecureChannelProfile`](host-std-api.md#globalplatform-secure-channel).
 
 | Component | Type | Notes |
 |-----------|------|-------|
@@ -209,30 +157,6 @@ Record; carries the profile-declared SCP configuration. `toSecureChannelProfile(
 | `encKey` | `byte[]` | 16, 24 or 32 bytes |
 | `macKey` | `byte[]` | matches `encKey` length |
 | `dekKey` | `byte[]` | matches `encKey` length |
-
-### `app.aoki.cinpo.gp.scp.SecureChannelProfile`
-
-Record; the runtime SCP key material. The loader derives it from the active `Profile` and assigns it to `CardTask.secureChannelProfile`.
-
-- Variant: `SecureChannelProfile.Scp.SCP02` / `SecureChannelProfile.Scp.SCP03`
-- Static factories: `scp03(securityDomainAid, keyVersionNumber, keyIdentifier, securityLevel, encKey, macKey, dekKey)`, `scp02(securityDomainAid, keyVersionNumber, keyIdentifier, securityLevel, encKey, macKey, dekKey, hostChallenge, scp02SequenceCounter)`
-
-| Accessor | Type |
-|----------|------|
-| `securityDomainAid()` / `encKey()` / `macKey()` / `hostChallenge()` / `scp02SequenceCounter()` | `byte[]` |
-| `dekKey()` | `byte[]` or `null` |
-
-### `app.aoki.cinpo.gp.scp.SecureChannelSession`
-
-Task-scoped secure channel; created from a channel and profile; short-lived.
-
-| Member | Description |
-|--------|-------------|
-| `SecureChannelSession.create(ApduChannel, SecureChannelProfile)` | Static factory |
-| `authenticate()` | Run the mutual authentication handshake |
-| `transmit(CommandApdu)` | Send a command over the open channel (unwrapped/protected) |
-| `isAuthenticated()` / `isAborted()` / `isClosed()` | State queries |
-| `close()` | Terminate the session |
 
 ### `app.aoki.cinpo.task.TaskArguments`
 
@@ -263,53 +187,9 @@ import app.aoki.cinpo.apdu.Iso7816Commands;
 import app.aoki.cinpo.apdu.ResponseApdu;
 import app.aoki.cinpo.task.CardTask;
 import app.aoki.cinpo.task.CardTaskDef;
-import java.nio.charset.StandardCharsets;
 ```
 
-### A provision task that SELECTs and writes the PIN
-
-```java
-package provision;
-
-@CardTaskDef("provision")
-public final class SetupPin extends CardTask {
-
-    @Override
-    public void run() {
-        transmitOk(Iso7816Commands.selectDf(manifest.applets().get(0).instanceAid()));
-        transmitOk(Iso7816Commands.changeReferenceData(0x01, "1234".getBytes(StandardCharsets.US_ASCII)));
-    }
-
-    private void transmitOk(CommandApdu command) {
-        ResponseApdu response = channel.transmit(command);
-        if (response.sw() != 0x9000) {
-            throw new IllegalStateException("APDU failed: SW=%04X".formatted(response.sw()));
-        }
-    }
-}
-```
-
-### A test task
-
-```java
-package test;
-
-@CardTaskDef("test")
-public final class VerifyPinWorks extends CardTask {
-
-    @Override
-    public void run() {
-        byte[] aid = manifest.applets().get(0).instanceAid();
-        channel.transmit(Iso7816Commands.selectDf(aid));
-
-        ResponseApdu response = channel.transmit(
-            Iso7816Commands.verify(0x01, "1234".getBytes(StandardCharsets.US_ASCII)));
-        if (response.sw() != 0x9000) {
-            throw new IllegalStateException("PIN verify failed: SW=%04X".formatted(response.sw()));
-        }
-    }
-}
-```
+The examples here are about task structure — what a task declares, loops over, or reads. Examples that are about the protocol itself (SELECT and PIN commands, a secure-channel session) are in [Standard host APIs](host-std-api.md#worked-examples).
 
 ### Multi-applet provisioning
 
@@ -331,31 +211,6 @@ public final class ProvisionAll extends CardTask {
     }
 }
 ```
-
-### A task inside its own secure channel session
-
-```java
-package provision;
-
-import app.aoki.cinpo.gp.scp.SecureChannelSession;
-
-@CardTaskDef(value = "provision", order = 200)
-public final class WriteKeys extends CardTask {
-
-    @Override
-    public void run() {
-        SecureChannelSession session = SecureChannelSession.create(channel, secureChannelProfile);
-        session.authenticate();
-        try {
-            session.transmit(new CommandApdu(0x80, 0xD4, 0x00, 0x00, new byte[] { /* key material */ }));
-        } finally {
-            session.close();
-        }
-    }
-}
-```
-
-The `order = 200` ensures this task runs after the default-order provision tasks (default `0`).
 
 ### A custom kind
 
@@ -383,5 +238,6 @@ Run it with:
 ## Where to look next
 
 - Compilable examples in the templates: `template/basic/host/provision/HelloProvision.java`, `template/basic/host/test/HelloTest.java`, `template/probe/host/probe/ProbeTask.java`.
+- [Standard host APIs](host-std-api.md) — APDU value types, ISO 7816-4 command builders, status-word handling, and the GlobalPlatform secure channel.
 - [Profiles](profiles.md) — `jcdksim` (simulator), `jcardengine` (in-process engine), and `pcsc` (real card reader), `scp02` vs `scp03`.
 - Framework changes are verified before publication by the `Release` workflow, which builds the `basic` template against the staged repository.

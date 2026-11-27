@@ -227,7 +227,7 @@ public final class LoadSelectedRecord extends CardTask {
 }
 ```
 
-For the full guide — discovery internals, dependency fields, resources, complete examples — see [docs/tasks.md](docs/tasks.md).
+For the full guide — discovery internals, dependency fields, resources, complete examples — see [docs/tasks.md](docs/tasks.md). The ISO 7816-4 and GlobalPlatform types a task transmits with are in [docs/host-std-api.md](docs/host-std-api.md).
 
 ## Pronunciation
 
